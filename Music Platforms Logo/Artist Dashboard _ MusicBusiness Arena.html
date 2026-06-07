@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<!-- saved from url=(0043)http://127.0.0.1:5500/artist-dashboard.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artist Dashboard | MusicBusiness Arena</title>
+    <link rel="stylesheet" href="./Artist Dashboard _ MusicBusiness Arena_files/styles.css">
+  </head>
+  <body class="manager-body">
+    <header class="site-header">
+      <a class="brand-lockup" href="http://127.0.0.1:5500/index.html" aria-label="MusicBusiness Arena home">
+        <img data-brand-logo="" src="./Artist Dashboard _ MusicBusiness Arena_files/MusicBusiness Logo.png" alt="MusicBusiness Arena logo">
+      </a>
+      <nav class="main-nav" aria-label="Primary navigation">
+        <a href="http://127.0.0.1:5500/index.html">Home</a>
+        <a href="http://127.0.0.1:5500/artist-page.html">Artist Page</a>
+        <a href="http://127.0.0.1:5500/store-manager.html">Store Manager</a>
+        <a href="http://127.0.0.1:5500/artist-dashboard.html#releaseForm">Upload</a>
+      </nav>
+      <a class="header-action" href="http://127.0.0.1:5500/artist-page.html">View Page</a>
+    </header>
+
+    <main>
+      <div class="local-server-warning" id="localServerWarning" hidden="">
+        Open this dashboard from <strong>http://127.0.0.1:8010/artist-dashboard.html</strong> so audio files save and play correctly.
+      </div>
+
+      <section class="manager-hero">
+        <div class="section-shell manager-hero-grid">
+          <div>
+            <p class="eyebrow">Artist dashboard</p>
+            <h1>Upload music, artwork, song biography, photos, and streaming links.</h1>
+            <p class="hero-copy">
+              This is the private artist CMS for MusicBusiness Arena. Add your content here and it will save directly
+              to the public artist website for now. Store Manager can monitor and control submissions later.
+            </p>
+          </div>
+          <div class="manager-stats" aria-label="Artist dashboard stats">
+            <div><strong id="managerReleaseCount">0</strong><span>releases</span></div>
+            <div><strong id="managerDownloadCount">0</strong><span>demo downloads</span></div>
+            <div><strong id="managerEarnings">$0.00</strong><span>tracked earnings</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-shell manager-grid" aria-label="Store manager forms">
+        <form class="manager-panel" id="brandingForm">
+          <div class="panel-heading">
+            <p class="eyebrow">Website branding</p>
+            <h2>Logo</h2>
+          </div>
+
+          <div class="logo-preview-box">
+            <img data-brand-logo="" id="brandingLogoPreview" src="./Artist Dashboard _ MusicBusiness Arena_files/MusicBusiness Logo.png" alt="Current website logo">
+          </div>
+
+          <label>
+            Replace website logo
+            <input name="logo" type="file" accept="image/*">
+          </label>
+
+          <button class="primary-button form-button" type="submit">Save Logo</button>
+          <p class="form-message" id="brandingMessage" role="status"></p>
+        </form>
+
+        <form class="manager-panel" id="profileForm">
+          <div class="panel-heading">
+            <p class="eyebrow">Artist profile</p>
+            <h2>Profile details</h2>
+          </div>
+
+          <label>
+            Artist name
+            <input name="artistName" type="text" placeholder="Example: Aria Lane" required="">
+          </label>
+
+          <label>
+            Artist photo
+            <input name="artistPhoto" type="file" accept="image/*">
+          </label>
+
+          <div class="form-row">
+            <label>
+              Instagram
+              <input name="instagram" type="url" placeholder="https://instagram.com/artist">
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              X
+              <input name="x" type="url" placeholder="https://x.com/artist">
+            </label>
+            <label>
+              YouTube
+              <input name="youtube" type="url" placeholder="https://youtube.com/@artist">
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              TikTok
+              <input name="tiktok" type="url" placeholder="https://tiktok.com/@artist">
+            </label>
+            <label>
+              SoundCloud
+              <input name="soundcloud" type="url" placeholder="https://soundcloud.com/artist">
+            </label>
+          </div>
+
+          <label>
+            Website
+            <input name="website" type="url" placeholder="https://artistwebsite.com">
+          </label>
+
+          <div class="form-row">
+            <label>
+              Threads
+              <input name="threads" type="url" placeholder="https://threads.net/@artist">
+            </label>
+            <label>
+              Snapchat
+              <input name="snapchat" type="url" placeholder="https://snapchat.com/add/artist">
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              LinkedIn
+              <input name="linkedin" type="url" placeholder="https://linkedin.com/in/artist">
+            </label>
+            <label>
+              Twitch
+              <input name="twitch" type="url" placeholder="https://twitch.tv/artist">
+            </label>
+          </div>
+
+          <div class="icon-upload-list" id="socialIconUploads"></div>
+
+          <button class="primary-button form-button" type="submit">Save Profile</button>
+          <p class="form-message" id="profileMessage" role="status"></p>
+        </form>
+
+        <form class="manager-panel" id="releaseForm">
+          <div class="panel-heading">
+            <p class="eyebrow">Upload release</p>
+            <h2>Song details</h2>
+          </div>
+
+          <div class="form-row">
+            <label>
+              Song title
+              <input name="title" type="text" placeholder="Song title" required="">
+            </label>
+            <label>
+              Release type
+              <select name="releaseType">
+                <option>Single</option>
+                <option>EP</option>
+                <option>Album</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              Genre
+              <input name="genre" type="text" placeholder="Afrobeats, Hip-Hop, Gospel...">
+            </label>
+            <label>
+              Download price
+              <input name="price" type="number" min="0" step="0.01" value="1.49">
+            </label>
+          </div>
+
+          <label>
+            Song Biography
+            <textarea name="songBio" rows="5" maxlength="280" placeholder="Tell listeners what this song is about, the story behind it, or what inspired it."></textarea>
+            <span class="field-counter" id="songBioCounter">0 / 280</span>
+          </label>
+
+          <label>
+            Cover artwork
+            <input name="cover" type="file" accept="image/*">
+          </label>
+
+          <label>
+            Song file
+            <input name="audio" type="file" accept="audio/*">
+          </label>
+
+          <div class="form-row">
+            <label>
+              Spotify link
+              <input name="spotify" type="url" placeholder="https://open.spotify.com/...">
+            </label>
+            <label>
+              Apple Music link
+              <input name="appleMusic" type="url" placeholder="https://music.apple.com/...">
+            </label>
+          </div>
+
+          <label>
+            YouTube Music or video link
+            <input name="youtubeMusic" type="url" placeholder="https://music.youtube.com/...">
+          </label>
+
+          <div class="form-row">
+            <label>
+              Deezer link
+              <input name="deezer" type="url" placeholder="https://deezer.com/...">
+            </label>
+            <label>
+              iTunes link
+              <input name="itunes" type="url" placeholder="https://music.apple.com/...">
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              Audiomack link
+              <input name="audiomack" type="url" placeholder="https://audiomack.com/...">
+            </label>
+            <label>
+              Boomplay link
+              <input name="boomplay" type="url" placeholder="https://boomplay.com/...">
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              TIDAL link
+              <input name="tidal" type="url" placeholder="https://tidal.com/...">
+            </label>
+            <label>
+              Amazon Music link
+              <input name="amazonMusic" type="url" placeholder="https://music.amazon.com/...">
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              Pandora link
+              <input name="pandora" type="url" placeholder="https://pandora.com/...">
+            </label>
+            <label>
+              iHeartRadio link
+              <input name="iheart" type="url" placeholder="https://iheart.com/...">
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              Bandcamp link
+              <input name="bandcamp" type="url" placeholder="https://artist.bandcamp.com/...">
+            </label>
+            <label>
+              Other music link
+              <input name="otherMusic" type="url" placeholder="https://...">
+            </label>
+          </div>
+
+          <div class="icon-upload-list" id="musicIconUploads"></div>
+
+          <button class="primary-button form-button" type="submit">Save Release to Website</button>
+          <button class="secondary-form-button" id="cancelReleaseEdit" type="button" hidden="">Cancel Edit</button>
+          <p class="form-message" id="releaseMessage" role="status"></p>
+        </form>
+      </section>
+
+      <section class="section-shell releases-manager-section">
+        <div class="section-heading align-left">
+          <p class="eyebrow">Submitted content</p>
+          <h2>Your uploaded releases</h2>
+        </div>
+        <div class="managed-release-grid" id="managedReleaseGrid"></div>
+      </section>
+    </main>
+
+    <template id="managedReleaseTemplate"></template>
+
+    <script src="./Artist Dashboard _ MusicBusiness Arena_files/mba-storage.js"></script>
+    <script src="./Artist Dashboard _ MusicBusiness Arena_files/branding.js"></script>
+    <script src="./Artist Dashboard _ MusicBusiness Arena_files/platform-config.js"></script>
+    <script src="./Artist Dashboard _ MusicBusiness Arena_files/artist-dashboard.js"></script>
+  <!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+
+
+</body></html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Store Manager | MusicBusiness Arena</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="manager-body">
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="MusicBusiness Arena home">
+        <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="artist-page.html">Artist Page</a>
+        <a href="artist-dashboard.html">Artist Dashboard</a>
+      </nav>
+    </header>
+
+    <main class="dashboard-layout">
+      <section class="dashboard-intro">
+        <p class="eyebrow">Store manager</p>
+        <h1>Approve releases, manage homepage content, and monitor the platform.</h1>
+        <p>
+          Store Manager controls the website and moderation. Music uploads stay inside Artist Dashboard.
+        </p>
+      </section>
+
+      <section class="stats-grid">
+        <article><strong id="totalArtists">0</strong><span>artists</span></article>
+        <article><strong id="pendingReleases">0</strong><span>pending releases</span></article>
+        <article><strong id="totalDownloads">0</strong><span>downloads</span></article>
+        <article><strong id="totalEarnings">$0.00</strong><span>artist earnings</span></article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">Website CMS</p>
+          <h2>Homepage and platform settings</h2>
+        </div>
+        <form id="siteForm" class="form-grid">
+          <label>
+            Website logo
+            <input name="logo" type="file" accept="image/*" />
+          </label>
+          <label>
+            Website title
+            <input name="title" type="text" />
+          </label>
+          <label>
+            Tagline
+            <input name="tagline" type="text" />
+          </label>
+          <label>
+            Homepage intro
+            <textarea name="intro" rows="4"></textarea>
+          </label>
+          <div class="form-row">
+            <label>
+              Primary button text
+              <input name="primaryCta" type="text" />
+            </label>
+            <label>
+              Secondary button text
+              <input name="secondaryCta" type="text" />
+            </label>
+          </div>
+          <label>
+            Platform commission percentage
+            <input name="commissionRate" type="number" min="0" max="100" step="1" />
+          </label>
+          <button class="primary-button" type="submit">Save Website Settings</button>
+          <p class="form-message" id="siteMessage" role="status"></p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">Approval queue</p>
+          <h2>Artist song submissions</h2>
+        </div>
+        <div class="approval-list" id="approvalList"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">Artist profiles</p>
+          <h2>Manage website artist pages</h2>
+        </div>
+        <div class="records-list" id="artistManagerList"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">Records</p>
+          <h2>Downloads, fees, and payouts</h2>
+        </div>
+        <div class="records-list" id="recordsList"></div>
+      </section>
+    </main>
+
+    <script src="mba-storage.js"></script>
+    <script src="platform-config.js"></script>
+    <script src="store-manager.js"></script>
+  </body>
+</html>

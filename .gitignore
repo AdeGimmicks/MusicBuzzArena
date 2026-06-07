@@ -1,0 +1,13 @@
+node_modules/
+.env
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.render/
+
+# Local prototype data can be private. Remove the next line if you want to seed production with current local content.
+data/musicbusiness-arena.json
+
+# Uploaded audio/images are user content. Use a Render persistent disk or external object storage in production.
+uploads/

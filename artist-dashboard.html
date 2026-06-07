@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Artist Dashboard | MusicBusiness Arena</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="dashboard-body">
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="MusicBusiness Arena home">
+        <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="artist-page.html">Music</a>
+        <a href="videos.html">Video</a>
+        <a href="artist-dashboard.html">Upload</a>
+      </nav>
+    </header>
+
+    <main class="dashboard-layout">
+      <section class="dashboard-intro">
+        <p class="eyebrow">Artist dashboard</p>
+        <h1>Upload and control what appears on your public pages.</h1>
+        <p>Save your profile, releases, download options, streaming links, and videos from one place.</p>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">Home</p>
+          <h2>Latest release</h2>
+        </div>
+        <form id="releaseForm" class="form-grid">
+          <input name="editingId" type="hidden" />
+          <div class="form-row">
+            <label>
+              Song or album title
+              <input name="title" type="text" required />
+            </label>
+            <label>
+              Artist name on release
+              <input name="artistName" type="text" required />
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              Release type
+              <select name="releaseType">
+                <option>Single</option>
+                <option>Album</option>
+                <option>EP</option>
+              </select>
+            </label>
+            <label>
+              Main genre
+              <select name="genre" required>
+                <option value="">Choose main genre</option>
+                <option>Afrobeats</option>
+                <option>Hip-Hop/Rap</option>
+                <option>Gospel</option>
+                <option>R&B</option>
+                <option>Pop</option>
+                <option>Dancehall</option>
+                <option>Reggae</option>
+                <option>Amapiano</option>
+                <option>Soul</option>
+                <option>Country</option>
+                <option>Jazz/Blues</option>
+                <option>Electronic</option>
+                <option>Rock</option>
+                <option>Instrumental</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              Second genre
+              <select name="secondaryGenre" required>
+                <option value="">Choose second genre</option>
+                <option>Afropop</option>
+                <option>Afro-Fusion</option>
+                <option>Afrosounds</option>
+                <option>Afrobeats</option>
+                <option>Hip-Hop/Rap</option>
+                <option>Gospel</option>
+                <option>R&B</option>
+                <option>Pop</option>
+                <option>Dancehall</option>
+                <option>Reggae</option>
+                <option>Amapiano</option>
+                <option>Soul</option>
+                <option>Country</option>
+                <option>Jazz/Blues</option>
+                <option>Electronic</option>
+                <option>Rock</option>
+                <option>Instrumental</option>
+              </select>
+            </label>
+            <label>
+              Mood 1
+              <select name="moodPrimary" required>
+                <option value="">Choose mood</option>
+                <option>Motivation</option>
+                <option>Happy</option>
+                <option>Inspirational</option>
+                <option>Focus</option>
+                <option>Faith</option>
+                <option>Love</option>
+                <option>Gratitude</option>
+                <option>Celebration</option>
+                <option>Hope</option>
+                <option>Reflection</option>
+                <option>Energy</option>
+                <option>Dance</option>
+                <option>Chill</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              Mood 2
+              <select name="moodSecondary" required>
+                <option value="">Choose second mood</option>
+                <option>Happy</option>
+                <option>Motivation</option>
+                <option>Inspirational</option>
+                <option>Focus</option>
+                <option>Faith</option>
+                <option>Love</option>
+                <option>Gratitude</option>
+                <option>Celebration</option>
+                <option>Hope</option>
+                <option>Reflection</option>
+                <option>Energy</option>
+                <option>Dance</option>
+                <option>Chill</option>
+              </select>
+            </label>
+            <label>
+              Country
+              <select name="country" required>
+                <option value="">Choose country</option>
+                <option>United States</option>
+                <option>Nigeria</option>
+                <option>United Kingdom</option>
+                <option>Canada</option>
+                <option>Ghana</option>
+                <option>South Africa</option>
+                <option>Kenya</option>
+                <option>Jamaica</option>
+                <option>France</option>
+                <option>Germany</option>
+                <option>Other</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Song biography
+            <textarea name="songBio" maxlength="280" rows="4" placeholder="Short meaning or story behind the song." required></textarea>
+            <span class="field-note"><span id="songBioCount">0</span>/280 characters</span>
+          </label>
+          <div class="form-row">
+            <label>
+              Release date
+              <input name="releaseDate" type="date" required />
+            </label>
+            <label>
+              Producer
+              <input name="producer" type="text" placeholder="Producer name" />
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              Cover artwork
+              <input name="cover" type="file" accept="image/*" required />
+            </label>
+            <label>
+              Audio file
+              <input name="audio" type="file" accept="audio/*" required />
+            </label>
+          </div>
+          <section class="dashboard-home-preview" aria-labelledby="homePreviewTitle">
+            <div>
+              <p class="eyebrow">Latest release</p>
+              <h3 id="homePreviewTitle">Home card preview</h3>
+            </div>
+            <article class="release-card dashboard-release-preview">
+              <div class="release-cover-frame">
+                <img id="homePreviewCover" class="release-cover" src="Mba Logos/MusicBusiness Logo.png" alt="" />
+              </div>
+              <div class="release-body">
+                <p id="homePreviewMeta" class="release-meta">Single | Music</p>
+                <h3 id="homePreviewSong">Song title</h3>
+                <span id="homePreviewArtist">Artist name</span>
+                <div class="mini-actions">
+                  <span class="listen-action">Listen</span>
+                </div>
+              </div>
+            </article>
+          </section>
+          <div class="form-row">
+            <label>
+              Download price
+              <input name="price" type="number" min="0" step="0.01" value="0.99" />
+            </label>
+            <label>
+              Donation amount
+              <input name="donationAmount" type="number" min="0" step="0.01" placeholder="Any amount if blank" />
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              Donation link
+              <input name="donationLink" type="text" placeholder="https://... or your donation page" />
+            </label>
+            <label>
+              City / state
+              <input name="cityState" type="text" placeholder="Chicago, Illinois" required />
+            </label>
+          </div>
+          <div class="link-fields" id="streamingFields"></div>
+          <button class="primary-button" type="submit">Submit Latest Release</button>
+          <p class="form-message" id="releaseMessage" role="status"></p>
+        </form>
+        <section class="dashboard-upload-list" aria-labelledby="myLatestTitle">
+          <div class="section-heading compact-heading">
+            <p class="eyebrow">Artist only</p>
+            <h3 id="myLatestTitle">My latest releases</h3>
+          </div>
+          <div class="release-list" id="dashboardReleaseList"></div>
+        </section>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">Artist Page 1</p>
+          <h2>Artist profile</h2>
+        </div>
+        <form id="artistForm" class="form-grid">
+          <div class="form-row">
+            <label>
+              Artist name
+              <input name="name" type="text" required />
+            </label>
+            <label>
+              Artist handle
+              <input name="handle" type="text" placeholder="@focuzman" required />
+            </label>
+          </div>
+          <label>
+            Artist biography
+            <textarea name="bio" maxlength="420" rows="4" placeholder="Short artist biography for the public artist page." required></textarea>
+            <span class="field-note"><span id="artistBioCount">0</span>/420 characters</span>
+          </label>
+          <div class="form-row">
+            <label>
+              Artist profile picture
+              <input name="photo" type="file" accept="image/*" />
+            </label>
+            <label>
+              Artist cover banner
+              <input name="banner" type="file" accept="image/*" />
+            </label>
+          </div>
+          <div class="link-fields" id="socialFields"></div>
+          <button class="primary-button" type="submit">Save Artist Profile</button>
+          <p class="form-message" id="artistMessage" role="status"></p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <p class="eyebrow">Video Page</p>
+          <h2>Artist videos</h2>
+        </div>
+        <form id="videoForm" class="form-grid">
+          <div class="form-row">
+            <label>
+              Main YouTube video link
+              <input name="mainVideoUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." />
+            </label>
+            <label>
+              Main video title
+              <input name="mainVideoTitle" type="text" placeholder="Focuzman Video" />
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              YouTube Short link
+              <input name="shortVideoUrl" type="text" placeholder="https://youtube.com/shorts/..." />
+            </label>
+            <label>
+              TikTok short link
+              <input name="tiktokUrl" type="text" placeholder="https://www.tiktok.com/..." />
+            </label>
+          </div>
+          <div class="form-row">
+            <label>
+              More videos link
+              <input name="moreVideosUrl" type="text" placeholder="https://www.youtube.com/@artist/videos" />
+            </label>
+            <label>
+              More shorts link
+              <input name="moreShortsUrl" type="text" placeholder="https://www.youtube.com/@artist/shorts" />
+            </label>
+          </div>
+          <button class="primary-button" type="submit">Save Video Page</button>
+          <p class="form-message" id="videoMessage" role="status"></p>
+        </form>
+      </section>
+
+    </main>
+
+    <script src="mba-storage.js"></script>
+    <script src="platform-config.js"></script>
+    <script src="artist-dashboard.js"></script>
+  </body>
+</html>
