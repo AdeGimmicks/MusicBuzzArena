@@ -416,9 +416,51 @@ function isPathInsideUploadRoot(filePath) {
   return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
+const CLEAN_ROUTES = {
+  "/home": "/index.html",
+  "/music": "/artist-page.html",
+  "/listen": "/artist-page-2.html",
+  "/video": "/videos.html",
+  "/upload": "/artist-dashboard.html",
+  "/store-manager": "/store-manager.html",
+  "/genre/afrobeats": "/afrobeats.html",
+  "/genre/amapiano": "/amapiano.html",
+  "/genre/country": "/country.html",
+  "/genre/dancehall": "/dancehall.html",
+  "/genre/electronic": "/electronic.html",
+  "/genre/gospel": "/gospel.html",
+  "/genre/hip-hop-rap": "/hip-hop-rap.html",
+  "/genre/instrumental": "/instrumental.html",
+  "/genre/jazz-blues": "/jazz-blues.html",
+  "/genre/pop": "/pop.html",
+  "/genre/r-and-b": "/r-and-b.html",
+  "/genre/reggae": "/reggae.html",
+  "/genre/rock": "/rock.html",
+  "/genre/soul": "/soul.html",
+};
+
+const LEGACY_REDIRECTS = Object.fromEntries(Object.entries(CLEAN_ROUTES).map(([clean, file]) => [file, clean]));
+
+function redirect(response, location) {
+  response.writeHead(301, { Location: location });
+  response.end();
+}
+
 async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
-  const pathname = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+  const requestedPath = decodeURIComponent(url.pathname);
+
+  if (requestedPath === "/") {
+    redirect(response, "/home");
+    return;
+  }
+
+  if (LEGACY_REDIRECTS[requestedPath]) {
+    redirect(response, `${LEGACY_REDIRECTS[requestedPath]}${url.search}`);
+    return;
+  }
+
+  const pathname = CLEAN_ROUTES[requestedPath] || requestedPath;
   const filePath = pathname.startsWith("/uploads/")
     ? path.join(UPLOAD_DIR, pathname.replace(/^\/uploads\//, ""))
     : path.join(ROOT, pathname);

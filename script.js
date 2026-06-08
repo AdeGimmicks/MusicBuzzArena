@@ -14,9 +14,9 @@ function applySiteContent(store) {
 }
 
 function markActiveGenreLink() {
-  const page = window.location.pathname.split("/").pop() || "index.html";
+  const currentPath = window.location.pathname === "/" ? "/home" : window.location.pathname;
   document.querySelectorAll(".genre-strip a").forEach((link) => {
-    link.classList.toggle("is-current", link.getAttribute("href") === page);
+    link.classList.toggle("is-current", link.getAttribute("href") === currentPath);
   });
 }
 
@@ -46,7 +46,7 @@ function releaseCard(release, artist) {
       <h3>${release.title || "Untitled release"}</h3>
       <span>${artist?.name || release.artistName || "Independent Artist"}</span>
       <div class="mini-actions">
-        <a class="listen-action" href="artist-page-2.html?release=${encodeURIComponent(release.id)}">Listen</a>
+        <a class="listen-action" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
       </div>
     </div>
   `;
@@ -100,7 +100,7 @@ function updateFeatureBanner(releases) {
 }
 
 function currentStoreSnapshot(store) {
-  const page = window.location.pathname.split("/").pop() || "index.html";
+  const page = window.location.pathname || "/home";
   const releaseKey = (store.releases || [])
     .map((release) => `${release.id}:${release.title}:${release.genre}:${release.status}:${release.cover}`)
     .join("|");

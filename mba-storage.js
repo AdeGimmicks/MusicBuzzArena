@@ -214,7 +214,7 @@ async function saveStore(store) {
     }
   } catch (error) {
     if (window.location.protocol === "file:") {
-      throw new Error("Open http://127.0.0.1:8010/artist-dashboard.html so uploads save to your computer.");
+      throw new Error("Open http://127.0.0.1:8010/upload so uploads save to your computer.");
     }
   }
 
@@ -222,7 +222,7 @@ async function saveStore(store) {
     localStorage.setItem(MBA_STORAGE_KEY, JSON.stringify(store));
     return store;
   } catch {
-    throw new Error("The browser storage is full. Use http://127.0.0.1:8010/artist-dashboard.html for uploads.");
+    throw new Error("The browser storage is full. Use http://127.0.0.1:8010/upload for uploads.");
   }
 }
 

@@ -114,7 +114,7 @@ function trackRow(release, artist, allReleases = []) {
       <span>Release Date: ${releaseDate} by ${artist?.name || release.artistName || "MusicBusiness Arena"}</span>
       <div class="track-tags">${trackTags(release)}</div>
     </div>
-    <a class="track-listen" href="artist-page-2.html?release=${encodeURIComponent(release.id)}">Listen</a>
+    <a class="track-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
     <div class="track-options">
       <button class="track-menu" type="button" aria-label="Track options">⋮</button>
       <div class="track-menu-panel">
@@ -164,7 +164,7 @@ function renderMoreFromArtist(releases, artist) {
     const card = document.createElement("article");
     card.className = "artist-more-circle-card";
     card.innerHTML = `
-      <a class="artist-more-circle-link" href="artist-page-2.html?release=${encodeURIComponent(release.id)}">
+      <a class="artist-more-circle-link" href="/listen?release=${encodeURIComponent(release.id)}">
         <span class="artist-more-cover">
           <img src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover">
         </span>
