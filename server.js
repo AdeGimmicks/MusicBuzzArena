@@ -165,8 +165,8 @@ function defaultStore() {
         donationAmount: 5,
         donationLink: "",
         cover: "assets/sample/images/too-late-to-quit-cover.png",
-        audioUrl: "assets/sample/audio/too-late-to-quit.wav",
-        audioName: "too-late-to-quit.wav",
+        audioUrl: "assets/sample/audio/too-late-to-quit.mp3",
+        audioName: "too-late-to-quit.mp3",
         streaming: {
           youtubeMusic: "https://music.youtube.com/@Focuzman",
         },
