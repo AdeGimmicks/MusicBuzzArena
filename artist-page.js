@@ -9,6 +9,8 @@ const artistReleaseList = document.querySelector("#artistReleaseList");
 const artistReleaseCount = document.querySelector("#artistReleaseCount");
 const artistDownloadCount = document.querySelector("#artistDownloadCount");
 const artistEarningsCount = document.querySelector("#artistEarningsCount");
+let activePreviewAudio = null;
+let activePreviewButton = null;
 
 function applySite(store) {
   document.querySelectorAll("[data-logo]").forEach((img) => {
@@ -317,6 +319,7 @@ function linkHubPage(release, artist) {
     const skipBack = wrap.querySelector(".cover-skip-back");
     const skipForward = wrap.querySelector(".cover-skip-forward");
     let playCounted = false;
+    let playStarting = false;
     const recordPlay = async () => {
       if (playCounted) return;
       playCounted = true;
@@ -339,15 +342,41 @@ function linkHubPage(release, artist) {
         progress.style.width = `${Math.min(percent, 100)}%`;
       }
     };
+    const setPreviewPlaying = (isPlaying) => {
+      preview.textContent = isPlaying ? "❚❚" : "▶";
+      preview.setAttribute("aria-label", isPlaying ? "Pause preview" : "Play preview");
+      preview.classList.toggle("is-playing", isPlaying);
+    };
 
-    preview.addEventListener("click", () => {
-      if (audio.paused) {
-        audio.play();
-        recordPlay();
-        preview.textContent = "❚❚";
-      } else {
+    preview.addEventListener("click", async () => {
+      if (playStarting) return;
+
+      if (!audio.paused) {
         audio.pause();
-        preview.textContent = "▶";
+        return;
+      }
+
+      if (activePreviewAudio && activePreviewAudio !== audio) {
+        activePreviewAudio.pause();
+        if (activePreviewButton) activePreviewButton.textContent = "▶";
+        activePreviewButton?.setAttribute("aria-label", "Play preview");
+        activePreviewButton?.classList.remove("is-playing");
+      }
+
+      playStarting = true;
+      activePreviewAudio = audio;
+      activePreviewButton = preview;
+      setPreviewPlaying(true);
+
+      try {
+        await audio.play();
+        recordPlay();
+      } catch {
+        if (activePreviewAudio === audio) activePreviewAudio = null;
+        if (activePreviewButton === preview) activePreviewButton = null;
+        setPreviewPlaying(false);
+      } finally {
+        playStarting = false;
       }
     });
     skipBack?.addEventListener("click", () => {
@@ -360,8 +389,18 @@ function linkHubPage(release, artist) {
     });
     audio.addEventListener("timeupdate", updatePlayer);
     audio.addEventListener("loadedmetadata", updatePlayer);
+    audio.addEventListener("play", () => setPreviewPlaying(true));
+    audio.addEventListener("pause", () => {
+      if (activePreviewAudio === audio && !audio.ended) {
+        activePreviewAudio = null;
+        activePreviewButton = null;
+      }
+      setPreviewPlaying(false);
+    });
     audio.addEventListener("ended", () => {
-      preview.textContent = "▶";
+      if (activePreviewAudio === audio) activePreviewAudio = null;
+      if (activePreviewButton === preview) activePreviewButton = null;
+      setPreviewPlaying(false);
       updatePlayer();
     });
   }
@@ -380,7 +419,9 @@ function linkHubPage(release, artist) {
 let lastArtistSnapshot = "";
 
 async function renderArtistPage(force = false) {
-  const audioIsPlaying = [...document.querySelectorAll("audio")].some((audio) => !audio.paused);
+  const audioIsPlaying =
+    [...document.querySelectorAll("audio")].some((audio) => !audio.paused) ||
+    (activePreviewAudio && !activePreviewAudio.paused);
   if (!force && audioIsPlaying) return;
 
   const store = await window.MBA.loadStore();
