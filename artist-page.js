@@ -163,13 +163,12 @@ function releasePanel(release) {
 function linkHubPage(release, artist) {
   const wrap = document.createElement("article");
   wrap.className = "link-hub-card";
+  const pageMode = window.location.hash === "#download" ? "download" : window.location.hash === "#support" ? "support" : "listen";
   const artistLabel = artist?.name || release.artistName || "Independent Artist";
   const artistHandle = artist?.handle || `@${artistLabel.replace(/\s+/g, "").toLowerCase()}`;
   const artistPhotoSrc = artist?.photo || release.cover || "Mba Logos/MusicBusiness Logo.png";
   const downloadAmount = money(release.price || 0);
   const donationAmount = Number(release.donationAmount || release.donationPrice || release.supportAmount || 0);
-  const donationLabel = donationAmount > 0 ? money(donationAmount) : "Any amount";
-  const platformAction = (key) => (key === "itunes" ? "Download" : "Play");
   const shareUrl = `${window.location.origin}/listen?release=${encodeURIComponent(release.id)}`;
   const encodedShareUrl = encodeURIComponent(shareUrl);
   const encodedShareText = encodeURIComponent(`Listen to ${release.title || "this song"} by ${artistLabel}`);
@@ -191,10 +190,43 @@ function linkHubPage(release, artist) {
           <img src="${icon}" alt="">
           <strong>${label}</strong>
         </span>
-        <span class="service-action">${platformAction(key)}</span>
+        <span class="service-action">Play</span>
       </a>
     `;
   }).join("");
+  const paymentSection =
+    pageMode === "download"
+      ? `
+        <section class="payment-panel" id="download" aria-label="Download ${release.title || "song"}">
+          <p class="eyebrow">Download</p>
+          <h2>Download ${release.title || "this song"}</h2>
+          <p>Pay ${downloadAmount} to unlock the full audio download set by ${artistLabel}.</p>
+          <div class="payment-price">${downloadAmount}</div>
+          <div class="payment-actions">
+            <button type="button" data-payment-placeholder data-payment-label="Pay with Stripe">Pay with Stripe</button>
+            <button type="button" data-payment-placeholder data-payment-label="Pay with PayPal">Pay with PayPal</button>
+          </div>
+          <small>After payment is connected, this section will unlock the song file automatically.</small>
+        </section>
+      `
+      : pageMode === "support"
+        ? `
+          <section class="payment-panel" id="support" aria-label="Support ${artistLabel}">
+            <p class="eyebrow">Support</p>
+            <h2>Support ${artistLabel}</h2>
+            <p>Send any amount to support the artist directly.</p>
+            <label class="support-amount">
+              <span>Support amount</span>
+              <input type="number" min="1" step="1" value="${donationAmount > 0 ? donationAmount : 5}" aria-label="Support amount">
+            </label>
+            <div class="payment-actions">
+              <button type="button" data-payment-placeholder data-payment-label="Support with Stripe">Support with Stripe</button>
+              <button type="button" data-payment-placeholder data-payment-label="Support with PayPal">Support with PayPal</button>
+            </div>
+            <small>Artist payment links will be connected from Upload when payment setup is ready.</small>
+          </section>
+        `
+        : "";
 
   wrap.innerHTML = `
     <div class="link-profile-actions">
@@ -237,21 +269,14 @@ function linkHubPage(release, artist) {
         <span>Song · ${artistLabel}</span>
       </div>
     </div>
-    <div class="service-list">
-      ${
-        release.audioUrl
-          ? `<a class="service-row service-row-download" href="${release.audioUrl}" download data-download-release="${release.id}">
-              <span class="service-brand"><span class="service-download-icon">↓</span><strong>Download <em>${downloadAmount}</em></strong></span>
-              <span class="service-action">Download</span>
-            </a>`
-          : ""
-      }
-      <a class="service-row service-row-donate" href="${release.donationLink || "#"}" ${release.donationLink ? 'target="_blank" rel="noreferrer"' : 'aria-disabled="true"'}>
-        <span class="service-brand"><span class="service-download-icon">♥</span><strong>Donate <em>${donationLabel}</em></strong></span>
-        <span class="service-action">Support</span>
-      </a>
-      ${platformRows || `<p class="empty-state">Streaming links will appear here after they are added.</p>`}
-    </div>
+    ${paymentSection}
+    ${
+      pageMode === "listen"
+        ? `<div class="service-list">
+            ${platformRows || `<p class="empty-state">Streaming links will appear here after they are added.</p>`}
+          </div>`
+        : ""
+    }
     <div class="link-modal" data-subscribe-modal aria-hidden="true">
       <div class="link-modal-card" role="dialog" aria-modal="true" aria-labelledby="subscribeTitle">
         <button class="link-modal-close" type="button" data-close-modal aria-label="Close">×</button>
@@ -379,12 +404,14 @@ function linkHubPage(release, artist) {
     });
   }
 
-  wrap.querySelector("[data-download-release]")?.addEventListener("click", async () => {
-    const store = await window.MBA.loadStore({ force: true });
-    const saved = store.releases.find((item) => item.id === release.id);
-    if (!saved) return;
-    saved.downloads = Number(saved.downloads || 0) + 1;
-    await window.MBA.saveStore(store);
+  wrap.querySelectorAll("[data-payment-placeholder]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const label = button.dataset.paymentLabel || button.textContent;
+      button.textContent = "Payment setup coming";
+      window.setTimeout(() => {
+        button.textContent = label;
+      }, 1400);
+    });
   });
 
   const closeModals = () => {
@@ -474,4 +501,7 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("focus", () => {
   if (!activePreviewAudio || activePreviewAudio.ended) renderArtistPage(true);
+});
+window.addEventListener("hashchange", () => {
+  if (document.querySelector(".artist-catalog-page")) renderArtistPage(true);
 });

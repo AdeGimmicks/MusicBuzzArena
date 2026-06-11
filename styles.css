@@ -1501,6 +1501,85 @@ select:focus {
   background: var(--gold);
 }
 
+.payment-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(17, 20, 27, 0.08);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  margin: 2px 0 14px;
+  padding: 18px;
+  text-align: center;
+  width: 100%;
+}
+
+.payment-panel h2 {
+  color: #11141b;
+  font-size: clamp(1.2rem, 3vw, 1.55rem);
+  line-height: 1.1;
+  margin: 0;
+}
+
+.payment-panel p {
+  color: rgba(17, 20, 27, 0.62);
+  font-weight: 800;
+  margin: 0;
+}
+
+.payment-panel small {
+  color: rgba(17, 20, 27, 0.48);
+  font-weight: 800;
+}
+
+.payment-price {
+  color: #11141b;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.payment-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.payment-actions button {
+  background: #11141b;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  min-height: 48px;
+  padding: 12px;
+}
+
+.payment-actions button + button {
+  background: var(--gold);
+  color: #11141b;
+}
+
+.support-amount {
+  display: grid;
+  gap: 7px;
+  text-align: left;
+}
+
+.support-amount span {
+  color: rgba(17, 20, 27, 0.62);
+  font-weight: 900;
+}
+
+.support-amount input {
+  border: 1px solid rgba(17, 20, 27, 0.12);
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 900;
+  padding: 13px 14px;
+}
+
 .service-row[aria-disabled="true"] {
   cursor: default;
 }
@@ -2059,6 +2138,10 @@ select:focus {
   }
 
   .release-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-actions {
     grid-template-columns: 1fr;
   }
 

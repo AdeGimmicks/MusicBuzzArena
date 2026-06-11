@@ -62,7 +62,7 @@ function releaseCard(release, artist) {
   card.dataset.href = listenUrl;
   card.tabIndex = 0;
   card.setAttribute("role", "link");
-  card.setAttribute("aria-label", `Open listing for ${release.title || "Untitled release"}`);
+  card.setAttribute("aria-label", `Open Listen page for ${release.title || "Untitled release"}`);
   card.innerHTML = `
     <div class="release-cover-frame">
       <img class="release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover" loading="lazy" decoding="async" />
