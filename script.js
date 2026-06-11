@@ -13,27 +13,6 @@ function applySiteContent(store) {
   Object.entries(site).forEach(([key, value]) => setText(`[data-site="${key}"]`, value));
 }
 
-function markActiveGenreLink() {
-  const currentPath = window.location.pathname === "/" ? "/home" : window.location.pathname;
-  document.querySelectorAll(".genre-strip a").forEach((link) => {
-    link.classList.toggle("is-current", link.getAttribute("href") === currentPath);
-  });
-}
-
-function currentGenre() {
-  return document.body.dataset.genre || "";
-}
-
-function normalizeGenre(value) {
-  const normalized = String(value || "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return normalized === "afrobeat" ? "afrobeats" : normalized;
-}
-
 function releaseCard(release, artist) {
   const card = document.createElement("article");
   card.className = "release-card";
@@ -125,7 +104,6 @@ async function renderHome(force = false) {
   lastHomeSnapshot = snapshot;
 
   applySiteContent(store);
-  markActiveGenreLink();
 
   const approvedArtists = new Set(
     store.artists.filter((artist) => (artist.status || "approved") === "approved").map((artist) => artist.id)
@@ -134,23 +112,14 @@ async function renderHome(force = false) {
     .approvedReleases(store)
     .filter((release) => approvedArtists.has(release.artistId))
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  const genre = currentGenre();
-  const visible = genre ? approved.filter((release) => normalizeGenre(release.genre) === genre) : approved;
-  const genreLabel = document.body.dataset.genreLabel;
-
-  if (genreLabel) {
-    setText("[data-genre-title]", `${genreLabel} music`);
-  }
 
   renderShelf(
     document.querySelector("#latestSongsGrid"),
-    visible,
+    approved,
     store,
-    genreLabel
-      ? `Approved ${genreLabel} songs will appear here after Store Manager approves uploads.`
-      : "Approved songs will appear here after Store Manager approves uploads."
+    "Approved songs will appear here after Store Manager approves uploads."
   );
-  updateFeatureBanner(visible);
+  updateFeatureBanner(approved);
 }
 
 renderHome(true);

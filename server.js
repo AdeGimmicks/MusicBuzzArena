@@ -423,20 +423,6 @@ const CLEAN_ROUTES = {
   "/video": "/videos.html",
   "/upload": "/artist-dashboard.html",
   "/store-manager": "/store-manager.html",
-  "/genre/afrobeats": "/afrobeats.html",
-  "/genre/amapiano": "/amapiano.html",
-  "/genre/country": "/country.html",
-  "/genre/dancehall": "/dancehall.html",
-  "/genre/electronic": "/electronic.html",
-  "/genre/gospel": "/gospel.html",
-  "/genre/hip-hop-rap": "/hip-hop-rap.html",
-  "/genre/instrumental": "/instrumental.html",
-  "/genre/jazz-blues": "/jazz-blues.html",
-  "/genre/pop": "/pop.html",
-  "/genre/r-and-b": "/r-and-b.html",
-  "/genre/reggae": "/reggae.html",
-  "/genre/rock": "/rock.html",
-  "/genre/soul": "/soul.html",
 };
 
 const LEGACY_REDIRECTS = Object.fromEntries(Object.entries(CLEAN_ROUTES).map(([clean, file]) => [file, clean]));

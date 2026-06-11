@@ -288,33 +288,6 @@ h3 {
   max-width: 520px;
 }
 
-.genre-strip {
-  align-items: center;
-  border-bottom: 1px solid rgba(17, 20, 27, 0.12);
-  display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  overflow-x: auto;
-  padding-bottom: 14px;
-}
-
-.genre-strip a {
-  background: rgba(17, 20, 27, 0.06);
-  border: 1px solid rgba(17, 20, 27, 0.1);
-  border-radius: 999px;
-  color: rgba(17, 20, 27, 0.76);
-  flex: 0 0 auto;
-  font-size: 0.86rem;
-  font-weight: 900;
-  padding: 9px 13px;
-}
-
-.genre-strip a.is-current {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: #10131a;
-}
-
 .music-shelf {
   display: grid;
   gap: 14px;
