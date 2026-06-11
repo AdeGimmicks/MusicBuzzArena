@@ -520,6 +520,28 @@ h3 {
   max-width: 900px;
 }
 
+.dashboard-page-links {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.dashboard-page-links a {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  color: var(--white);
+  font-weight: 900;
+  padding: 11px 14px;
+}
+
+.dashboard-page-links a:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #11141b;
+}
+
 .panel {
   background: var(--white);
   border: 1px solid var(--line);
@@ -609,6 +631,67 @@ select:focus {
   margin: 0;
 }
 
+.dashboard-artist-preview {
+  align-items: stretch;
+  background: #11141b;
+  border: 1px solid rgba(17, 20, 27, 0.08);
+  border-radius: 8px;
+  color: var(--white);
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  overflow: hidden;
+}
+
+.dashboard-preview-visual {
+  align-items: center;
+  background:
+    linear-gradient(68deg, rgba(255, 255, 255, 0.06) 0 34%, transparent 34% 100%),
+    radial-gradient(circle at 50% 50%, rgba(244, 196, 48, 0.18), transparent 38%),
+    #181b21;
+  display: flex;
+  justify-content: center;
+  min-height: 260px;
+  padding: 24px;
+}
+
+.dashboard-preview-visual img {
+  aspect-ratio: 1;
+  border: 6px solid rgba(255, 232, 143, 0.86);
+  border-radius: 50%;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  max-width: 220px;
+  object-fit: cover;
+  width: min(68vw, 220px);
+}
+
+.dashboard-preview-copy {
+  align-content: center;
+  display: grid;
+  gap: 15px;
+  padding: clamp(22px, 4vw, 42px);
+}
+
+.dashboard-preview-copy h3 {
+  color: var(--white);
+  font-size: clamp(2.4rem, 6vw, 4.6rem);
+  line-height: 0.95;
+  margin: 0;
+}
+
+.dashboard-preview-copy p:not(.eyebrow) {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 680px;
+}
+
+.dashboard-static-button {
+  justify-self: start;
+  pointer-events: none;
+}
+
 .dashboard-release-preview {
   margin: 0;
 }
@@ -618,12 +701,42 @@ select:focus {
   pointer-events: none;
 }
 
+.dashboard-artist-preview .home-socials span {
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.dashboard-artist-preview .home-socials span span {
+  border: 0;
+  border-radius: 0;
+  height: auto;
+  width: auto;
+}
+
+.dashboard-artist-preview .home-socials img {
+  height: 18px;
+  width: 18px;
+}
+
 .dashboard-upload-list {
   border-top: 1px solid var(--line);
   display: grid;
   gap: 14px;
   margin-top: 22px;
   padding-top: 22px;
+}
+
+.dashboard-feature-picker {
+  align-items: end;
+}
+
+.dashboard-feature-picker .primary-button {
+  min-height: 46px;
 }
 
 .compact-heading {
@@ -2087,6 +2200,7 @@ select:focus {
 
   .home-hero,
   .feature-banner,
+  .dashboard-artist-preview,
   .artist-release,
   .submitted-release,
   .admin-card,

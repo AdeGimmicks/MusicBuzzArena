@@ -13,6 +13,13 @@ const homePreviewCover = document.querySelector("#homePreviewCover");
 const homePreviewMeta = document.querySelector("#homePreviewMeta");
 const homePreviewSong = document.querySelector("#homePreviewSong");
 const homePreviewArtist = document.querySelector("#homePreviewArtist");
+const artistPreviewPhoto = document.querySelector("#artistPreviewPhoto");
+const artistPreviewTitle = document.querySelector("#artistPreviewTitle");
+const artistPreviewBio = document.querySelector("#artistPreviewBio");
+const artistPreviewSocials = document.querySelector("#artistPreviewSocials");
+const featuredReleaseSelect = document.querySelector("#featuredReleaseSelect");
+const saveFeaturedRelease = document.querySelector("#saveFeaturedRelease");
+const featuredReleaseMessage = document.querySelector("#featuredReleaseMessage");
 
 let currentStore = window.MBA.defaults();
 
@@ -24,7 +31,9 @@ function message(node, text, type = "success") {
 function normalizeLink(value) {
   const trimmed = String(value || "").trim();
   if (!trimmed) return "";
+  if (/^mailto:/i.test(trimmed)) return trimmed;
   if (trimmed.startsWith("@")) return trimmed;
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) return `mailto:${trimmed}`;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
   return trimmed;
@@ -89,6 +98,7 @@ function fillArtistForm() {
   artistForm.bio.value = artist.bio || "";
   artistBioCount.textContent = String(artistForm.bio.value.length);
   renderLinkInputs(socialFields, SOCIAL_LINKS, artist.socials || {});
+  updateArtistPreview();
 }
 
 function fillVideoForm() {
@@ -123,6 +133,54 @@ function updateHomePreview(coverSrc = "") {
   if (!releaseForm.cover.files.length && !coverSrc) homePreviewCover.src = "Mba Logos/MusicBusiness Logo.png";
 }
 
+function socialIconFor(key, fallbackIcon) {
+  const simpleIcons = {
+    instagram: "https://cdn.simpleicons.org/instagram/FFFFFF",
+    facebook: "https://cdn.simpleicons.org/facebook/FFFFFF",
+    x: "https://cdn.simpleicons.org/x/FFFFFF",
+    youtube: "https://cdn.simpleicons.org/youtube/FFFFFF",
+    tiktok: "https://cdn.simpleicons.org/tiktok/FFFFFF",
+    spotify: "https://cdn.simpleicons.org/spotify/FFFFFF",
+    audiomack: "https://cdn.simpleicons.org/audiomack/FFFFFF",
+    soundcloud: "https://cdn.simpleicons.org/soundcloud/FFFFFF",
+    threads: "https://cdn.simpleicons.org/threads/FFFFFF",
+    linkedin: "https://cdn.simpleicons.org/linkedin/FFFFFF",
+    snapchat: "https://cdn.simpleicons.org/snapchat/FFFFFF",
+    whatsapp: "https://cdn.simpleicons.org/whatsapp/FFFFFF",
+    telegram: "https://cdn.simpleicons.org/telegram/FFFFFF",
+    email: "https://cdn.simpleicons.org/maildotru/FFFFFF",
+    website: "https://cdn.simpleicons.org/linktree/FFFFFF",
+  };
+  return simpleIcons[key] || fallbackIcon || "";
+}
+
+function renderSocialPreview(container, values) {
+  if (!container) return;
+  container.replaceChildren();
+  SOCIAL_LINKS.forEach(([label, key, icon]) => {
+    const href = normalizeLink(values[key]);
+    if (!href) return;
+    const item = document.createElement("span");
+    item.title = label;
+    const iconSrc = socialIconFor(key, icon);
+    item.innerHTML = iconSrc ? `<img src="${iconSrc}" alt="${label}">` : `<span>${label}</span>`;
+    container.append(item);
+  });
+}
+
+function updateArtistPreview(photoSrc = "") {
+  const artist = primaryArtist();
+  const name = artistForm.name.value.trim() || artist.name || "Artist name";
+  const bio = artistForm.bio.value.trim() || artist.bio || "Artist biography preview will appear here.";
+  if (artistPreviewTitle) artistPreviewTitle.textContent = name;
+  if (artistPreviewBio) artistPreviewBio.textContent = bio;
+  if (artistPreviewPhoto) {
+    artistPreviewPhoto.src = photoSrc || artist.photo || "Mba Logos/MusicBusiness Logo.png";
+    artistPreviewPhoto.alt = `${name} profile photo`;
+  }
+  renderSocialPreview(artistPreviewSocials, formLinks(artistForm, SOCIAL_LINKS));
+}
+
 function setSelectValue(select, value) {
   const nextValue = String(value || "");
   if (nextValue && ![...select.options].some((option) => option.value === nextValue || option.textContent === nextValue)) {
@@ -155,7 +213,7 @@ function fillReleaseForm(release) {
   renderLinkInputs(streamingFields, STREAMING_LINKS, release.streaming || {});
   updateHomePreview(release.cover || "");
   renderDashboardReleases();
-  message(releaseMessage, "Editing latest release. Save when your changes are ready.", "pending");
+  message(releaseMessage, "Editing artist song. Save when your changes are ready.", "pending");
   releaseForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -163,24 +221,40 @@ function releaseSummary(release) {
   const card = document.createElement("article");
   card.className = "submitted-release";
   if (releaseForm.editingId.value === release.id) card.classList.add("is-editing");
+  const artist = primaryArtist();
+  const isFeatured = artist.featuredReleaseId === release.id;
   card.innerHTML = `
     <img src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="">
     <div>
       <p>${release.releaseType || "Single"} | ${release.genre || "Music"}</p>
       <h3>${release.title || "Untitled release"}</h3>
-      <span>${release.audioName || "Audio saved"}</span>
+      <span>${isFeatured ? "Music page landing song" : release.audioName || "Audio saved"}</span>
     </div>
     <div class="item-actions">
       <button type="button" data-edit-release="${release.id}">${releaseForm.editingId.value === release.id ? "Editing" : "Edit"}</button>
+      <button type="button" data-feature-release="${release.id}">${isFeatured ? "Selected" : "Use for Music"}</button>
     </div>
   `;
   return card;
+}
+
+function renderFeaturedReleasePicker() {
+  if (!featuredReleaseSelect) return;
+  const artist = primaryArtist();
+  const releases = currentStore.releases.filter((release) => release.artistId === artist.id);
+  featuredReleaseSelect.replaceChildren(new Option("Use newest approved song", ""));
+  releases.forEach((release) => {
+    const option = new Option(`${release.title || "Untitled release"} - ${release.genre || "Music"}`, release.id);
+    featuredReleaseSelect.append(option);
+  });
+  featuredReleaseSelect.value = artist.featuredReleaseId || "";
 }
 
 function renderDashboardReleases() {
   const artist = primaryArtist();
   const releases = currentStore.releases.filter((release) => release.artistId === artist.id);
   releaseList.replaceChildren();
+  renderFeaturedReleasePicker();
 
   if (!releases.length) {
     const empty = document.createElement("p");
@@ -195,6 +269,17 @@ function renderDashboardReleases() {
 
 artistForm.bio.addEventListener("input", () => {
   artistBioCount.textContent = String(artistForm.bio.value.length);
+  updateArtistPreview();
+});
+
+artistForm.addEventListener("input", (event) => {
+  if (event.target.name === "bio" || event.target.type === "file") return;
+  updateArtistPreview();
+});
+
+artistForm.photo.addEventListener("change", async () => {
+  const photo = await fileToDataUrl(artistForm.photo.files[0]);
+  updateArtistPreview(photo);
 });
 
 artistForm.addEventListener("submit", async (event) => {
@@ -298,8 +383,8 @@ releaseForm.addEventListener("submit", async (event) => {
     message(
       releaseMessage,
       existingIndex >= 0
-        ? "Latest release updated. Home and artist pages will reflect the change."
-        : "Latest release saved. It will now show on Home and the artist pages."
+        ? "Artist song updated. Home, Music, Listen, Download, and Support will reflect the change."
+        : "Artist song saved. It will now show on Home and can be selected for the Music page."
     );
   } catch (error) {
     message(releaseMessage, error.message || "Release did not save. Use the localhost website URL.", "error");
@@ -308,9 +393,31 @@ releaseForm.addEventListener("submit", async (event) => {
 
 releaseList.addEventListener("click", (event) => {
   const editButton = event.target.closest("[data-edit-release]");
-  if (!editButton) return;
-  const release = currentStore.releases.find((item) => item.id === editButton.dataset.editRelease);
-  if (release) fillReleaseForm(release);
+  const featureButton = event.target.closest("[data-feature-release]");
+
+  if (editButton) {
+    const release = currentStore.releases.find((item) => item.id === editButton.dataset.editRelease);
+    if (release) fillReleaseForm(release);
+    return;
+  }
+
+  if (featureButton) {
+    selectFeaturedRelease(featureButton.dataset.featureRelease);
+  }
+});
+
+async function selectFeaturedRelease(releaseId) {
+  const artist = primaryArtist();
+  artist.featuredReleaseId = releaseId || "";
+  artist.bannerReleaseId = "";
+  currentStore = await window.MBA.saveStore(currentStore);
+  renderFeaturedReleasePicker();
+  renderDashboardReleases();
+  message(featuredReleaseMessage, releaseId ? "Music page landing song updated." : "Music page will use the newest approved song.");
+}
+
+saveFeaturedRelease?.addEventListener("click", () => {
+  selectFeaturedRelease(featuredReleaseSelect.value);
 });
 
 videoForm.addEventListener("submit", async (event) => {

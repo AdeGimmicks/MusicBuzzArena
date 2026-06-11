@@ -21,15 +21,21 @@
 
     <main class="dashboard-layout">
       <section class="dashboard-intro">
-        <p class="eyebrow">Artist dashboard</p>
-        <h1>Upload and control what appears on your public pages.</h1>
-        <p>Save your profile, releases, download options, streaming links, and videos from one place.</p>
+        <p class="eyebrow">Upload</p>
+        <h1>Edit the public website from one place.</h1>
+        <p>This page is the editable twin of Home, Music, Listen, Download, Support, and Video.</p>
+        <div class="dashboard-page-links" aria-label="Public page shortcuts">
+          <a href="/home" target="_blank" rel="noreferrer">View Home</a>
+          <a href="/music" target="_blank" rel="noreferrer">View Music</a>
+          <a href="/video" target="_blank" rel="noreferrer">View Video</a>
+        </div>
       </section>
 
       <section class="panel">
         <div class="section-heading">
           <p class="eyebrow">Home</p>
-          <h2>Latest release</h2>
+          <h2>Artist Songs</h2>
+          <p>Each saved song appears on the Home artist songs section. The public card uses this same cover, title, artist name, genre, and Listen button.</p>
         </div>
         <form id="releaseForm" class="form-grid">
           <input name="editingId" type="hidden" />
@@ -182,8 +188,9 @@
           </div>
           <section class="dashboard-home-preview" aria-labelledby="homePreviewTitle">
             <div>
-              <p class="eyebrow">Latest release</p>
-              <h3 id="homePreviewTitle">Home card preview</h3>
+              <p class="eyebrow">Home twin</p>
+              <h3 id="homePreviewTitle">Artist Songs preview</h3>
+              <p>This is the same style people see on the Home page.</p>
             </div>
             <article class="release-card dashboard-release-preview">
               <div class="release-cover-frame">
@@ -220,13 +227,31 @@
             </label>
           </div>
           <div class="link-fields" id="streamingFields"></div>
-          <button class="primary-button" type="submit">Submit Latest Release</button>
+          <button class="primary-button" type="submit">Save Artist Song</button>
           <p class="form-message" id="releaseMessage" role="status"></p>
         </form>
+        <section class="dashboard-upload-list" aria-labelledby="musicLandingTitle">
+          <div class="section-heading compact-heading">
+            <p class="eyebrow">Music</p>
+            <h3 id="musicLandingTitle">Music landing song</h3>
+            <p>Select the one song that should appear as the large Music page landing card. Listen, Download, and Support will use that song.</p>
+          </div>
+          <div class="form-row dashboard-feature-picker">
+            <label>
+              Featured music page song
+              <select id="featuredReleaseSelect">
+                <option value="">Use newest approved song</option>
+              </select>
+            </label>
+            <button class="primary-button" id="saveFeaturedRelease" type="button">Save Music Page Song</button>
+          </div>
+          <p class="form-message" id="featuredReleaseMessage" role="status"></p>
+        </section>
         <section class="dashboard-upload-list" aria-labelledby="myLatestTitle">
           <div class="section-heading compact-heading">
-            <p class="eyebrow">Artist only</p>
-            <h3 id="myLatestTitle">My latest releases</h3>
+            <p class="eyebrow">Artist Songs</p>
+            <h3 id="myLatestTitle">My uploaded songs</h3>
+            <p>Edit a song or choose it for the Music page landing card.</p>
           </div>
           <div class="release-list" id="dashboardReleaseList"></div>
         </section>
@@ -234,8 +259,9 @@
 
       <section class="panel">
         <div class="section-heading">
-          <p class="eyebrow">Artist Page 1</p>
+          <p class="eyebrow">Home artist banner</p>
           <h2>Artist profile</h2>
+          <p>This controls the artist name, biography, profile picture, and social icons shown in the Home banner.</p>
         </div>
         <form id="artistForm" class="form-grid">
           <div class="form-row">
@@ -264,6 +290,18 @@
             </label>
           </div>
           <div class="link-fields" id="socialFields"></div>
+          <section class="dashboard-artist-preview" aria-labelledby="artistPreviewTitle">
+            <div class="dashboard-preview-visual">
+              <img id="artistPreviewPhoto" src="Mba Logos/MusicBusiness Logo.png" alt="" />
+            </div>
+            <div class="dashboard-preview-copy">
+              <p class="eyebrow">Featured artist</p>
+              <h3 id="artistPreviewTitle">Artist name</h3>
+              <p id="artistPreviewBio">Artist biography preview will appear here.</p>
+              <div class="home-socials icon-links" id="artistPreviewSocials" aria-label="Artist social links preview"></div>
+              <span class="primary-button dashboard-static-button">Watch Artist Videos</span>
+            </div>
+          </section>
           <button class="primary-button" type="submit">Save Artist Profile</button>
           <p class="form-message" id="artistMessage" role="status"></p>
         </form>
@@ -273,6 +311,7 @@
         <div class="section-heading">
           <p class="eyebrow">Video Page</p>
           <h2>Artist videos</h2>
+          <p>These links control the large music video section, shorts section, and the links for watching more artist videos.</p>
         </div>
         <form id="videoForm" class="form-grid">
           <div class="form-row">

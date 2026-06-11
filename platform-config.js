@@ -4,6 +4,15 @@ const SOCIAL_LINKS = [
   ["X", "x", "Social media icon/twitter-x-logo-png_seeklogo-492397.png"],
   ["YouTube", "youtube", "Social media icon/youtube-icon-lg.png"],
   ["TikTok", "tiktok", "Social media icon/tiktok-logo-tikok-icon-transparent-tikok-app-logo-free-png.webp"],
+  ["Spotify", "spotify", "https://cdn.simpleicons.org/spotify/11141B"],
+  ["Audiomack", "audiomack", "Music Platforms Logo/audiomack logo.png"],
+  ["SoundCloud", "soundcloud", "Music Platforms Logo/soundcloud - Logo .webp"],
+  ["Threads", "threads", "https://cdn.simpleicons.org/threads/11141B"],
+  ["LinkedIn", "linkedin", "https://cdn.simpleicons.org/linkedin/11141B"],
+  ["Snapchat", "snapchat", "https://cdn.simpleicons.org/snapchat/11141B"],
+  ["WhatsApp", "whatsapp", "https://cdn.simpleicons.org/whatsapp/11141B"],
+  ["Telegram", "telegram", "https://cdn.simpleicons.org/telegram/11141B"],
+  ["Email", "email", "https://cdn.simpleicons.org/maildotru/11141B"],
   ["Website", "website", ""],
 ];
 

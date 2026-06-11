@@ -19,6 +19,15 @@ const SIMPLE_SOCIAL_ICONS = {
   x: "https://cdn.simpleicons.org/x/FFFFFF",
   youtube: "https://cdn.simpleicons.org/youtube/FFFFFF",
   tiktok: "https://cdn.simpleicons.org/tiktok/FFFFFF",
+  spotify: "https://cdn.simpleicons.org/spotify/FFFFFF",
+  audiomack: "https://cdn.simpleicons.org/audiomack/FFFFFF",
+  soundcloud: "https://cdn.simpleicons.org/soundcloud/FFFFFF",
+  threads: "https://cdn.simpleicons.org/threads/FFFFFF",
+  linkedin: "https://cdn.simpleicons.org/linkedin/FFFFFF",
+  snapchat: "https://cdn.simpleicons.org/snapchat/FFFFFF",
+  whatsapp: "https://cdn.simpleicons.org/whatsapp/FFFFFF",
+  telegram: "https://cdn.simpleicons.org/telegram/FFFFFF",
+  email: "https://cdn.simpleicons.org/maildotru/FFFFFF",
   website: "https://cdn.simpleicons.org/linktree/FFFFFF",
 };
 
