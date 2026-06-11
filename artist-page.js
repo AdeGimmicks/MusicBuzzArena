@@ -168,7 +168,7 @@ function renderMoreFromArtist(releases, artist) {
     card.innerHTML = `
       <a class="artist-more-circle-link" href="/listen?release=${encodeURIComponent(release.id)}">
         <span class="artist-more-cover">
-          <img src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover">
+          <img src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover" loading="lazy" decoding="async">
         </span>
         <strong>${release.artistName || artistLabel}</strong>
         <span>${release.title || "Untitled track"}</span>
@@ -179,7 +179,7 @@ function renderMoreFromArtist(releases, artist) {
 }
 
 async function useReleaseAsBanner(releaseId) {
-  const store = await window.MBA.loadStore();
+  const store = await window.MBA.loadStore({ force: true });
   const artist = store.artists?.[0];
   if (!artist) return;
   artist.bannerReleaseId = releaseId;
@@ -193,7 +193,7 @@ function releasePanel(release) {
   article.className = "artist-release";
   article.innerHTML = `
     <div class="release-head">
-      <img class="release-cover-large" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover">
+      <img class="release-cover-large" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover" loading="lazy" decoding="async">
       <p class="release-status">${release.status || "pending"}</p>
       <p class="eyebrow">${release.releaseType || "Single"} | ${release.genre || "Music"}</p>
       <h3>${release.title}</h3>
@@ -221,7 +221,7 @@ function releasePanel(release) {
   const unlock = article.querySelector(".unlock-button");
   const download = article.querySelector(".download-link");
   unlock.addEventListener("click", async () => {
-    const store = await window.MBA.loadStore();
+    const store = await window.MBA.loadStore({ force: true });
     const saved = store.releases.find((item) => item.id === release.id);
     const commissionRate = Number(store.site?.commissionRate || 15);
     const price = Number(release.price || 0);
@@ -323,7 +323,7 @@ function linkHubPage(release, artist) {
     const recordPlay = async () => {
       if (playCounted) return;
       playCounted = true;
-      const store = await window.MBA.loadStore();
+      const store = await window.MBA.loadStore({ force: true });
       const saved = store.releases.find((item) => item.id === release.id);
       if (!saved) return;
       saved.plays = Number(saved.plays || 0) + 1;
@@ -402,7 +402,7 @@ function linkHubPage(release, artist) {
   }
 
   wrap.querySelector("[data-download-release]")?.addEventListener("click", async () => {
-    const store = await window.MBA.loadStore();
+    const store = await window.MBA.loadStore({ force: true });
     const saved = store.releases.find((item) => item.id === release.id);
     if (!saved) return;
     saved.downloads = Number(saved.downloads || 0) + 1;
@@ -421,7 +421,7 @@ async function renderArtistPage(force = false) {
     previewSessionActive;
   if (!force && audioIsPlaying) return;
 
-  const store = await window.MBA.loadStore();
+  const store = await window.MBA.loadStore({ force });
   const snapshot = JSON.stringify(store);
   if (!force && snapshot === lastArtistSnapshot) return;
   lastArtistSnapshot = snapshot;
@@ -486,4 +486,13 @@ document.addEventListener("click", (event) => {
 });
 
 renderArtistPage(true);
-setInterval(() => renderArtistPage(), 2000);
+
+window.addEventListener("mba:store-saved", () => {
+  if (!activePreviewAudio || activePreviewAudio.ended) renderArtistPage(true);
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && (!activePreviewAudio || activePreviewAudio.ended)) renderArtistPage(true);
+});
+window.addEventListener("focus", () => {
+  if (!activePreviewAudio || activePreviewAudio.ended) renderArtistPage(true);
+});

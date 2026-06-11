@@ -18,7 +18,7 @@ function releaseCard(release, artist) {
   card.className = "release-card";
   card.innerHTML = `
     <div class="release-cover-frame">
-      <img class="release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover" />
+      <img class="release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover" loading="lazy" decoding="async" />
     </div>
     <div class="release-body">
       <p class="release-meta">${release.releaseType || "Single"} | ${release.genre || "Music"}</p>
@@ -98,7 +98,7 @@ function renderedSnapshot(store) {
 let lastHomeSnapshot = "";
 
 async function renderHome(force = false) {
-  const store = await window.MBA.loadStore();
+  const store = await window.MBA.loadStore({ force });
   const snapshot = renderedSnapshot(store);
   if (!force && snapshot === lastHomeSnapshot) return;
   lastHomeSnapshot = snapshot;
@@ -123,5 +123,10 @@ async function renderHome(force = false) {
 }
 
 renderHome(true);
-setInterval(() => renderHome(), 2000);
 setInterval(rotateFeatureBanner, 4200);
+
+window.addEventListener("mba:store-saved", () => renderHome(true));
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) renderHome(true);
+});
+window.addEventListener("focus", () => renderHome(true));

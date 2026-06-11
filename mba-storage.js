@@ -167,6 +167,10 @@ const MBA_DEFAULT_STORE = {
 
 const MBA_STORAGE_KEY = "musicbusiness-arena-store";
 const MBA_API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8010" : "";
+const MBA_CACHE_TTL = 30000;
+let storeCache = null;
+let storeCacheAt = 0;
+let storeRequest = null;
 
 function apiUrl(path) {
   return `${MBA_API_BASE}${path}`;
@@ -176,20 +180,41 @@ function cloneDefaultStore() {
   return JSON.parse(JSON.stringify(MBA_DEFAULT_STORE));
 }
 
-async function loadStore() {
+function cacheStore(store) {
+  storeCache = store;
+  storeCacheAt = Date.now();
+  return store;
+}
+
+function notifyStoreSaved(store) {
+  window.dispatchEvent(new CustomEvent("mba:store-saved", { detail: { store } }));
+}
+
+async function loadStore(options = {}) {
+  const force = options === true || options.force === true;
+  if (!force && storeCache && Date.now() - storeCacheAt < MBA_CACHE_TTL) {
+    return storeCache;
+  }
+
+  if (!force && storeRequest) return storeRequest;
+
   try {
-    const response = await fetch(apiUrl("/api/store"));
-    if (response.ok) {
-      return await response.json();
-    }
+    storeRequest = fetch(apiUrl("/api/store"))
+      .then((response) => (response.ok ? response.json() : null))
+      .then((store) => (store ? cacheStore(store) : null))
+      .finally(() => {
+        storeRequest = null;
+      });
+    const store = await storeRequest;
+    if (store) return store;
   } catch {
     // File mode fallback.
   }
 
   try {
-    return JSON.parse(localStorage.getItem(MBA_STORAGE_KEY)) || cloneDefaultStore();
+    return cacheStore(JSON.parse(localStorage.getItem(MBA_STORAGE_KEY)) || cloneDefaultStore());
   } catch {
-    return cloneDefaultStore();
+    return cacheStore(cloneDefaultStore());
   }
 }
 
@@ -205,11 +230,13 @@ async function saveStore(store) {
 
     if (response.ok) {
       const saved = await response.json();
+      cacheStore(saved);
       try {
         localStorage.setItem(MBA_STORAGE_KEY, JSON.stringify(saved));
       } catch {
         // Large media saves to the local server; browser storage is only a small convenience cache.
       }
+      notifyStoreSaved(saved);
       return saved;
     }
   } catch (error) {
@@ -220,7 +247,8 @@ async function saveStore(store) {
 
   try {
     localStorage.setItem(MBA_STORAGE_KEY, JSON.stringify(store));
-    return store;
+    notifyStoreSaved(store);
+    return cacheStore(store);
   } catch {
     throw new Error("The browser storage is full. Use http://127.0.0.1:8010/upload for uploads.");
   }

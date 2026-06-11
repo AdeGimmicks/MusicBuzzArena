@@ -432,6 +432,16 @@ function redirect(response, location) {
   response.end();
 }
 
+function cacheControlFor(ext, pathname) {
+  if (ext === ".html") return "no-cache";
+  if (pathname.startsWith("/uploads/") || pathname.startsWith("/assets/")) return "public, max-age=604800";
+  if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".mp3", ".wav", ".m4a", ".aac", ".ogg"].includes(ext)) {
+    return "public, max-age=604800";
+  }
+  if ([".css", ".js"].includes(ext)) return "public, max-age=300";
+  return "no-cache";
+}
+
 async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const requestedPath = decodeURIComponent(url.pathname);
@@ -463,6 +473,7 @@ async function serveStatic(request, response) {
     const ext = path.extname(filePath).toLowerCase();
     response.writeHead(200, {
       "Access-Control-Allow-Origin": "*",
+      "Cache-Control": cacheControlFor(ext, pathname),
       "Content-Type": MIME_TYPES[ext] || "application/octet-stream",
     });
     response.end(file);
