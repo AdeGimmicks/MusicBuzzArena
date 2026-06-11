@@ -31,6 +31,72 @@
         </div>
       </section>
 
+      <section class="panel artist-account-panel">
+        <div class="section-heading">
+          <p class="eyebrow">Artist account</p>
+          <h2>Choose artist profile</h2>
+          <p>Select the artist you want to edit, or create a new artist profile before uploading songs, videos, download settings, and support settings.</p>
+        </div>
+        <div class="form-row dashboard-feature-picker">
+          <label>
+            Active artist
+            <select id="artistAccountSelect"></select>
+          </label>
+          <button class="primary-button" id="createArtistProfile" type="button">Create New Artist</button>
+        </div>
+        <p class="form-message" id="artistAccountMessage" role="status"></p>
+      </section>
+
+      <section class="panel dashboard-twin-panel">
+        <div class="section-heading">
+          <p class="eyebrow">Home</p>
+          <h2>Home artist banner</h2>
+          <p>Edit the artist name, biography, profile picture, and social icons that show in the Home page banner. The Watch Artist Videos button stays fixed and always opens the Video page.</p>
+        </div>
+        <section class="dashboard-artist-preview" aria-labelledby="artistPreviewTitle">
+          <div class="dashboard-preview-visual">
+            <img id="artistPreviewPhoto" src="Mba Logos/MusicBusiness Logo.png" alt="" />
+          </div>
+          <div class="dashboard-preview-copy">
+            <p class="eyebrow">Featured artist</p>
+            <h3 id="artistPreviewTitle">Artist name</h3>
+            <p id="artistPreviewBio">Artist biography preview will appear here.</p>
+            <div class="home-socials icon-links" id="artistPreviewSocials" aria-label="Artist social links preview"></div>
+            <span class="primary-button dashboard-static-button">Watch Artist Videos</span>
+          </div>
+        </section>
+        <form id="artistForm" class="form-grid dashboard-edit-form">
+          <div class="form-row">
+            <label>
+              Artist name
+              <input name="name" type="text" required />
+            </label>
+            <label>
+              Artist handle
+              <input name="handle" type="text" placeholder="@focuzman" required />
+            </label>
+          </div>
+          <label>
+            Artist biography
+            <textarea name="bio" maxlength="420" rows="4" placeholder="Short artist biography for the public Home banner." required></textarea>
+            <span class="field-note"><span id="artistBioCount">0</span>/420 characters</span>
+          </label>
+          <div class="form-row">
+            <label>
+              Artist profile picture
+              <input name="photo" type="file" accept="image/*" />
+            </label>
+            <label>
+              Optional artist cover banner
+              <input name="banner" type="file" accept="image/*" />
+            </label>
+          </div>
+          <div class="link-fields" id="socialFields"></div>
+          <button class="primary-button" type="submit">Save Home Artist Banner</button>
+          <p class="form-message" id="artistMessage" role="status"></p>
+        </form>
+      </section>
+
       <section class="panel">
         <div class="section-heading">
           <p class="eyebrow">Home</p>
@@ -236,6 +302,32 @@
             <h3 id="musicLandingTitle">Music landing song</h3>
             <p>Select the one song that should appear as the large Music page landing card. Listen, Download, and Support will use that song.</p>
           </div>
+          <section class="dashboard-music-preview artist-track-section music-showcase" aria-label="Music page twin preview">
+            <div class="artist-track-list">
+              <article class="artist-track-row">
+                <div class="track-star-frame">
+                  <img id="musicPreviewCover" class="track-cover" src="Mba Logos/MusicBusiness Logo.png" alt="" />
+                </div>
+                <div class="track-copy">
+                  <p id="musicPreviewArtist">Artist name</p>
+                  <h3 id="musicPreviewTitle">Song title</h3>
+                  <span id="musicPreviewDate">Release Date: choose a date by Artist name</span>
+                  <div class="track-tags" id="musicPreviewTags">
+                    <span>#Location</span>
+                    <span>#Genre</span>
+                    <span>#SecondGenre</span>
+                    <span>#Mood</span>
+                    <span>#Mood</span>
+                  </div>
+                </div>
+                <div class="track-actions" aria-label="Music action preview">
+                  <span class="track-action track-action-listen">Listen</span>
+                  <span class="track-action track-action-download">Download</span>
+                  <span class="track-action track-action-support">Support</span>
+                </div>
+              </article>
+            </div>
+          </section>
           <div class="form-row dashboard-feature-picker">
             <label>
               Featured music page song
@@ -259,60 +351,36 @@
 
       <section class="panel">
         <div class="section-heading">
-          <p class="eyebrow">Home artist banner</p>
-          <h2>Artist profile</h2>
-          <p>This controls the artist name, biography, profile picture, and social icons shown in the Home banner.</p>
-        </div>
-        <form id="artistForm" class="form-grid">
-          <div class="form-row">
-            <label>
-              Artist name
-              <input name="name" type="text" required />
-            </label>
-            <label>
-              Artist handle
-              <input name="handle" type="text" placeholder="@focuzman" required />
-            </label>
-          </div>
-          <label>
-            Artist biography
-            <textarea name="bio" maxlength="420" rows="4" placeholder="Short artist biography for the public artist page." required></textarea>
-            <span class="field-note"><span id="artistBioCount">0</span>/420 characters</span>
-          </label>
-          <div class="form-row">
-            <label>
-              Artist profile picture
-              <input name="photo" type="file" accept="image/*" />
-            </label>
-            <label>
-              Artist cover banner
-              <input name="banner" type="file" accept="image/*" />
-            </label>
-          </div>
-          <div class="link-fields" id="socialFields"></div>
-          <section class="dashboard-artist-preview" aria-labelledby="artistPreviewTitle">
-            <div class="dashboard-preview-visual">
-              <img id="artistPreviewPhoto" src="Mba Logos/MusicBusiness Logo.png" alt="" />
-            </div>
-            <div class="dashboard-preview-copy">
-              <p class="eyebrow">Featured artist</p>
-              <h3 id="artistPreviewTitle">Artist name</h3>
-              <p id="artistPreviewBio">Artist biography preview will appear here.</p>
-              <div class="home-socials icon-links" id="artistPreviewSocials" aria-label="Artist social links preview"></div>
-              <span class="primary-button dashboard-static-button">Watch Artist Videos</span>
-            </div>
-          </section>
-          <button class="primary-button" type="submit">Save Artist Profile</button>
-          <p class="form-message" id="artistMessage" role="status"></p>
-        </form>
-      </section>
-
-      <section class="panel">
-        <div class="section-heading">
           <p class="eyebrow">Video Page</p>
           <h2>Artist videos</h2>
           <p>These links control the large music video section, shorts section, and the links for watching more artist videos.</p>
         </div>
+        <section class="dashboard-video-preview video-page" aria-label="Video page twin preview">
+          <section class="video-grid">
+            <article class="video-card">
+              <div class="video-embed">
+                <iframe id="videoPreviewMainFrame" title="Main artist video preview" allowfullscreen></iframe>
+              </div>
+              <div class="video-copy">
+                <p class="eyebrow">YouTube</p>
+                <h2 id="videoPreviewMainTitle">Artist Video</h2>
+                <span class="video-more-link">Watch more videos from artist</span>
+              </div>
+            </article>
+          </section>
+          <section class="short-video-grid">
+            <article class="short-video-card">
+              <div class="short-video-embed">
+                <iframe id="videoPreviewShortFrame" title="YouTube short preview" allowfullscreen></iframe>
+              </div>
+              <div>
+                <strong>YouTube Shorts</strong>
+                <span>Watch this short on the website.</span>
+                <span class="video-more-link">Watch more shorts from artist</span>
+              </div>
+            </article>
+          </section>
+        </section>
         <form id="videoForm" class="form-grid">
           <div class="form-row">
             <label>

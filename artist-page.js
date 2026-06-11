@@ -58,6 +58,20 @@ function selectedRelease(releases) {
   return releases.find((release) => release.id === releaseId) || releases[0];
 }
 
+function artistForPage(store, approvedReleases) {
+  const params = new URLSearchParams(window.location.search);
+  const releaseId = params.get("release");
+  const artistId = params.get("artist");
+  const release = releaseId ? approvedReleases.find((item) => item.id === releaseId) : null;
+
+  return (
+    store.artists.find((artist) => artist.id === release?.artistId) ||
+    store.artists.find((artist) => artist.id === artistId) ||
+    store.artists.find((artist) => artist.id === store.site?.featuredArtistId) ||
+    store.artists[0]
+  );
+}
+
 function trackRow(release, artist) {
   const row = document.createElement("article");
   row.className = "artist-track-row";
@@ -459,7 +473,8 @@ async function renderArtistPage(force = false) {
   if (!force && snapshot === lastArtistSnapshot) return;
   lastArtistSnapshot = snapshot;
 
-  const artist = store.artists[0];
+  const approvedReleases = (store.releases || []).filter((release) => release.status === "approved");
+  const artist = artistForPage(store, approvedReleases);
   applySite(store);
 
   if (!artist || artist.status === "denied") {
@@ -468,7 +483,7 @@ async function renderArtistPage(force = false) {
     return;
   }
 
-  const releases = (store.releases || []).filter((release) => release.artistId === artist.id && release.status === "approved");
+  const releases = approvedReleases.filter((release) => release.artistId === artist.id);
   renderTopTracks(releases, artist);
   if (!artistReleaseList) return;
 

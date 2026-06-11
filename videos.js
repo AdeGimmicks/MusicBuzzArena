@@ -34,10 +34,24 @@ function applyLink(link, href) {
   link.href = href;
 }
 
+function artistForVideoPage(store) {
+  const params = new URLSearchParams(window.location.search);
+  const artistId = params.get("artist");
+  const releaseId = params.get("release");
+  const release = releaseId ? (store.releases || []).find((item) => item.id === releaseId) : null;
+
+  return (
+    store.artists?.find((artist) => artist.id === release?.artistId) ||
+    store.artists?.find((artist) => artist.id === artistId) ||
+    store.artists?.find((artist) => artist.id === store.site?.featuredArtistId) ||
+    store.artists?.[0]
+  );
+}
+
 async function renderVideos() {
   const store = await window.MBA.loadStore();
-  const videos = store.site?.videos || {};
-  const artist = store.artists?.[0];
+  const artist = artistForVideoPage(store);
+  const videos = artist?.videos || store.site?.videos || {};
   const artistName = artist?.name || "Focuzman";
 
   applyFrame(document.querySelector("#mainVideoFrame"), videos.mainVideoUrl || "https://www.youtube.com/watch?v=5-YcPo7bsqs");

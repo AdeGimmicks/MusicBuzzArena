@@ -749,6 +749,40 @@ select:focus {
   margin: 0;
 }
 
+.artist-account-panel {
+  background:
+    linear-gradient(135deg, rgba(244, 196, 48, 0.1), transparent 44%),
+    var(--white);
+}
+
+.artist-account-panel .section-heading p:not(.eyebrow) {
+  max-width: 820px;
+}
+
+.dashboard-edit-form {
+  margin-top: 18px;
+}
+
+.dashboard-music-preview {
+  max-width: none;
+  padding: 0;
+}
+
+.dashboard-music-preview .artist-track-row {
+  min-height: auto;
+  padding: clamp(22px, 4vw, 38px);
+}
+
+.dashboard-video-preview {
+  background: transparent;
+  padding: 0;
+}
+
+.dashboard-video-preview .video-grid,
+.dashboard-video-preview .short-video-grid {
+  margin-top: 0;
+}
+
 .link-input span {
   align-items: center;
   display: flex;

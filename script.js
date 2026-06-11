@@ -39,6 +39,7 @@ function renderHomeArtist(artist) {
   const nameNode = document.querySelector("#homeArtistName");
   const bioNode = document.querySelector("#homeArtistBio");
   const socialsNode = document.querySelector("#homeSocialLinks");
+  const videoLink = document.querySelector("#homeVideoLink");
 
   if (photoNode) {
     photoNode.src = photo;
@@ -46,6 +47,7 @@ function renderHomeArtist(artist) {
   }
   if (nameNode) nameNode.textContent = name;
   if (bioNode) bioNode.textContent = bio;
+  if (videoLink && artist?.id) videoLink.href = `/video?artist=${encodeURIComponent(artist.id)}`;
 
   if (!socialsNode) return;
   socialsNode.replaceChildren();

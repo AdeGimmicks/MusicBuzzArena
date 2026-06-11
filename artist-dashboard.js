@@ -20,8 +20,20 @@ const artistPreviewSocials = document.querySelector("#artistPreviewSocials");
 const featuredReleaseSelect = document.querySelector("#featuredReleaseSelect");
 const saveFeaturedRelease = document.querySelector("#saveFeaturedRelease");
 const featuredReleaseMessage = document.querySelector("#featuredReleaseMessage");
+const musicPreviewCover = document.querySelector("#musicPreviewCover");
+const musicPreviewArtist = document.querySelector("#musicPreviewArtist");
+const musicPreviewTitle = document.querySelector("#musicPreviewTitle");
+const musicPreviewDate = document.querySelector("#musicPreviewDate");
+const musicPreviewTags = document.querySelector("#musicPreviewTags");
+const videoPreviewMainFrame = document.querySelector("#videoPreviewMainFrame");
+const videoPreviewShortFrame = document.querySelector("#videoPreviewShortFrame");
+const videoPreviewMainTitle = document.querySelector("#videoPreviewMainTitle");
+const artistAccountSelect = document.querySelector("#artistAccountSelect");
+const createArtistProfile = document.querySelector("#createArtistProfile");
+const artistAccountMessage = document.querySelector("#artistAccountMessage");
 
 let currentStore = window.MBA.defaults();
+let activeArtistId = localStorage.getItem("mba-active-artist-id") || "";
 
 function message(node, text, type = "success") {
   node.textContent = text;
@@ -53,6 +65,35 @@ function fileToDataUrl(file) {
   });
 }
 
+function youtubeIdFromUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^[a-zA-Z0-9_-]{11}$/.test(text)) return text;
+
+  try {
+    const url = new URL(text);
+    if (url.searchParams.get("v")) return url.searchParams.get("v");
+    const parts = url.pathname.split("/").filter(Boolean);
+    const marker = ["shorts", "embed", "video"].find((item) => parts.includes(item));
+    if (marker) return parts[parts.indexOf(marker) + 1] || "";
+    if (url.hostname.includes("youtu.be")) return parts[0] || "";
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
+function embedUrl(videoId) {
+  return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}?rel=0` : "";
+}
+
+function setFrameFromUrl(frame, url) {
+  if (!frame) return;
+  const nextSrc = embedUrl(youtubeIdFromUrl(url));
+  if (nextSrc && frame.src !== nextSrc) frame.src = nextSrc;
+}
+
 function renderLinkInputs(container, links, values = {}) {
   container.replaceChildren();
   links.forEach(([label, key, icon]) => {
@@ -73,22 +114,46 @@ function formLinks(form, links) {
   }, {});
 }
 
+function blankArtist() {
+  return {
+    id: window.MBA.uid("artist"),
+    name: "",
+    handle: "",
+    bio: "",
+    photo: "",
+    banner: "",
+    socials: {},
+    status: "approved",
+    followers: 0,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 function primaryArtist() {
-  if (!currentStore.artists.length) {
-    currentStore.artists.push({
-      id: window.MBA.uid("artist"),
-      name: "",
-      handle: "",
-      bio: "",
-      photo: "",
-      banner: "",
-      socials: {},
-      status: "approved",
-      followers: 0,
-      createdAt: new Date().toISOString(),
-    });
+  if (!currentStore.artists.length) currentStore.artists.push(blankArtist());
+
+  let artist = currentStore.artists.find((item) => item.id === activeArtistId);
+  if (!artist) {
+    artist = currentStore.artists[0];
+    activeArtistId = artist.id;
+    localStorage.setItem("mba-active-artist-id", activeArtistId);
   }
-  return currentStore.artists[0];
+
+  return artist;
+}
+
+function artistLabel(artist) {
+  return artist.name || artist.handle || "Untitled artist";
+}
+
+function renderArtistAccountPicker() {
+  if (!artistAccountSelect) return;
+  const artist = primaryArtist();
+  artistAccountSelect.replaceChildren();
+  currentStore.artists.forEach((item) => {
+    artistAccountSelect.append(new Option(artistLabel(item), item.id));
+  });
+  artistAccountSelect.value = artist.id;
 }
 
 function fillArtistForm() {
@@ -102,13 +167,15 @@ function fillArtistForm() {
 }
 
 function fillVideoForm() {
-  const videos = currentStore.site?.videos || {};
+  const artist = primaryArtist();
+  const videos = artist.videos || currentStore.site?.videos || {};
   videoForm.mainVideoUrl.value = videos.mainVideoUrl || "https://www.youtube.com/watch?v=5-YcPo7bsqs";
   videoForm.mainVideoTitle.value = videos.mainVideoTitle || "Focuzman Video";
   videoForm.shortVideoUrl.value = videos.shortVideoUrl || "https://www.youtube.com/shorts/07x9uu4EQiA";
   videoForm.tiktokUrl.value = videos.tiktokUrl || "";
   videoForm.moreVideosUrl.value = videos.moreVideosUrl || "https://www.youtube.com/@Focuzman/videos";
   videoForm.moreShortsUrl.value = videos.moreShortsUrl || "https://www.youtube.com/@Focuzman/shorts";
+  updateVideoPreview();
 }
 
 function clearReleaseForm() {
@@ -131,6 +198,48 @@ function updateHomePreview(coverSrc = "") {
   homePreviewArtist.textContent = releaseForm.artistName.value.trim() || artist.name || "Artist name";
   if (coverSrc) homePreviewCover.src = coverSrc;
   if (!releaseForm.cover.files.length && !coverSrc) homePreviewCover.src = "Mba Logos/MusicBusiness Logo.png";
+  updateMusicPreview(coverSrc);
+}
+
+function formatReleaseDate(value) {
+  if (!value) return "choose a date";
+  try {
+    return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+  } catch {
+    return value;
+  }
+}
+
+function tagList(values) {
+  return values
+    .filter(Boolean)
+    .filter((tag, index, list) => list.findIndex((item) => String(item).toLowerCase() === String(tag).toLowerCase()) === index)
+    .slice(0, 5);
+}
+
+function updateMusicPreview(coverSrc = "") {
+  if (!musicPreviewTitle) return;
+  const artist = primaryArtist();
+  const artistName = releaseForm.artistName.value.trim() || artist.name || "Artist name";
+  const title = releaseForm.title.value.trim() || "Song title";
+  const cityState = releaseForm.cityState.value.trim();
+  const country = releaseForm.country.value;
+  const tags = tagList([
+    [cityState, country].filter(Boolean).join(", "),
+    releaseForm.genre.value,
+    releaseForm.secondaryGenre.value,
+    releaseForm.moodPrimary.value,
+    releaseForm.moodSecondary.value,
+  ]);
+
+  musicPreviewArtist.textContent = artistName;
+  musicPreviewTitle.textContent = title;
+  musicPreviewDate.textContent = `Release Date: ${formatReleaseDate(releaseForm.releaseDate.value)} by ${artistName}`;
+  musicPreviewTags.innerHTML = tags.length
+    ? tags.map((tag) => `<span>#${tag}</span>`).join("")
+    : `<span>#Location</span><span>#Genre</span><span>#SecondGenre</span><span>#Mood</span><span>#Mood</span>`;
+  if (coverSrc) musicPreviewCover.src = coverSrc;
+  if (!releaseForm.cover.files.length && !coverSrc && !releaseForm.editingId.value) musicPreviewCover.src = "Mba Logos/MusicBusiness Logo.png";
 }
 
 function socialIconFor(key, fallbackIcon) {
@@ -248,6 +357,31 @@ function renderFeaturedReleasePicker() {
     featuredReleaseSelect.append(option);
   });
   featuredReleaseSelect.value = artist.featuredReleaseId || "";
+  updateFeaturedReleasePreview();
+}
+
+function updateFeaturedReleasePreview() {
+  if (!featuredReleaseSelect || releaseForm.editingId.value) return;
+  const artist = primaryArtist();
+  const artistReleases = currentStore.releases.filter((item) => item.artistId === artist.id);
+  const selectedId = featuredReleaseSelect.value || artist.featuredReleaseId;
+  const release = artistReleases.find((item) => item.id === selectedId) || artistReleases[0];
+  if (!release) {
+    updateMusicPreview();
+    return;
+  }
+  if (musicPreviewCover) musicPreviewCover.src = release.cover || "Mba Logos/MusicBusiness Logo.png";
+  if (musicPreviewArtist) musicPreviewArtist.textContent = release.artistName || artist.name || "Artist name";
+  if (musicPreviewTitle) musicPreviewTitle.textContent = release.title || "Song title";
+  if (musicPreviewDate) {
+    const artistName = release.artistName || artist.name || "Artist name";
+    musicPreviewDate.textContent = `Release Date: ${formatReleaseDate(release.releaseDate)} by ${artistName}`;
+  }
+  if (musicPreviewTags) {
+    const moods = Array.isArray(release.mood) ? release.mood : String(release.mood || "").split(",").map((item) => item.trim());
+    const tags = tagList([release.location, release.genre, release.secondaryGenre, ...moods]);
+    musicPreviewTags.innerHTML = tags.map((tag) => `<span>#${tag}</span>`).join("");
+  }
 }
 
 function renderDashboardReleases() {
@@ -303,8 +437,10 @@ artistForm.addEventListener("submit", async (event) => {
     }
 
     currentStore = await window.MBA.saveStore(currentStore);
+    renderArtistAccountPicker();
     fillArtistForm();
-    message(artistMessage, "Artist profile saved. Artist Page 1 will update from this.");
+    renderDashboardReleases();
+    message(artistMessage, "Artist profile saved. Home, Music, Listen, Download, Support, and Video will use this artist workspace.");
   } catch (error) {
     message(artistMessage, error.message || "Artist profile did not save. Use the localhost website URL.", "error");
   }
@@ -325,6 +461,19 @@ releaseForm.cover.addEventListener("change", async () => {
   const cover = await fileToDataUrl(releaseForm.cover.files[0]);
   updateHomePreview(cover);
 });
+
+function updateVideoPreview() {
+  const artistName = primaryArtist().name || "artist";
+  setFrameFromUrl(videoPreviewMainFrame, videoForm.mainVideoUrl.value || "https://www.youtube.com/watch?v=5-YcPo7bsqs");
+  setFrameFromUrl(videoPreviewShortFrame, videoForm.shortVideoUrl.value || "https://www.youtube.com/shorts/07x9uu4EQiA");
+  if (videoPreviewMainTitle) videoPreviewMainTitle.textContent = videoForm.mainVideoTitle.value.trim() || `${artistName} Video`;
+  document.querySelectorAll(".dashboard-video-preview .video-more-link").forEach((link, index) => {
+    link.textContent = index === 0 ? `Watch more videos from ${artistName}` : `Watch more shorts from ${artistName}`;
+  });
+}
+
+videoForm.addEventListener("input", updateVideoPreview);
+videoForm.addEventListener("change", updateVideoPreview);
 
 releaseForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -420,13 +569,15 @@ saveFeaturedRelease?.addEventListener("click", () => {
   selectFeaturedRelease(featuredReleaseSelect.value);
 });
 
+featuredReleaseSelect?.addEventListener("change", updateFeaturedReleasePreview);
+
 videoForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   message(videoMessage, "Saving video page...", "pending");
 
   try {
-    currentStore.site = currentStore.site || {};
-    currentStore.site.videos = {
+    const artist = primaryArtist();
+    artist.videos = {
       mainVideoUrl: normalizeLink(videoForm.mainVideoUrl.value),
       mainVideoTitle: videoForm.mainVideoTitle.value.trim(),
       shortVideoUrl: normalizeLink(videoForm.shortVideoUrl.value),
@@ -434,6 +585,9 @@ videoForm.addEventListener("submit", async (event) => {
       moreVideosUrl: normalizeLink(videoForm.moreVideosUrl.value),
       moreShortsUrl: normalizeLink(videoForm.moreShortsUrl.value),
     };
+
+    currentStore.site = currentStore.site || {};
+    currentStore.site.videos = artist.videos;
 
     currentStore = await window.MBA.saveStore(currentStore);
     fillVideoForm();
@@ -443,8 +597,37 @@ videoForm.addEventListener("submit", async (event) => {
   }
 });
 
+artistAccountSelect?.addEventListener("change", () => {
+  activeArtistId = artistAccountSelect.value;
+  localStorage.setItem("mba-active-artist-id", activeArtistId);
+  releaseForm.reset();
+  fillArtistForm();
+  fillVideoForm();
+  clearReleaseForm();
+  renderDashboardReleases();
+  updateFeaturedReleasePreview();
+  message(artistAccountMessage, `${artistLabel(primaryArtist())} is selected. Upload now edits this artist.`);
+});
+
+createArtistProfile?.addEventListener("click", async () => {
+  const artist = blankArtist();
+  artist.name = `Artist ${currentStore.artists.length + 1}`;
+  artist.handle = `@artist${currentStore.artists.length + 1}`;
+  currentStore.artists.push(artist);
+  activeArtistId = artist.id;
+  localStorage.setItem("mba-active-artist-id", activeArtistId);
+  currentStore = await window.MBA.saveStore(currentStore);
+  renderArtistAccountPicker();
+  fillArtistForm();
+  fillVideoForm();
+  clearReleaseForm();
+  renderDashboardReleases();
+  message(artistAccountMessage, "New artist profile created. Edit the name, biography, social links, songs, and videos below.");
+});
+
 async function initDashboard() {
   currentStore = await window.MBA.loadStore();
+  renderArtistAccountPicker();
   fillArtistForm();
   fillVideoForm();
   renderLinkInputs(streamingFields, STREAMING_LINKS);
