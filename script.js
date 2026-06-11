@@ -72,7 +72,7 @@ function releaseCard(release, artist) {
       <h3>${release.title || "Untitled release"}</h3>
       <span>${artist?.name || release.artistName || "Independent Artist"}</span>
       <div class="mini-actions">
-        <a class="listen-action" href="${listenUrl}">Listing</a>
+        <a class="listen-action" href="${listenUrl}">Listen</a>
       </div>
     </div>
   `;

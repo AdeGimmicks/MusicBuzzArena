@@ -470,18 +470,31 @@ h3 {
 
 .mini-actions a {
   align-items: center;
-  border-radius: 6px;
+  border-radius: 7px;
   display: inline-flex;
   font-size: 0.78rem;
   font-weight: 900;
   justify-content: center;
-  min-height: 32px;
-  padding: 7px 12px;
+  letter-spacing: 0.28em;
+  min-height: 40px;
+  min-width: 118px;
+  padding: 9px 16px 9px 20px;
+  text-transform: uppercase;
 }
 
 .listen-action {
-  background: var(--gold);
+  background: rgba(255, 255, 255, 0.56);
+  border: 2px solid rgba(17, 20, 27, 0.78);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.44),
+    0 10px 24px rgba(17, 20, 27, 0.08);
   color: #10131a;
+}
+
+.listen-action:hover {
+  background: #10131a;
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .dashboard-body,
