@@ -734,10 +734,6 @@ select:focus {
   max-width: clamp(280px, 31vw, 430px);
 }
 
-.music-showcase .artist-more-section {
-  margin-top: clamp(42px, 5vw, 64px);
-}
-
 .artist-track-heading {
   align-items: center;
   display: flex;
@@ -925,15 +921,47 @@ select:focus {
   content: "⌖ ";
 }
 
-.track-listen {
-  background:
-    linear-gradient(180deg, #ffe27a, var(--gold));
-  border-radius: 7px;
+.track-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.track-action {
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: var(--white);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  min-width: 132px;
+  padding: 13px 18px;
+  text-align: center;
+  text-transform: uppercase;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.track-action:hover,
+.track-action:focus-visible {
+  border-color: rgba(244, 196, 48, 0.84);
+  color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.track-action-listen {
+  background: linear-gradient(180deg, #ffe27a, var(--gold));
+  border-color: transparent;
   box-shadow: 0 12px 24px rgba(244, 196, 48, 0.18);
   color: #10131a;
-  font-weight: 900;
-  justify-self: center;
-  padding: 14px 20px;
+}
+
+.track-action-listen:hover,
+.track-action-listen:focus-visible {
+  color: #10131a;
 }
 
 .artist-more-section {
@@ -2013,7 +2041,7 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
-  .track-listen {
+  .track-actions {
     justify-self: center;
   }
 

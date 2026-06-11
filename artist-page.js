@@ -1,11 +1,7 @@
 const artistTrackList = document.querySelector("#artistTrackList");
-const artistMoreList = document.querySelector("#artistMoreList");
 const artistReleaseList = document.querySelector("#artistReleaseList");
 let activePreviewAudio = null;
 let activePreviewButton = null;
-let showcaseSlideIndex = 0;
-let showcaseSlideTimer = null;
-let showcaseReleaseIds = "";
 
 function applySite(store) {
   document.querySelectorAll("[data-logo]").forEach((img) => {
@@ -81,18 +77,17 @@ function trackRow(release, artist) {
       <span>Release Date: ${releaseDate} by ${artist?.name || release.artistName || "MusicBusiness Arena"}</span>
       <div class="track-tags">${trackTags(release)}</div>
     </div>
-    <a class="track-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
+    <div class="track-actions" aria-label="${release.title || "Song"} actions">
+      <a class="track-action track-action-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
+      <a class="track-action track-action-download" href="/listen?release=${encodeURIComponent(release.id)}#download">Download</a>
+      <a class="track-action track-action-support" href="/listen?release=${encodeURIComponent(release.id)}#support">Support</a>
+    </div>
   `;
   return row;
 }
 
 function renderTopTracks(releases, artist) {
   if (!artistTrackList) return;
-  const releaseIds = releases.map((release) => release.id).join("|");
-  if (releaseIds !== showcaseReleaseIds) {
-    showcaseReleaseIds = releaseIds;
-    showcaseSlideIndex = 0;
-  }
   artistTrackList.replaceChildren();
 
   if (!releases.length) {
@@ -101,49 +96,10 @@ function renderTopTracks(releases, artist) {
   }
 
   const selectedRelease =
-    releases[showcaseSlideIndex % releases.length] ||
     releases.find((release) => release.id === artist?.featuredReleaseId) ||
+    releases.find((release) => release.id === artist?.bannerReleaseId) ||
     releases[0];
   artistTrackList.append(trackRow(selectedRelease, artist));
-}
-
-function startShowcaseRotation(releases, artist) {
-  window.clearInterval(showcaseSlideTimer);
-  showcaseSlideTimer = null;
-  if (releases.length < 2) return;
-
-  showcaseSlideTimer = window.setInterval(() => {
-    if (document.hidden) return;
-    showcaseSlideIndex = (showcaseSlideIndex + 1) % releases.length;
-    renderTopTracks(releases, artist);
-  }, 30000);
-}
-
-function renderMoreFromArtist(releases, artist) {
-  if (!artistMoreList) return;
-  artistMoreList.replaceChildren();
-  const moreReleases = releases.slice(0, 4);
-  const artistLabel = artist?.name || "Independent Artist";
-
-  if (!moreReleases.length) {
-    artistMoreList.innerHTML = `<p class="empty-state">More songs from this artist will appear here.</p>`;
-    return;
-  }
-
-  moreReleases.forEach((release) => {
-    const card = document.createElement("article");
-    card.className = "artist-more-circle-card";
-    card.innerHTML = `
-      <a class="artist-more-circle-link" href="/listen?release=${encodeURIComponent(release.id)}">
-        <span class="artist-more-cover">
-          <img src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover" loading="lazy" decoding="async">
-        </span>
-        <strong>${release.artistName || artistLabel}</strong>
-        <span>${release.title || "Untitled track"}</span>
-      </a>
-    `;
-    artistMoreList.append(card);
-  });
 }
 
 function releasePanel(release) {
@@ -487,8 +443,6 @@ async function renderArtistPage(force = false) {
 
   const releases = (store.releases || []).filter((release) => release.artistId === artist.id && release.status === "approved");
   renderTopTracks(releases, artist);
-  startShowcaseRotation(releases, artist);
-  renderMoreFromArtist(releases, artist);
   if (!artistReleaseList) return;
 
   artistReleaseList.replaceChildren();
