@@ -208,10 +208,24 @@ function linkHubPage(release, artist) {
   const wrap = document.createElement("article");
   wrap.className = "link-hub-card";
   const artistLabel = artist?.name || release.artistName || "Independent Artist";
+  const artistHandle = artist?.handle || `@${artistLabel.replace(/\s+/g, "").toLowerCase()}`;
+  const artistPhotoSrc = artist?.photo || release.cover || "Mba Logos/MusicBusiness Logo.png";
   const downloadAmount = money(release.price || 0);
   const donationAmount = Number(release.donationAmount || release.donationPrice || release.supportAmount || 0);
   const donationLabel = donationAmount > 0 ? money(donationAmount) : "Any amount";
   const platformAction = (key) => (key === "itunes" ? "Download" : "Play");
+  const shareUrl = `${window.location.origin}/listen?release=${encodeURIComponent(release.id)}`;
+  const encodedShareUrl = encodeURIComponent(shareUrl);
+  const encodedShareText = encodeURIComponent(`Listen to ${release.title || "this song"} by ${artistLabel}`);
+  const socialRows = SOCIAL_LINKS.map(([label, key, icon]) => {
+    const href = artist?.socials?.[key];
+    if (!href) return "";
+    return `
+      <a href="${href}" target="_blank" rel="noreferrer" aria-label="${label}">
+        ${icon ? `<img src="${icon}" alt="">` : `<span>↗</span>`}
+      </a>
+    `;
+  }).join("");
   const platformRows = STREAMING_LINKS.map(([label, key, icon]) => {
     const href = release.streaming?.[key];
     if (!href) return "";
@@ -227,30 +241,45 @@ function linkHubPage(release, artist) {
   }).join("");
 
   wrap.innerHTML = `
-    <div class="link-cover-wrap">
-      <img src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover">
-      ${
-        release.audioUrl
-          ? `<div class="cover-player" aria-label="Song preview player">
-              <div class="cover-progress"><span></span></div>
-              <div class="cover-meta">
-                <strong>${artistLabel}</strong>
-                <span>${release.title || "Untitled track"}</span>
-              </div>
-              <span class="cover-time">0:00</span>
-              <div class="cover-controls">
-                <button class="cover-skip-back" type="button" aria-label="Go back 10 seconds">|◀</button>
-                <button class="link-play-preview" type="button" aria-label="Play preview">▶</button>
-                <button class="cover-skip-forward" type="button" aria-label="Go forward 10 seconds">▶|</button>
-              </div>
-            </div>`
-          : ""
-      }
+    <div class="link-profile-actions">
+      <button class="link-subscribe" type="button" data-open-subscribe>
+        Subscribe
+      </button>
+      <button class="link-share-button" type="button" data-share-release="${release.id}" aria-label="Share this song">⇧</button>
     </div>
-    <div class="link-hub-title">
-      <p>${artistLabel}</p>
-      <h1>${release.title || "Untitled track"}</h1>
-      <span>Choose music service</span>
+    <section class="link-profile-head" aria-label="Artist profile links">
+      <img class="link-artist-photo" src="${artistPhotoSrc}" alt="${artistLabel} profile photo">
+      <h1>${artistHandle}</h1>
+      <div class="link-socials" aria-label="${artistLabel} social links">
+        ${socialRows || `<span class="empty-state">Social links will appear here.</span>`}
+      </div>
+      <span class="link-followers">${Number(artist?.followers || artist?.follows || 0).toLocaleString()} followers</span>
+    </section>
+    <div class="featured-listing-card">
+      <div class="link-cover-wrap">
+        <img src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover">
+        ${
+          release.audioUrl
+            ? `<div class="cover-player" aria-label="Song preview player">
+                <div class="cover-progress"><span></span></div>
+                <div class="cover-meta">
+                  <strong>${artistLabel}</strong>
+                  <span>${release.title || "Untitled track"}</span>
+                </div>
+                <span class="cover-time">0:00</span>
+                <div class="cover-controls">
+                  <button class="cover-skip-back" type="button" aria-label="Go back 10 seconds">|◀</button>
+                  <button class="link-play-preview" type="button" aria-label="Play preview">▶</button>
+                  <button class="cover-skip-forward" type="button" aria-label="Go forward 10 seconds">▶|</button>
+                </div>
+              </div>`
+            : ""
+        }
+      </div>
+      <div class="link-hub-title">
+        <h2>${release.title || "Untitled track"}</h2>
+        <span>Song · ${artistLabel}</span>
+      </div>
     </div>
     <div class="service-list">
       ${
@@ -266,6 +295,41 @@ function linkHubPage(release, artist) {
         <span class="service-action">Support</span>
       </a>
       ${platformRows || `<p class="empty-state">Streaming links will appear here after they are added.</p>`}
+    </div>
+    <div class="link-modal" data-subscribe-modal aria-hidden="true">
+      <div class="link-modal-card" role="dialog" aria-modal="true" aria-labelledby="subscribeTitle">
+        <button class="link-modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        <img class="link-modal-photo" src="${artistPhotoSrc}" alt="">
+        <h2 id="subscribeTitle">Subscribe to ${artistLabel}</h2>
+        <p>Get updates when ${artistLabel} shares new music, videos, or important news.</p>
+        <label class="subscribe-email">
+          <span>Email</span>
+          <input type="email" placeholder="you@example.com" autocomplete="email">
+        </label>
+        <label class="subscribe-consent">
+          <input type="checkbox">
+          <span>I agree to share my contact details with ${artistLabel}. Optional.</span>
+        </label>
+        <button class="modal-primary" type="button" data-submit-subscribe>Subscribe</button>
+      </div>
+    </div>
+    <div class="link-modal" data-share-modal aria-hidden="true">
+      <div class="link-modal-card share-modal-card" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+        <button class="link-modal-close" type="button" data-close-modal aria-label="Close">×</button>
+        <h2 id="shareTitle">Share this song</h2>
+        <div class="share-preview-card">
+          <img src="${release.cover || artistPhotoSrc}" alt="">
+          <strong>${artistHandle}</strong>
+          <span>${release.title || "Untitled track"}</span>
+        </div>
+        <div class="share-options">
+          <button type="button" data-copy-link>🔗<span>Copy link</span></button>
+          <a href="https://twitter.com/intent/tweet?text=${encodedShareText}&url=${encodedShareUrl}" target="_blank" rel="noreferrer">𝕏<span>X</span></a>
+          <a href="https://www.facebook.com/sharer/sharer.php?u=${encodedShareUrl}" target="_blank" rel="noreferrer">f<span>Facebook</span></a>
+          <a href="https://wa.me/?text=${encodedShareText}%20${encodedShareUrl}" target="_blank" rel="noreferrer">☘<span>WhatsApp</span></a>
+          <a href="mailto:?subject=${encodedShareText}&body=${encodedShareUrl}">✉<span>Email</span></a>
+        </div>
+      </div>
     </div>
   `;
 
@@ -365,6 +429,34 @@ function linkHubPage(release, artist) {
     if (!saved) return;
     saved.downloads = Number(saved.downloads || 0) + 1;
     await window.MBA.saveStore(store);
+  });
+
+  const closeModals = () => {
+    wrap.querySelectorAll(".link-modal").forEach((modal) => modal.setAttribute("aria-hidden", "true"));
+  };
+  wrap.querySelector("[data-open-subscribe]")?.addEventListener("click", () => {
+    wrap.querySelector("[data-subscribe-modal]")?.setAttribute("aria-hidden", "false");
+  });
+  wrap.querySelector("[data-share-release]")?.addEventListener("click", async () => {
+    wrap.querySelector("[data-share-modal]")?.setAttribute("aria-hidden", "false");
+  });
+  wrap.querySelector("[data-copy-link]")?.addEventListener("click", async (event) => {
+    await navigator.clipboard.writeText(shareUrl);
+    event.currentTarget.querySelector("span").textContent = "Copied";
+    window.setTimeout(() => {
+      const label = event.currentTarget.querySelector("span");
+      if (label) label.textContent = "Copy link";
+    }, 1400);
+  });
+  wrap.querySelector("[data-submit-subscribe]")?.addEventListener("click", (event) => {
+    event.currentTarget.textContent = "Subscribed";
+    window.setTimeout(closeModals, 900);
+  });
+  wrap.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModals));
+  wrap.querySelectorAll(".link-modal").forEach((modal) => {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeModals();
+    });
   });
 
   return wrap;
