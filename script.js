@@ -13,6 +13,48 @@ function applySiteContent(store) {
   Object.entries(site).forEach(([key, value]) => setText(`[data-site="${key}"]`, value));
 }
 
+const SIMPLE_SOCIAL_ICONS = {
+  instagram: "https://cdn.simpleicons.org/instagram/FFFFFF",
+  facebook: "https://cdn.simpleicons.org/facebook/FFFFFF",
+  x: "https://cdn.simpleicons.org/x/FFFFFF",
+  youtube: "https://cdn.simpleicons.org/youtube/FFFFFF",
+  tiktok: "https://cdn.simpleicons.org/tiktok/FFFFFF",
+  website: "https://cdn.simpleicons.org/linktree/FFFFFF",
+};
+
+function renderHomeArtist(artist) {
+  const name = artist?.name || "Independent Artist";
+  const photo = artist?.photo || "Mba Logos/MusicBusiness Logo.png";
+  const bio = artist?.bio || "Artist biography will appear here after the artist saves a profile.";
+  const photoNode = document.querySelector("#homeArtistPhoto");
+  const nameNode = document.querySelector("#homeArtistName");
+  const bioNode = document.querySelector("#homeArtistBio");
+  const socialsNode = document.querySelector("#homeSocialLinks");
+
+  if (photoNode) {
+    photoNode.src = photo;
+    photoNode.alt = `${name} profile photo`;
+  }
+  if (nameNode) nameNode.textContent = name;
+  if (bioNode) bioNode.textContent = bio;
+
+  if (!socialsNode) return;
+  socialsNode.replaceChildren();
+  SOCIAL_LINKS.forEach(([label, key]) => {
+    const href = artist?.socials?.[key];
+    if (!href) return;
+    const link = document.createElement("a");
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.title = label;
+    link.innerHTML = SIMPLE_SOCIAL_ICONS[key]
+      ? `<img src="${SIMPLE_SOCIAL_ICONS[key]}" alt="${label}">`
+      : `<span>${label}</span>`;
+    socialsNode.append(link);
+  });
+}
+
 function releaseCard(release, artist) {
   const card = document.createElement("article");
   card.className = "release-card";
@@ -54,30 +96,6 @@ function renderShelf(container, releases, store, emptyText) {
   });
 }
 
-let featureReleases = [];
-let featureSlideIndex = 0;
-
-function rotateFeatureBanner() {
-  const cover = document.querySelector("#featureCover");
-  if (!cover || !featureReleases.length) return;
-
-  const release = featureReleases[featureSlideIndex % featureReleases.length];
-  if (!release?.cover) return;
-
-  cover.classList.add("is-changing");
-  window.setTimeout(() => {
-    cover.src = release.cover;
-    cover.classList.remove("is-changing");
-  }, 140);
-  featureSlideIndex = (featureSlideIndex + 1) % featureReleases.length;
-}
-
-function updateFeatureBanner(releases) {
-  featureReleases = releases.filter((release) => release.cover).slice(0, 12);
-  featureSlideIndex = 0;
-  rotateFeatureBanner();
-}
-
 function currentStoreSnapshot(store) {
   const page = window.location.pathname || "/home";
   const releaseKey = (store.releases || [])
@@ -105,9 +123,12 @@ async function renderHome(force = false) {
 
   applySiteContent(store);
 
-  const approvedArtists = new Set(
-    store.artists.filter((artist) => (artist.status || "approved") === "approved").map((artist) => artist.id)
-  );
+  const approvedArtistList = store.artists.filter((artist) => (artist.status || "approved") === "approved");
+  const approvedArtists = new Set(approvedArtistList.map((artist) => artist.id));
+  const featuredArtist =
+    approvedArtistList.find((artist) => artist.id === store.site?.featuredArtistId) || approvedArtistList[0] || store.artists[0];
+  renderHomeArtist(featuredArtist);
+
   const approved = window.MBA
     .approvedReleases(store)
     .filter((release) => approvedArtists.has(release.artistId))
@@ -119,11 +140,9 @@ async function renderHome(force = false) {
     store,
     "Approved songs will appear here after Store Manager approves uploads."
   );
-  updateFeatureBanner(approved);
 }
 
 renderHome(true);
-setInterval(rotateFeatureBanner, 4200);
 
 window.addEventListener("mba:store-saved", () => renderHome(true));
 document.addEventListener("visibilitychange", () => {
