@@ -22,6 +22,7 @@ const STORE_DOCUMENT_ID = "musicbusiness-arena";
 
 let mongoClient;
 let storeCollection;
+let cachedStore = null;
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -244,6 +245,7 @@ function mergeStore(store) {
 
 async function readStore() {
   await ensureStorage();
+  if (cachedStore) return cachedStore;
 
   const collection = await connectMongo();
   if (collection) {
@@ -264,16 +266,20 @@ async function readStore() {
         },
         { upsert: true }
       );
-      return mergeStore(seededStore);
+      cachedStore = mergeStore(seededStore);
+      return cachedStore;
     }
+    cachedStore = store;
     return store;
   }
 
   try {
     const content = await fs.readFile(DB_FILE, "utf8");
-    return mergeStore(JSON.parse(content));
+    cachedStore = mergeStore(JSON.parse(content));
+    return cachedStore;
   } catch {
-    return defaultStore();
+    cachedStore = defaultStore();
+    return cachedStore;
   }
 }
 
@@ -295,10 +301,12 @@ async function writeStore(store) {
       },
       { upsert: true }
     );
+    cachedStore = normalized;
     return;
   }
 
   await fs.writeFile(DB_FILE, JSON.stringify(normalized, null, 2));
+  cachedStore = normalized;
 }
 
 function readRequestBody(request) {
