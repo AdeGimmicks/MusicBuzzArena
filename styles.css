@@ -350,17 +350,21 @@ h3 {
   background: transparent;
   border: 0;
   box-shadow: none;
+  cursor: pointer;
   display: grid;
-  gap: 10px;
+  gap: 14px;
   justify-items: center;
   min-height: 0;
   overflow: visible;
+  padding: 4px;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease;
 }
 
-.release-card:hover {
+.release-card:hover,
+.release-card:focus-visible {
+  outline: 0;
   transform: translateY(-2px);
 }
 
@@ -376,20 +380,20 @@ h3 {
 .release-cover-frame {
   aspect-ratio: 1;
   background:
-    linear-gradient(145deg, var(--gold), #fff6b8 42%, var(--gold-dark));
+    linear-gradient(145deg, #f7eaa3, #fff9cf 46%, #d7aa18);
   border-radius: 999px;
   box-shadow:
-    0 18px 38px rgba(0, 0, 0, 0.28),
+    0 18px 38px rgba(17, 20, 27, 0.12),
     inset 0 0 0 1px rgba(255, 255, 255, 0.45);
   height: auto;
-  max-width: 220px;
+  max-width: 236px;
   padding: 7px;
   width: 100%;
 }
 
 .release-card .release-cover {
   aspect-ratio: 1;
-  border: 4px solid #10131a;
+  border: 5px solid rgba(255, 255, 255, 0.78);
   border-radius: 999px;
   clip-path: none;
   height: 100%;
@@ -404,36 +408,25 @@ h3 {
 }
 
 .release-body {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035)),
-    #202329;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  box-shadow:
-    0 16px 34px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   align-content: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   justify-items: center;
   min-width: 0;
-  padding: 16px 14px 15px;
+  padding: 0;
   position: relative;
   text-align: center;
-  width: min(100%, 260px);
+  width: min(100%, 280px);
 }
 
 .release-body::before {
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  content: "";
-  height: 2px;
-  left: 18%;
-  position: absolute;
-  right: 18%;
-  top: 0;
+  content: none;
 }
 
 .release-body h3 {
-  color: var(--white);
-  font-size: 1.16rem;
+  color: #11141b;
+  font-size: 1.02rem;
   margin: 0;
   max-width: 100%;
   overflow: hidden;
@@ -442,8 +435,10 @@ h3 {
 }
 
 .release-body span {
-  color: rgba(255, 255, 255, 0.68);
-  font-weight: 800;
+  color: #11141b;
+  font-size: 1.12rem;
+  font-weight: 900;
+  grid-row: 1;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -451,7 +446,8 @@ h3 {
 }
 
 .release-meta {
-  color: var(--gold) !important;
+  color: rgba(17, 20, 27, 0.5) !important;
+  display: none;
   font-size: 0.73rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -469,18 +465,18 @@ h3 {
   display: flex;
   gap: 8px;
   justify-content: center;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .mini-actions a {
   align-items: center;
   border-radius: 6px;
   display: inline-flex;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 900;
   justify-content: center;
-  min-height: 34px;
-  padding: 8px 12px;
+  min-height: 32px;
+  padding: 7px 12px;
 }
 
 .listen-action {
