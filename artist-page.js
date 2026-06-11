@@ -391,10 +391,6 @@ function linkHubPage(release, artist) {
     audio.addEventListener("loadedmetadata", updatePlayer);
     audio.addEventListener("play", () => setPreviewPlaying(true));
     audio.addEventListener("pause", () => {
-      if (activePreviewAudio === audio && !audio.ended) {
-        activePreviewAudio = null;
-        activePreviewButton = null;
-      }
       setPreviewPlaying(false);
     });
     audio.addEventListener("ended", () => {
@@ -419,9 +415,10 @@ function linkHubPage(release, artist) {
 let lastArtistSnapshot = "";
 
 async function renderArtistPage(force = false) {
+  const previewSessionActive = activePreviewAudio && !activePreviewAudio.ended;
   const audioIsPlaying =
     [...document.querySelectorAll("audio")].some((audio) => !audio.paused) ||
-    (activePreviewAudio && !activePreviewAudio.paused);
+    previewSessionActive;
   if (!force && audioIsPlaying) return;
 
   const store = await window.MBA.loadStore();
