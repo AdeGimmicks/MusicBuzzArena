@@ -180,7 +180,8 @@ function linkHubPage(release, artist) {
   const pageMode = window.location.hash === "#download" ? "download" : window.location.hash === "#support" ? "support" : "listen";
   const artistLabel = artist?.name || release.artistName || "Independent Artist";
   const artistHandle = artist?.handle || `@${artistLabel.replace(/\s+/g, "").toLowerCase()}`;
-  const artistPhotoSrc = artist?.photo || release.cover || "Mba Logos/MusicBusiness Logo.png";
+  const releaseCoverSrc = release.cover || "Mba Logos/MusicBusiness Logo.png";
+  const artistPhotoSrc = releaseCoverSrc;
   const downloadAmount = money(release.price || 0);
   const donationAmount = Number(release.donationAmount || release.donationPrice || release.supportAmount || 0);
   const shareUrl = `${window.location.origin}/listen?release=${encodeURIComponent(release.id)}`;
@@ -250,7 +251,7 @@ function linkHubPage(release, artist) {
       <button class="link-share-button" type="button" data-share-release="${release.id}" aria-label="Share this song">⇧</button>
     </div>
     <section class="link-profile-head" aria-label="Artist profile links">
-      <img class="link-artist-photo" src="${artistPhotoSrc}" alt="${artistLabel} profile photo">
+      <img class="link-artist-photo" src="${artistPhotoSrc}" alt="${release.title || artistLabel} cover">
       <h1>${artistHandle}</h1>
       <div class="link-socials" aria-label="${artistLabel} social links">
         ${socialRows || `<span class="empty-state">Social links will appear here.</span>`}
@@ -259,7 +260,7 @@ function linkHubPage(release, artist) {
     </section>
     <div class="featured-listing-card">
       <div class="link-cover-wrap">
-        <img src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover">
+        <img src="${releaseCoverSrc}" alt="${release.title} cover">
         ${
           release.audioUrl
             ? `<div class="cover-player" aria-label="Song preview player">
@@ -313,7 +314,7 @@ function linkHubPage(release, artist) {
         <button class="link-modal-close" type="button" data-close-modal aria-label="Close">×</button>
         <h2 id="shareTitle">Share this song</h2>
         <div class="share-preview-card">
-          <img src="${release.cover || artistPhotoSrc}" alt="">
+          <img src="${releaseCoverSrc}" alt="">
           <strong>${artistHandle}</strong>
           <span>${release.title || "Untitled track"}</span>
         </div>
