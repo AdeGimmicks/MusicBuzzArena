@@ -41,9 +41,12 @@ MONGODB_DB_NAME=musicbusinessarena
 MONGODB_COLLECTION=siteStore
 UPLOAD_DIR=/var/data/uploads
 PUBLIC_SITE_URL=https://musicbusinessarena.com
+STRIPE_SECRET_KEY=sk_live_your_private_key
+STRIPE_DEFAULT_CURRENCY=usd
+PLATFORM_FEE_PERCENT=10
 ```
 
-Do not commit `.env` to GitHub.
+Do not commit `.env` to GitHub. Stripe keys must be added only in Render environment variables, never inside the source code.
 
 ## MongoDB Atlas
 
@@ -81,6 +84,20 @@ Persistent Disk:
 ```
 
 The persistent disk keeps uploaded cover artwork, artist photos, and audio files from disappearing after redeploys.
+
+## Stripe Checkout
+
+MusicBusiness Arena uses Stripe Checkout for paid downloads and support. The website code does not store Stripe keys. Add `STRIPE_SECRET_KEY` privately in Render, then redeploy.
+
+Recommended Render values:
+
+```text
+PUBLIC_SITE_URL=https://musicbusinessarena.com
+STRIPE_DEFAULT_CURRENCY=usd
+PLATFORM_FEE_PERCENT=10
+```
+
+Stripe can show cards, Apple Pay, Google Pay, and supported international payment methods depending on your Stripe account settings, domain verification, visitor device, and country. Artist payouts through Stripe Connect require storing each artist's connected account ID before automatic split payouts can be enabled.
 
 ## Custom Domain
 
@@ -122,8 +139,8 @@ The current website is ready for Render hosting, MongoDB storage, and persistent
 
 - Artist login and private dashboard access
 - Store manager/admin login
-- Real payment checkout for downloads and donations
-- Commission and payout tracking
+- Stripe Connect onboarding for each artist payout account
+- Fulfillment after successful checkout, so paid downloads unlock only after Stripe confirms payment
 - Stronger file validation for uploads
 - Cloud storage such as S3, Cloudinary, or Backblaze when the platform grows
 

@@ -151,7 +151,7 @@ function releasePanel(release) {
   unlock.addEventListener("click", async () => {
     const store = await window.MBA.loadStore({ force: true });
     const saved = store.releases.find((item) => item.id === release.id);
-    const commissionRate = Number(store.site?.commissionRate || 15);
+    const commissionRate = Number(store.site?.commissionRate || 10);
     const price = Number(release.price || 0);
     if (saved) {
       saved.downloads = Number(saved.downloads || 0) + 1;
@@ -219,7 +219,7 @@ function linkHubPage(release, artist) {
           <p>Pay ${downloadAmount} to unlock the full audio download set by ${artistLabel}.</p>
           <div class="payment-price">${downloadAmount}</div>
           <div class="payment-actions">
-            <button type="button" data-payment-placeholder data-payment-label="Pay with Stripe">Pay with Stripe</button>
+            <button type="button" data-checkout-type="download" data-payment-label="Pay with Stripe">Pay with Stripe</button>
             <button type="button" data-payment-placeholder data-payment-label="Pay with PayPal">Pay with PayPal</button>
           </div>
           <small>After payment is connected, this section will unlock the song file automatically.</small>
@@ -232,7 +232,7 @@ function linkHubPage(release, artist) {
               <input type="number" min="1" step="1" value="${donationAmount > 0 ? donationAmount : 5}" aria-label="Support amount">
             </label>
             <div class="payment-actions">
-              <button type="button" data-payment-placeholder data-payment-label="Support with Stripe">Support with Stripe</button>
+              <button type="button" data-checkout-type="support" data-payment-label="Support with Stripe">Support with Stripe</button>
               <button type="button" data-payment-placeholder data-payment-label="Support with PayPal">Support with PayPal</button>
             </div>
           </div>
@@ -419,6 +419,37 @@ function linkHubPage(release, artist) {
       updatePlayer();
     });
   }
+
+  wrap.querySelectorAll("[data-checkout-type]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const label = button.dataset.paymentLabel || button.textContent;
+      const checkoutType = button.dataset.checkoutType || "download";
+      const supportInput = wrap.querySelector(".support-amount input");
+      button.disabled = true;
+      button.textContent = "Opening Stripe...";
+
+      try {
+        const response = await fetch("/api/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            releaseId: release.id,
+            type: checkoutType,
+            amount: checkoutType === "support" ? supportInput?.value : undefined,
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.url) throw new Error(payload.error || "Stripe checkout could not be started.");
+        window.location.href = payload.url;
+      } catch (error) {
+        button.textContent = error.message || "Payment setup issue";
+        window.setTimeout(() => {
+          button.disabled = false;
+          button.textContent = label;
+        }, 2400);
+      }
+    });
+  });
 
   wrap.querySelectorAll("[data-payment-placeholder]").forEach((button) => {
     button.addEventListener("click", () => {

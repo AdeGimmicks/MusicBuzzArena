@@ -13,6 +13,7 @@
     "check": "node --check server.js && node --check script.js && node --check artist-dashboard.js && node --check artist-page.js && node --check videos.js && node --check store-manager.js"
   },
   "dependencies": {
-    "mongodb": "^6.19.0"
+    "mongodb": "^6.19.0",
+    "stripe": "^22.2.0"
   }
 }

@@ -2,11 +2,18 @@ const http = require("http");
 const fs = require("fs/promises");
 const path = require("path");
 let MongoClient;
+let Stripe;
 
 try {
   ({ MongoClient } = require("mongodb"));
 } catch {
   MongoClient = null;
+}
+
+try {
+  Stripe = require("stripe");
+} catch {
+  Stripe = null;
 }
 
 const PORT = Number(process.env.PORT || 8010);
@@ -19,10 +26,14 @@ const MONGODB_URI = process.env.MONGODB_URI || "";
 const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || "musicbusinessarena";
 const MONGODB_COLLECTION = process.env.MONGODB_COLLECTION || "siteStore";
 const STORE_DOCUMENT_ID = "musicbusiness-arena";
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env["Stripe Secret key"] || "";
+const STRIPE_DEFAULT_CURRENCY = (process.env.STRIPE_DEFAULT_CURRENCY || "usd").toLowerCase();
+const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
 
 let mongoClient;
 let storeCollection;
 let cachedStore = null;
+const stripe = STRIPE_SECRET_KEY && Stripe ? Stripe(STRIPE_SECRET_KEY) : null;
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -52,7 +63,7 @@ function defaultStore() {
       primaryCta: "Browse Music",
       secondaryCta: "Upload",
       featuredArtistId: "artist-focuzman",
-      commissionRate: 15,
+      commissionRate: 10,
       videos: {
         mainVideoUrl: "https://www.youtube.com/watch?v=5-YcPo7bsqs",
         mainVideoTitle: "Focuzman Video",
@@ -414,6 +425,145 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  "bif",
+  "clp",
+  "djf",
+  "gnf",
+  "jpy",
+  "kmf",
+  "krw",
+  "mga",
+  "pyg",
+  "rwf",
+  "ugx",
+  "vnd",
+  "vuv",
+  "xaf",
+  "xof",
+  "xpf",
+]);
+
+function requestOrigin(request) {
+  if (process.env.PUBLIC_SITE_URL) return process.env.PUBLIC_SITE_URL.replace(/\/$/, "");
+  const proto = request.headers["x-forwarded-proto"] || "http";
+  const host = request.headers["x-forwarded-host"] || request.headers.host || `localhost:${PORT}`;
+  return `${proto}://${host}`;
+}
+
+function normalizedCurrency(value) {
+  const currency = String(value || STRIPE_DEFAULT_CURRENCY || "usd")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "")
+    .slice(0, 3);
+  return currency || "usd";
+}
+
+function toMinorUnits(amount, currency) {
+  const value = Number(amount || 0);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return ZERO_DECIMAL_CURRENCIES.has(currency) ? Math.round(value) : Math.round(value * 100);
+}
+
+function cleanCheckoutAmount(value, fallback, minimum) {
+  const amount = Number(value || fallback || 0);
+  if (!Number.isFinite(amount)) return minimum;
+  return Math.max(amount, minimum);
+}
+
+function checkoutImageUrl(origin, imagePath) {
+  if (!imagePath) return "";
+  if (/^https:\/\//i.test(imagePath)) return imagePath;
+  if (/^http:\/\//i.test(imagePath)) return "";
+  return `${origin}/${String(imagePath).replace(/^\/+/, "")}`;
+}
+
+async function createCheckoutSession(request, response) {
+  if (!stripe) {
+    sendJson(response, 503, {
+      error: "Stripe is not configured. Add STRIPE_SECRET_KEY in Render environment variables.",
+    });
+    return;
+  }
+
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const store = await readStore();
+  const release = (store.releases || []).find((item) => item.id === body.releaseId && item.status === "approved");
+
+  if (!release) {
+    sendJson(response, 404, { error: "Release not found." });
+    return;
+  }
+
+  const artist = (store.artists || []).find((item) => item.id === release.artistId) || {};
+  const checkoutType = body.type === "support" ? "support" : "download";
+  const artistLabel = artist.name || release.artistName || "Independent Artist";
+  const currency = normalizedCurrency(body.currency || release.currency);
+  const fallbackAmount = checkoutType === "support" ? Number(release.donationAmount || 5) : Number(release.price || 0.99);
+  const amountMajor = cleanCheckoutAmount(body.amount, fallbackAmount, checkoutType === "support" ? 1 : 0.5);
+  const unitAmount = toMinorUnits(amountMajor, currency);
+
+  if (!unitAmount) {
+    sendJson(response, 400, { error: "A valid payment amount is required." });
+    return;
+  }
+
+  const origin = requestOrigin(request);
+  const platformFeePercent = Number.isFinite(PLATFORM_FEE_PERCENT)
+    ? PLATFORM_FEE_PERCENT
+    : Number(store.site?.commissionRate || 10);
+  const connectedAccountId = artist.stripeAccountId || release.stripeAccountId || "";
+  const productName =
+    checkoutType === "support"
+      ? `Support ${artistLabel}`
+      : `Download ${release.title || "song"} by ${artistLabel}`;
+  const metadata = {
+    checkoutType,
+    releaseId: release.id,
+    artistId: release.artistId || "",
+    artistName: artistLabel,
+    releaseTitle: release.title || "",
+    platformFeePercent: String(platformFeePercent),
+  };
+  const productData = {
+    name: productName,
+    description:
+      checkoutType === "support"
+        ? `Fan support for ${artistLabel} on MusicBusiness Arena.`
+        : `Paid music download on MusicBusiness Arena.`,
+  };
+  const imageUrl = checkoutImageUrl(origin, release.cover);
+  if (imageUrl) productData.images = [imageUrl];
+
+  const sessionParams = {
+    mode: "payment",
+    payment_method_types: ["card"],
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency,
+          unit_amount: unitAmount,
+          product_data: productData,
+        },
+      },
+    ],
+    metadata,
+    payment_intent_data: { metadata },
+    success_url: `${origin}/listen?release=${encodeURIComponent(release.id)}&checkout=success&type=${checkoutType}#download`,
+    cancel_url: `${origin}/listen?release=${encodeURIComponent(release.id)}&checkout=cancelled#download`,
+  };
+
+  if (connectedAccountId && checkoutType === "download") {
+    sessionParams.payment_intent_data.application_fee_amount = Math.round(unitAmount * (platformFeePercent / 100));
+    sessionParams.payment_intent_data.transfer_data = { destination: connectedAccountId };
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionParams);
+  sendJson(response, 200, { url: session.url });
+}
+
 function isPathInsideRoot(filePath) {
   const relative = path.relative(ROOT, filePath);
   return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
@@ -524,6 +674,11 @@ async function handleRequest(request, response) {
       const store = await normalizeUploads(JSON.parse(body));
       await writeStore(store);
       sendJson(response, 200, store);
+      return;
+    }
+
+    if (url.pathname === "/api/create-checkout-session" && request.method === "POST") {
+      await createCheckoutSession(request, response);
       return;
     }
 

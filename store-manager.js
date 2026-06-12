@@ -90,7 +90,7 @@ function fillSiteForm() {
   siteForm.intro.value = site.intro || "";
   siteForm.primaryCta.value = site.primaryCta || "";
   siteForm.secondaryCta.value = site.secondaryCta || "";
-  siteForm.commissionRate.value = site.commissionRate ?? 15;
+  siteForm.commissionRate.value = site.commissionRate ?? 10;
 }
 
 function releaseCard(release) {
@@ -239,7 +239,7 @@ siteForm.addEventListener("submit", async (event) => {
     intro: siteForm.intro.value.trim(),
     primaryCta: siteForm.primaryCta.value.trim(),
     secondaryCta: siteForm.secondaryCta.value.trim(),
-    commissionRate: Number(siteForm.commissionRate.value || 15),
+    commissionRate: Number(siteForm.commissionRate.value || 10),
   };
   if (logo) currentStore.site.logo = logo;
 
