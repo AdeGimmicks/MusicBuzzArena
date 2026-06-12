@@ -26,7 +26,7 @@ const MONGODB_URI = process.env.MONGODB_URI || "";
 const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || "musicbusinessarena";
 const MONGODB_COLLECTION = process.env.MONGODB_COLLECTION || "siteStore";
 const STORE_DOCUMENT_ID = "musicbusiness-arena";
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env["Stripe Secret key"] || "";
+const STRIPE_SECRET_KEY = String(process.env.STRIPE_SECRET_KEY || process.env["Stripe Secret key"] || "").trim();
 const STRIPE_DEFAULT_CURRENCY = (process.env.STRIPE_DEFAULT_CURRENCY || "usd").toLowerCase();
 const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
 
@@ -34,6 +34,7 @@ let mongoClient;
 let storeCollection;
 let cachedStore = null;
 const stripe = STRIPE_SECRET_KEY && Stripe ? Stripe(STRIPE_SECRET_KEY) : null;
+const hasValidStripeSecretKey = /^sk_(test|live)_/.test(STRIPE_SECRET_KEY);
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -482,6 +483,13 @@ async function createCheckoutSession(request, response) {
   if (!stripe) {
     sendJson(response, 503, {
       error: "Stripe is not configured. Add STRIPE_SECRET_KEY in Render environment variables.",
+    });
+    return;
+  }
+
+  if (!hasValidStripeSecretKey) {
+    sendJson(response, 503, {
+      error: "Render STRIPE_SECRET_KEY must be the Stripe secret key that starts with sk_live_ or sk_test_. Do not use a publishable, restricted, mobile, or webhook key.",
     });
     return;
   }
