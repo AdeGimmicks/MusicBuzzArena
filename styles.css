@@ -1657,6 +1657,8 @@ select:focus {
 .link-hub-page {
   min-height: calc(100vh - 150px);
   overflow: hidden;
+  padding-left: clamp(16px, 4vw, 44px);
+  padding-right: clamp(16px, 4vw, 44px);
   padding-top: clamp(24px, 4vw, 44px);
   position: relative;
 }
@@ -1682,8 +1684,8 @@ select:focus {
   display: grid;
   justify-items: center;
   margin: 0 auto;
-  max-width: 520px;
-  padding: clamp(18px, 3vw, 28px);
+  max-width: 640px;
+  padding: clamp(22px, 3.4vw, 34px);
   position: relative;
   z-index: 1;
 }
@@ -1724,9 +1726,9 @@ select:focus {
 
 .link-profile-head {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   justify-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
   text-align: center;
 }
 
@@ -1735,14 +1737,14 @@ select:focus {
   border: 2px solid rgba(17, 20, 27, 0.08);
   border-radius: 999px;
   box-shadow: 0 12px 28px rgba(17, 20, 27, 0.16);
-  height: 82px;
+  height: 94px;
   object-fit: cover;
-  width: 82px;
+  width: 94px;
 }
 
 .link-profile-head h1 {
   color: #11141b;
-  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-size: clamp(1.55rem, 3.2vw, 2rem);
   margin: 0;
 }
 
@@ -1954,7 +1956,7 @@ select:focus {
   border: 1px solid rgba(17, 20, 27, 0.08);
   border-radius: 8px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -1965,28 +1967,28 @@ select:focus {
   border-radius: 8px;
   color: #11141b;
   display: flex;
-  gap: 16px;
+  gap: 18px;
   justify-content: space-between;
-  min-height: 58px;
-  padding: 10px 12px;
+  min-height: 76px;
+  padding: 13px 16px;
 }
 
 .service-brand {
   align-items: center;
   display: flex;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
 }
 
 .service-brand img {
-  border-radius: 7px;
-  height: 38px;
+  border-radius: 8px;
+  height: 52px;
   object-fit: contain;
-  width: 38px;
+  width: 52px;
 }
 
 .service-brand strong {
-  font-size: 0.95rem;
+  font-size: clamp(1.05rem, 2.2vw, 1.2rem);
 }
 
 .service-brand em {
@@ -2001,9 +2003,11 @@ select:focus {
   border-radius: 6px;
   color: #11141b;
   flex: 0 0 auto;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 900;
-  padding: 10px 12px;
+  min-width: 86px;
+  padding: 13px 16px;
+  text-align: center;
 }
 
 .service-row:hover .service-action {
@@ -2685,6 +2689,69 @@ select:focus {
 }
 
 @media (max-width: 560px) {
+  .link-hub-page {
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 18px;
+  }
+
+  .link-hub-card {
+    max-width: none;
+    padding: 20px 14px;
+    width: 100%;
+  }
+
+  .link-profile-actions {
+    margin-bottom: 26px;
+  }
+
+  .link-profile-head {
+    margin-bottom: 28px;
+  }
+
+  .link-artist-photo {
+    height: 108px;
+    width: 108px;
+  }
+
+  .link-socials {
+    gap: 16px;
+  }
+
+  .link-socials a {
+    height: 34px;
+    width: 34px;
+  }
+
+  .link-socials img {
+    max-height: 30px;
+    max-width: 30px;
+  }
+
+  .service-list {
+    border: 0;
+    gap: 14px;
+  }
+
+  .service-row {
+    min-height: 82px;
+    padding: 14px;
+  }
+
+  .service-brand img {
+    height: 56px;
+    width: 56px;
+  }
+
+  .service-brand strong {
+    font-size: 1.08rem;
+  }
+
+  .service-action {
+    min-width: 82px;
+    padding: 13px 12px;
+  }
+
   .creator-upload-layout {
     padding: 12px;
   }
