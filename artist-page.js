@@ -262,7 +262,7 @@ function linkHubPage(release, artist) {
       <div class="link-cover-wrap">
         <img src="${releaseCoverSrc}" alt="${release.title} cover">
         ${
-          release.audioUrl
+          pageMode !== "listen" && release.audioUrl
             ? `<div class="cover-player" aria-label="Song preview player">
                 <div class="cover-progress"><span></span></div>
                 <div class="cover-meta">
