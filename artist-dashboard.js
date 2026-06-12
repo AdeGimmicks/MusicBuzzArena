@@ -31,6 +31,9 @@ const videoPreviewMainTitle = document.querySelector("#videoPreviewMainTitle");
 const artistAccountSelect = document.querySelector("#artistAccountSelect");
 const createArtistProfile = document.querySelector("#createArtistProfile");
 const artistAccountMessage = document.querySelector("#artistAccountMessage");
+const uploadStatusTitle = document.querySelector("#uploadStatusTitle");
+const uploadStatusText = document.querySelector("#uploadStatusText");
+const clearReleaseButton = document.querySelector("[data-clear-release]");
 
 let currentStore = window.MBA.defaults();
 let activeArtistId = localStorage.getItem("mba-active-artist-id") || "";
@@ -187,18 +190,20 @@ function clearReleaseForm() {
   songBioCount.textContent = "0";
   renderLinkInputs(streamingFields, STREAMING_LINKS);
   updateHomePreview();
+  updateUploadStatus();
 }
 
 function updateHomePreview(coverSrc = "") {
   const artist = primaryArtist();
   const releaseType = releaseForm.releaseType.value || "Single";
   const genre = releaseForm.genre.value || "Music";
-  homePreviewMeta.textContent = `${releaseType} | ${genre}`;
-  homePreviewSong.textContent = releaseForm.title.value.trim() || "Song title";
-  homePreviewArtist.textContent = releaseForm.artistName.value.trim() || artist.name || "Artist name";
+  if (homePreviewMeta) homePreviewMeta.textContent = `${releaseType} | ${genre}`;
+  if (homePreviewSong) homePreviewSong.textContent = releaseForm.title.value.trim() || "Song title";
+  if (homePreviewArtist) homePreviewArtist.textContent = releaseForm.artistName.value.trim() || artist.name || "Artist name";
   if (coverSrc) homePreviewCover.src = coverSrc;
   if (!releaseForm.cover.files.length && !coverSrc) homePreviewCover.src = "Mba Logos/MusicBusiness Logo.png";
   updateMusicPreview(coverSrc);
+  updateUploadStatus();
 }
 
 function formatReleaseDate(value) {
@@ -240,6 +245,14 @@ function updateMusicPreview(coverSrc = "") {
     : `<span>#Location</span><span>#Genre</span><span>#SecondGenre</span><span>#Mood</span><span>#Mood</span>`;
   if (coverSrc) musicPreviewCover.src = coverSrc;
   if (!releaseForm.cover.files.length && !coverSrc && !releaseForm.editingId.value) musicPreviewCover.src = "Mba Logos/MusicBusiness Logo.png";
+}
+
+function updateUploadStatus() {
+  if (!uploadStatusTitle || !uploadStatusText) return;
+  const title = releaseForm.title.value.trim();
+  const editing = Boolean(releaseForm.editingId.value);
+  uploadStatusTitle.textContent = title || (editing ? "Editing artist song" : "New artist song");
+  uploadStatusText.textContent = editing ? "Edit mode" : title ? "Draft in progress" : "Ready to upload";
 }
 
 function socialIconFor(key, fallbackIcon) {
@@ -322,6 +335,7 @@ function fillReleaseForm(release) {
   renderLinkInputs(streamingFields, STREAMING_LINKS, release.streaming || {});
   updateHomePreview(release.cover || "");
   renderDashboardReleases();
+  updateUploadStatus();
   message(releaseMessage, "Editing artist song. Save when your changes are ready.", "pending");
   releaseForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -460,6 +474,11 @@ releaseForm.songBio.addEventListener("input", () => {
 releaseForm.cover.addEventListener("change", async () => {
   const cover = await fileToDataUrl(releaseForm.cover.files[0]);
   updateHomePreview(cover);
+});
+
+clearReleaseButton?.addEventListener("click", () => {
+  clearReleaseForm();
+  message(releaseMessage, "Ready for a new song upload.", "pending");
 });
 
 function updateVideoPreview() {

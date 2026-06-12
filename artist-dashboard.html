@@ -19,313 +19,253 @@
       </nav>
     </header>
 
-    <main class="dashboard-layout">
-      <section class="dashboard-intro">
-        <p class="eyebrow">Upload</p>
-        <h1>Edit the public website from one place.</h1>
-        <p>This page is the editable twin of Home, Music, Listen, Download, Support, and Video.</p>
+    <main class="creator-upload-layout">
+      <aside class="creator-sidebar" aria-label="Upload sections">
+        <p class="eyebrow">Creator upload</p>
+        <h1>Upload center</h1>
+        <nav>
+          <a href="#songUpload">Song</a>
+          <a href="#artistProfile">Profile</a>
+          <a href="#artistVideos">Videos</a>
+          <a href="#uploadedSongs">Library</a>
+        </nav>
         <div class="dashboard-page-links" aria-label="Public page shortcuts">
           <a href="/home" target="_blank" rel="noreferrer">View Home</a>
           <a href="/music" target="_blank" rel="noreferrer">View Music</a>
           <a href="/video" target="_blank" rel="noreferrer">View Video</a>
         </div>
-      </section>
+      </aside>
 
-      <section class="panel artist-account-panel">
-        <div class="section-heading">
-          <p class="eyebrow">Artist account</p>
-          <h2>Choose artist profile</h2>
-          <p>Select the artist you want to edit, or create a new artist profile before uploading songs, videos, download settings, and support settings.</p>
-        </div>
-        <div class="form-row dashboard-feature-picker">
-          <label>
-            Active artist
-            <select id="artistAccountSelect"></select>
-          </label>
-          <button class="primary-button" id="createArtistProfile" type="button">Create New Artist</button>
-        </div>
-        <p class="form-message" id="artistAccountMessage" role="status"></p>
-      </section>
-
-      <section class="panel dashboard-twin-panel">
-        <div class="section-heading">
-          <p class="eyebrow">Home</p>
-          <h2>Home artist banner</h2>
-          <p>Edit the artist name, biography, profile picture, and social icons that show in the Home page banner. The Watch Artist Videos button stays fixed and always opens the Video page.</p>
-        </div>
-        <section class="dashboard-artist-preview" aria-labelledby="artistPreviewTitle">
-          <div class="dashboard-preview-visual">
-            <img id="artistPreviewPhoto" src="Mba Logos/MusicBusiness Logo.png" alt="" />
+      <section class="creator-workspace">
+        <section class="creator-card artist-account-card">
+          <div>
+            <p class="eyebrow">Artist account</p>
+            <h2>Choose artist profile</h2>
           </div>
-          <div class="dashboard-preview-copy">
-            <p class="eyebrow">Featured artist</p>
-            <h3 id="artistPreviewTitle">Artist name</h3>
-            <p id="artistPreviewBio">Artist biography preview will appear here.</p>
-            <div class="home-socials icon-links" id="artistPreviewSocials" aria-label="Artist social links preview"></div>
-            <span class="primary-button dashboard-static-button">Watch Artist Videos</span>
+          <div class="artist-account-controls">
+            <label>
+              Active artist
+              <select id="artistAccountSelect"></select>
+            </label>
+            <button class="secondary-button" id="createArtistProfile" type="button">Create New Artist</button>
           </div>
+          <p class="form-message" id="artistAccountMessage" role="status"></p>
         </section>
-        <form id="artistForm" class="form-grid dashboard-edit-form">
-          <div class="form-row">
-            <label>
-              Artist name
-              <input name="name" type="text" required />
-            </label>
-            <label>
-              Artist handle
-              <input name="handle" type="text" placeholder="@focuzman" required />
-            </label>
-          </div>
-          <label>
-            Artist biography
-            <textarea name="bio" maxlength="420" rows="4" placeholder="Short artist biography for the public Home banner." required></textarea>
-            <span class="field-note"><span id="artistBioCount">0</span>/420 characters</span>
-          </label>
-          <div class="form-row">
-            <label>
-              Artist profile picture
-              <input name="photo" type="file" accept="image/*" />
-            </label>
-            <label>
-              Optional artist cover banner
-              <input name="banner" type="file" accept="image/*" />
-            </label>
-          </div>
-          <div class="link-fields" id="socialFields"></div>
-          <button class="primary-button" type="submit">Save Home Artist Banner</button>
-          <p class="form-message" id="artistMessage" role="status"></p>
-        </form>
-      </section>
 
-      <section class="panel">
-        <div class="section-heading">
-          <p class="eyebrow">Home</p>
-          <h2>Artist Songs</h2>
-          <p>Each saved song appears on the Home artist songs section. The public card uses this same cover, title, artist name, genre, and Listen button.</p>
-        </div>
-        <form id="releaseForm" class="form-grid">
-          <input name="editingId" type="hidden" />
-          <div class="form-row">
-            <label>
-              Song or album title
-              <input name="title" type="text" required />
-            </label>
-            <label>
-              Artist name on release
-              <input name="artistName" type="text" required />
-            </label>
-          </div>
-          <div class="form-row">
-            <label>
-              Release type
-              <select name="releaseType">
-                <option>Single</option>
-                <option>Album</option>
-                <option>EP</option>
-              </select>
-            </label>
-            <label>
-              Main genre
-              <select name="genre" required>
-                <option value="">Choose main genre</option>
-                <option>Afrobeats</option>
-                <option>Hip-Hop/Rap</option>
-                <option>Gospel</option>
-                <option>R&B</option>
-                <option>Pop</option>
-                <option>Dancehall</option>
-                <option>Reggae</option>
-                <option>Amapiano</option>
-                <option>Soul</option>
-                <option>Country</option>
-                <option>Jazz/Blues</option>
-                <option>Electronic</option>
-                <option>Rock</option>
-                <option>Instrumental</option>
-              </select>
-            </label>
-          </div>
-          <div class="form-row">
-            <label>
-              Second genre
-              <select name="secondaryGenre" required>
-                <option value="">Choose second genre</option>
-                <option>Afropop</option>
-                <option>Afro-Fusion</option>
-                <option>Afrosounds</option>
-                <option>Afrobeats</option>
-                <option>Hip-Hop/Rap</option>
-                <option>Gospel</option>
-                <option>R&B</option>
-                <option>Pop</option>
-                <option>Dancehall</option>
-                <option>Reggae</option>
-                <option>Amapiano</option>
-                <option>Soul</option>
-                <option>Country</option>
-                <option>Jazz/Blues</option>
-                <option>Electronic</option>
-                <option>Rock</option>
-                <option>Instrumental</option>
-              </select>
-            </label>
-            <label>
-              Mood 1
-              <select name="moodPrimary" required>
-                <option value="">Choose mood</option>
-                <option>Motivation</option>
-                <option>Happy</option>
-                <option>Inspirational</option>
-                <option>Focus</option>
-                <option>Faith</option>
-                <option>Love</option>
-                <option>Gratitude</option>
-                <option>Celebration</option>
-                <option>Hope</option>
-                <option>Reflection</option>
-                <option>Energy</option>
-                <option>Dance</option>
-                <option>Chill</option>
-              </select>
-            </label>
-          </div>
-          <div class="form-row">
-            <label>
-              Mood 2
-              <select name="moodSecondary" required>
-                <option value="">Choose second mood</option>
-                <option>Happy</option>
-                <option>Motivation</option>
-                <option>Inspirational</option>
-                <option>Focus</option>
-                <option>Faith</option>
-                <option>Love</option>
-                <option>Gratitude</option>
-                <option>Celebration</option>
-                <option>Hope</option>
-                <option>Reflection</option>
-                <option>Energy</option>
-                <option>Dance</option>
-                <option>Chill</option>
-              </select>
-            </label>
-            <label>
-              Country
-              <select name="country" required>
-                <option value="">Choose country</option>
-                <option>United States</option>
-                <option>Nigeria</option>
-                <option>United Kingdom</option>
-                <option>Canada</option>
-                <option>Ghana</option>
-                <option>South Africa</option>
-                <option>Kenya</option>
-                <option>Jamaica</option>
-                <option>France</option>
-                <option>Germany</option>
-                <option>Other</option>
-              </select>
-            </label>
-          </div>
-          <label>
-            Song biography
-            <textarea name="songBio" maxlength="280" rows="4" placeholder="Short meaning or story behind the song." required></textarea>
-            <span class="field-note"><span id="songBioCount">0</span>/280 characters</span>
-          </label>
-          <div class="form-row">
-            <label>
-              Release date
-              <input name="releaseDate" type="date" required />
-            </label>
-            <label>
-              Producer
-              <input name="producer" type="text" placeholder="Producer name" />
-            </label>
-          </div>
-          <div class="form-row">
-            <label>
-              Cover artwork
-              <input name="cover" type="file" accept="image/*" required />
-            </label>
-            <label>
-              Audio file
-              <input name="audio" type="file" accept="audio/*" required />
-            </label>
-          </div>
-          <section class="dashboard-home-preview" aria-labelledby="homePreviewTitle">
+        <section class="creator-card upload-song-card" id="songUpload">
+          <div class="upload-status-bar">
             <div>
-              <p class="eyebrow">Home twin</p>
-              <h3 id="homePreviewTitle">Artist Songs preview</h3>
-              <p>This is the same style people see on the Home page.</p>
+              <strong id="uploadStatusTitle">New artist song</strong>
+              <span id="uploadStatusText">Ready to upload</span>
             </div>
-            <article class="release-card dashboard-release-preview">
-              <div class="release-cover-frame">
-                <img id="homePreviewCover" class="release-cover" src="Mba Logos/MusicBusiness Logo.png" alt="" />
-              </div>
-              <div class="release-body">
-                <p id="homePreviewMeta" class="release-meta">Single | Music</p>
-                <h3 id="homePreviewSong">Song title</h3>
-                <span id="homePreviewArtist">Artist name</span>
-                <div class="mini-actions">
-                  <span class="listen-action">Listen</span>
+            <button class="secondary-button" type="button" data-clear-release>New Song</button>
+          </div>
+          <ol class="upload-steps" aria-label="Song upload steps">
+            <li class="is-active"><span>1</span> Basic Info</li>
+            <li><span>2</span> Metadata</li>
+            <li><span>3</span> Release</li>
+          </ol>
+
+          <form id="releaseForm" class="creator-form">
+          <input name="editingId" type="hidden" />
+            <div class="creator-form-grid">
+              <section class="artwork-uploader">
+                <img id="homePreviewCover" src="Mba Logos/MusicBusiness Logo.png" alt="" />
+                <label class="artwork-button">
+                  Add Artwork
+                  <input name="cover" type="file" accept="image/*" required />
+                </label>
+                <label class="audio-picker">
+                  Audio file
+                  <input name="audio" type="file" accept="audio/*" required />
+                </label>
+              </section>
+
+              <section class="creator-fields">
+                <div class="form-row">
+                  <label>
+                    Artist
+                    <input name="artistName" type="text" required />
+                  </label>
+                  <label>
+                    Song title
+                    <input name="title" type="text" required />
+                  </label>
                 </div>
+                <div class="form-row">
+                  <label>
+                    Release type
+                    <select name="releaseType">
+                      <option>Single</option>
+                      <option>Album</option>
+                      <option>EP</option>
+                    </select>
+                  </label>
+                  <label>
+                    Release date
+                    <input name="releaseDate" type="date" required />
+                  </label>
+                </div>
+                <div class="form-row">
+                  <label>
+                    Main genre
+                    <select name="genre" required>
+                      <option value="">Choose main genre</option>
+                      <option>Afrobeats</option>
+                      <option>Hip-Hop/Rap</option>
+                      <option>Gospel</option>
+                      <option>R&B</option>
+                      <option>Pop</option>
+                      <option>Dancehall</option>
+                      <option>Reggae</option>
+                      <option>Amapiano</option>
+                      <option>Soul</option>
+                      <option>Country</option>
+                      <option>Jazz/Blues</option>
+                      <option>Electronic</option>
+                      <option>Rock</option>
+                      <option>Instrumental</option>
+                    </select>
+                  </label>
+                  <label>
+                    Second genre
+                    <select name="secondaryGenre" required>
+                      <option value="">Choose second genre</option>
+                      <option>Afropop</option>
+                      <option>Afro-Fusion</option>
+                      <option>Afrosounds</option>
+                      <option>Afrobeats</option>
+                      <option>Hip-Hop/Rap</option>
+                      <option>Gospel</option>
+                      <option>R&B</option>
+                      <option>Pop</option>
+                      <option>Dancehall</option>
+                      <option>Reggae</option>
+                      <option>Amapiano</option>
+                      <option>Soul</option>
+                      <option>Country</option>
+                      <option>Jazz/Blues</option>
+                      <option>Electronic</option>
+                      <option>Rock</option>
+                      <option>Instrumental</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="form-row">
+                  <label>
+                    Mood 1
+                    <select name="moodPrimary" required>
+                      <option value="">Choose mood</option>
+                      <option>Motivation</option>
+                      <option>Happy</option>
+                      <option>Inspirational</option>
+                      <option>Focus</option>
+                      <option>Faith</option>
+                      <option>Love</option>
+                      <option>Gratitude</option>
+                      <option>Celebration</option>
+                      <option>Hope</option>
+                      <option>Reflection</option>
+                      <option>Energy</option>
+                      <option>Dance</option>
+                      <option>Chill</option>
+                    </select>
+                  </label>
+                  <label>
+                    Mood 2
+                    <select name="moodSecondary" required>
+                      <option value="">Choose second mood</option>
+                      <option>Happy</option>
+                      <option>Motivation</option>
+                      <option>Inspirational</option>
+                      <option>Focus</option>
+                      <option>Faith</option>
+                      <option>Love</option>
+                      <option>Gratitude</option>
+                      <option>Celebration</option>
+                      <option>Hope</option>
+                      <option>Reflection</option>
+                      <option>Energy</option>
+                      <option>Dance</option>
+                      <option>Chill</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="form-row">
+                  <label>
+                    City / state
+                    <input name="cityState" type="text" placeholder="Chicago, Illinois" required />
+                  </label>
+                  <label>
+                    Country
+                    <select name="country" required>
+                      <option value="">Choose country</option>
+                      <option>United States</option>
+                      <option>Nigeria</option>
+                      <option>United Kingdom</option>
+                      <option>Canada</option>
+                      <option>Ghana</option>
+                      <option>South Africa</option>
+                      <option>Kenya</option>
+                      <option>Jamaica</option>
+                      <option>France</option>
+                      <option>Germany</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  Song biography
+                  <textarea name="songBio" maxlength="280" rows="4" placeholder="Short meaning or story behind the song." required></textarea>
+                  <span class="field-note"><span id="songBioCount">0</span>/280 characters</span>
+                </label>
+                <details class="compact-details">
+                  <summary>Streaming, download, support, and producer</summary>
+                  <div class="form-row">
+                    <label>
+                      Producer
+                      <input name="producer" type="text" placeholder="Producer name" />
+                    </label>
+                    <label>
+                      Download price
+                      <input name="price" type="number" min="0" step="0.01" value="0.99" />
+                    </label>
+                  </div>
+                  <div class="form-row">
+                    <label>
+                      Donation amount
+                      <input name="donationAmount" type="number" min="0" step="0.01" placeholder="Any amount if blank" />
+                    </label>
+                    <label>
+                      Donation link
+                      <input name="donationLink" type="text" placeholder="https://... or your donation page" />
+                    </label>
+                  </div>
+                  <div class="link-fields compact-link-fields" id="streamingFields"></div>
+                </details>
+              </section>
+            </div>
+            <div class="upload-form-footer">
+              <div>
+                <p id="homePreviewMeta">Single | Music</p>
+                <strong id="homePreviewSong">Song title</strong>
+                <span id="homePreviewArtist">Artist name</span>
               </div>
-            </article>
-          </section>
-          <div class="form-row">
-            <label>
-              Download price
-              <input name="price" type="number" min="0" step="0.01" value="0.99" />
-            </label>
-            <label>
-              Donation amount
-              <input name="donationAmount" type="number" min="0" step="0.01" placeholder="Any amount if blank" />
-            </label>
-          </div>
-          <div class="form-row">
-            <label>
-              Donation link
-              <input name="donationLink" type="text" placeholder="https://... or your donation page" />
-            </label>
-            <label>
-              City / state
-              <input name="cityState" type="text" placeholder="Chicago, Illinois" required />
-            </label>
-          </div>
-          <div class="link-fields" id="streamingFields"></div>
-          <button class="primary-button" type="submit">Save Artist Song</button>
-          <p class="form-message" id="releaseMessage" role="status"></p>
+              <button class="primary-button" type="submit">Save Artist Song</button>
+            </div>
+            <p class="form-message" id="releaseMessage" role="status"></p>
         </form>
         <section class="dashboard-upload-list" aria-labelledby="musicLandingTitle">
-          <div class="section-heading compact-heading">
-            <p class="eyebrow">Music</p>
+          <div class="compact-heading inline-heading">
             <h3 id="musicLandingTitle">Music landing song</h3>
-            <p>Select the one song that should appear as the large Music page landing card. Listen, Download, and Support will use that song.</p>
           </div>
-          <section class="dashboard-music-preview artist-track-section music-showcase" aria-label="Music page twin preview">
-            <div class="artist-track-list">
-              <article class="artist-track-row">
-                <div class="track-star-frame">
-                  <img id="musicPreviewCover" class="track-cover" src="Mba Logos/MusicBusiness Logo.png" alt="" />
-                </div>
-                <div class="track-copy">
-                  <p id="musicPreviewArtist">Artist name</p>
-                  <h3 id="musicPreviewTitle">Song title</h3>
-                  <span id="musicPreviewDate">Release Date: choose a date by Artist name</span>
-                  <div class="track-tags" id="musicPreviewTags">
-                    <span>#Location</span>
-                    <span>#Genre</span>
-                    <span>#SecondGenre</span>
-                    <span>#Mood</span>
-                    <span>#Mood</span>
-                  </div>
-                </div>
-                <div class="track-actions" aria-label="Music action preview">
-                  <span class="track-action track-action-listen">Listen</span>
-                  <span class="track-action track-action-download">Download</span>
-                  <span class="track-action track-action-support">Support</span>
-                </div>
-              </article>
+          <section class="mini-landing-preview" aria-label="Selected Music page song">
+            <img id="musicPreviewCover" src="Mba Logos/MusicBusiness Logo.png" alt="" />
+            <div>
+              <p id="musicPreviewArtist">Artist name</p>
+              <strong id="musicPreviewTitle">Song title</strong>
+              <span id="musicPreviewDate">Release Date: choose a date by Artist name</span>
+              <div class="track-tags" id="musicPreviewTags"></div>
             </div>
           </section>
           <div class="form-row dashboard-feature-picker">
@@ -339,7 +279,7 @@
           </div>
           <p class="form-message" id="featuredReleaseMessage" role="status"></p>
         </section>
-        <section class="dashboard-upload-list" aria-labelledby="myLatestTitle">
+        <section class="dashboard-upload-list" id="uploadedSongs" aria-labelledby="myLatestTitle">
           <div class="section-heading compact-heading">
             <p class="eyebrow">Artist Songs</p>
             <h3 id="myLatestTitle">My uploaded songs</h3>
@@ -349,74 +289,96 @@
         </section>
       </section>
 
-      <section class="panel">
-        <div class="section-heading">
-          <p class="eyebrow">Video Page</p>
-          <h2>Artist videos</h2>
-          <p>These links control the large music video section, shorts section, and the links for watching more artist videos.</p>
-        </div>
-        <section class="dashboard-video-preview video-page" aria-label="Video page twin preview">
-          <section class="video-grid">
-            <article class="video-card">
-              <div class="video-embed">
-                <iframe id="videoPreviewMainFrame" title="Main artist video preview" allowfullscreen></iframe>
-              </div>
-              <div class="video-copy">
-                <p class="eyebrow">YouTube</p>
-                <h2 id="videoPreviewMainTitle">Artist Video</h2>
-                <span class="video-more-link">Watch more videos from artist</span>
-              </div>
-            </article>
-          </section>
-          <section class="short-video-grid">
-            <article class="short-video-card">
-              <div class="short-video-embed">
-                <iframe id="videoPreviewShortFrame" title="YouTube short preview" allowfullscreen></iframe>
-              </div>
+        <details class="creator-card settings-card" id="artistProfile">
+          <summary>
+            <span>
+              <small>Profile</small>
+              Home banner and social links
+            </span>
+          </summary>
+          <form id="artistForm" class="creator-form compact-settings-form">
+            <section class="small-profile-preview">
+              <img id="artistPreviewPhoto" src="Mba Logos/MusicBusiness Logo.png" alt="" />
               <div>
-                <strong>YouTube Shorts</strong>
-                <span>Watch this short on the website.</span>
-                <span class="video-more-link">Watch more shorts from artist</span>
+                <strong id="artistPreviewTitle">Artist name</strong>
+                <p id="artistPreviewBio">Artist biography preview will appear here.</p>
+                <div class="home-socials icon-links" id="artistPreviewSocials" aria-label="Artist social links preview"></div>
               </div>
-            </article>
-          </section>
-        </section>
-        <form id="videoForm" class="form-grid">
-          <div class="form-row">
+            </section>
+            <div class="form-row">
+              <label>
+                Artist name
+                <input name="name" type="text" required />
+              </label>
+              <label>
+                Artist handle
+                <input name="handle" type="text" placeholder="@focuzman" required />
+              </label>
+            </div>
             <label>
-              Main YouTube video link
-              <input name="mainVideoUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." />
+              Artist biography
+              <textarea name="bio" maxlength="420" rows="4" placeholder="Short artist biography for the public Home banner." required></textarea>
+              <span class="field-note"><span id="artistBioCount">0</span>/420 characters</span>
             </label>
-            <label>
-              Main video title
-              <input name="mainVideoTitle" type="text" placeholder="Focuzman Video" />
-            </label>
-          </div>
-          <div class="form-row">
-            <label>
-              YouTube Short link
-              <input name="shortVideoUrl" type="text" placeholder="https://youtube.com/shorts/..." />
-            </label>
-            <label>
-              TikTok short link
-              <input name="tiktokUrl" type="text" placeholder="https://www.tiktok.com/..." />
-            </label>
-          </div>
-          <div class="form-row">
-            <label>
-              More videos link
-              <input name="moreVideosUrl" type="text" placeholder="https://www.youtube.com/@artist/videos" />
-            </label>
-            <label>
-              More shorts link
-              <input name="moreShortsUrl" type="text" placeholder="https://www.youtube.com/@artist/shorts" />
-            </label>
-          </div>
-          <button class="primary-button" type="submit">Save Video Page</button>
-          <p class="form-message" id="videoMessage" role="status"></p>
-        </form>
-      </section>
+            <div class="form-row">
+              <label>
+                Artist profile picture
+                <input name="photo" type="file" accept="image/*" />
+              </label>
+              <label>
+                Optional artist cover banner
+                <input name="banner" type="file" accept="image/*" />
+              </label>
+            </div>
+            <div class="link-fields compact-link-fields" id="socialFields"></div>
+            <button class="primary-button" type="submit">Save Artist Profile</button>
+            <p class="form-message" id="artistMessage" role="status"></p>
+          </form>
+        </details>
 
+        <details class="creator-card settings-card" id="artistVideos">
+          <summary>
+            <span>
+              <small>Videos</small>
+              YouTube, Shorts, TikTok
+            </span>
+          </summary>
+          <form id="videoForm" class="creator-form compact-settings-form">
+            <div class="form-row">
+              <label>
+                Main YouTube video link
+                <input name="mainVideoUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." />
+              </label>
+              <label>
+                Main video title
+                <input name="mainVideoTitle" type="text" placeholder="Artist Video" />
+              </label>
+            </div>
+            <div class="form-row">
+              <label>
+                YouTube Short link
+                <input name="shortVideoUrl" type="text" placeholder="https://youtube.com/shorts/..." />
+              </label>
+              <label>
+                TikTok short link
+                <input name="tiktokUrl" type="text" placeholder="https://www.tiktok.com/..." />
+              </label>
+            </div>
+            <div class="form-row">
+              <label>
+                More videos link
+                <input name="moreVideosUrl" type="text" placeholder="https://www.youtube.com/@artist/videos" />
+              </label>
+              <label>
+                More shorts link
+                <input name="moreShortsUrl" type="text" placeholder="https://www.youtube.com/@artist/shorts" />
+              </label>
+            </div>
+            <button class="primary-button" type="submit">Save Video Page</button>
+            <p class="form-message" id="videoMessage" role="status"></p>
+          </form>
+        </details>
+      </section>
     </main>
 
     <script src="mba-storage.js"></script>

@@ -552,6 +552,368 @@ h3 {
   padding: clamp(20px, 4vw, 32px);
 }
 
+.creator-upload-layout {
+  display: grid;
+  gap: clamp(18px, 3vw, 30px);
+  grid-template-columns: minmax(190px, 250px) minmax(0, 1fr);
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: clamp(22px, 4vw, 40px);
+}
+
+.creator-sidebar {
+  align-self: start;
+  background: #11141b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 22px 60px rgba(17, 20, 27, 0.16);
+  color: var(--white);
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  position: sticky;
+  top: 18px;
+}
+
+.creator-sidebar h1 {
+  color: var(--white);
+  font-size: clamp(1.7rem, 3vw, 2.45rem);
+  line-height: 1;
+  margin: 0;
+}
+
+.creator-sidebar nav,
+.creator-sidebar .dashboard-page-links {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+}
+
+.creator-sidebar nav a,
+.creator-sidebar .dashboard-page-links a {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.9rem;
+  font-weight: 900;
+  padding: 11px 12px;
+}
+
+.creator-sidebar nav a:hover,
+.creator-sidebar .dashboard-page-links a:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #11141b;
+}
+
+.creator-workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.creator-card {
+  background: #1b1c20;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(17, 20, 27, 0.16);
+  color: var(--white);
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.creator-card h2,
+.creator-card h3,
+.creator-card strong {
+  color: var(--white);
+}
+
+.creator-card .eyebrow {
+  color: var(--gold);
+}
+
+.artist-account-card {
+  align-items: end;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+}
+
+.artist-account-controls {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.creator-card label,
+.creator-card .field-note,
+.creator-card .form-message {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.creator-card input,
+.creator-card textarea,
+.creator-card select {
+  background: #313238;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+}
+
+.creator-card input::placeholder,
+.creator-card textarea::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.upload-status-bar {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+}
+
+.upload-status-bar div {
+  display: grid;
+  gap: 3px;
+}
+
+.upload-status-bar span {
+  color: #77c66e;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.upload-steps {
+  counter-reset: none;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+}
+
+.upload-steps li {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.54);
+  display: flex;
+  font-weight: 900;
+  gap: 9px;
+}
+
+.upload-steps span {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.upload-steps .is-active {
+  color: var(--white);
+}
+
+.upload-steps .is-active span {
+  background: var(--gold);
+  color: #11141b;
+}
+
+.creator-form {
+  display: grid;
+  gap: 16px;
+}
+
+.creator-form-grid {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(190px, 260px) minmax(0, 1fr);
+}
+
+.artwork-uploader {
+  align-content: start;
+  display: grid;
+  gap: 12px;
+}
+
+.artwork-uploader img {
+  aspect-ratio: 1;
+  background: #10131a;
+  border: 1px solid rgba(244, 196, 48, 0.28);
+  border-radius: 8px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.artwork-button,
+.audio-picker {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 12px;
+}
+
+.artwork-button input,
+.audio-picker input {
+  margin-top: 8px;
+}
+
+.creator-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.compact-details {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 14px;
+}
+
+.compact-details summary,
+.settings-card summary {
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 1000;
+}
+
+.compact-details summary {
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+
+.compact-link-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.upload-form-footer {
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding-top: 18px;
+}
+
+.upload-form-footer div {
+  display: grid;
+  gap: 4px;
+}
+
+.upload-form-footer p,
+.upload-form-footer span {
+  color: rgba(255, 255, 255, 0.58);
+  font-weight: 900;
+  margin: 0;
+}
+
+.inline-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mini-landing-preview {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  padding: 12px;
+}
+
+.mini-landing-preview img,
+.small-profile-preview img {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.mini-landing-preview p,
+.mini-landing-preview span,
+.small-profile-preview p {
+  color: rgba(255, 255, 255, 0.62);
+  font-weight: 900;
+  margin: 0;
+}
+
+.mini-landing-preview .track-tags {
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+
+.settings-card {
+  padding: 0;
+}
+
+.settings-card summary {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  padding: 18px 22px;
+}
+
+.settings-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-card summary::after {
+  color: var(--gold);
+  content: "+";
+  font-size: 1.6rem;
+}
+
+.settings-card[open] summary::after {
+  content: "-";
+}
+
+.settings-card summary span {
+  display: grid;
+  gap: 3px;
+}
+
+.settings-card summary small {
+  color: var(--gold);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.compact-settings-form {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 22px 22px;
+}
+
+.small-profile-preview {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 92px minmax(0, 1fr);
+}
+
+.small-profile-preview .home-socials span {
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.small-profile-preview .home-socials img {
+  height: 16px;
+  width: 16px;
+}
+
 .form-grid {
   display: grid;
   gap: 16px;
@@ -2272,9 +2634,64 @@ select:focus {
     justify-self: center;
   }
 
+  .creator-upload-layout,
+  .artist-account-card,
+  .artist-account-controls,
+  .creator-form-grid,
+  .compact-link-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-upload-layout {
+    padding: 18px;
+  }
+
+  .creator-sidebar {
+    position: static;
+  }
+
+  .creator-sidebar nav,
+  .creator-sidebar .dashboard-page-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .upload-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-form-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 560px) {
+  .creator-upload-layout {
+    padding: 12px;
+  }
+
+  .creator-card {
+    padding: 16px;
+  }
+
+  .creator-sidebar nav,
+  .creator-sidebar .dashboard-page-links,
+  .mini-landing-preview,
+  .small-profile-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-status-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-card summary,
+  .compact-settings-form {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
   .short-video-card {
     grid-template-columns: 1fr;
   }
