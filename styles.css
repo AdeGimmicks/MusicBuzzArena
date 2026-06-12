@@ -1783,33 +1783,6 @@ select:focus {
   padding: 6px 12px;
 }
 
-.link-song-heading {
-  display: grid;
-  gap: 5px;
-  justify-items: center;
-  margin: 4px 0 16px;
-  text-align: center;
-}
-
-.link-song-heading .eyebrow {
-  color: rgba(17, 20, 27, 0.48);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  margin: 0;
-}
-
-.link-song-heading h2 {
-  color: #11141b;
-  font-size: clamp(1.25rem, 3.6vw, 1.8rem);
-  line-height: 1.1;
-  margin: 0;
-}
-
-.link-song-heading span {
-  color: rgba(17, 20, 27, 0.58);
-  font-weight: 900;
-}
-
 .featured-listing-card {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(17, 20, 27, 0.06);
@@ -2095,6 +2068,25 @@ select:focus {
 .payment-actions button + button {
   background: var(--gold);
   color: #11141b;
+}
+
+.support-inline-panel {
+  border-top: 1px solid rgba(17, 20, 27, 0.08);
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 18px;
+}
+
+.support-inline-panel h3 {
+  color: #11141b;
+  font-size: 1.15rem;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.support-inline-panel p {
+  margin: 0;
 }
 
 .support-amount {

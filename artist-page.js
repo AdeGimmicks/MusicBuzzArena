@@ -94,7 +94,7 @@ function trackRow(release, artist) {
     <div class="track-actions" aria-label="${release.title || "Song"} actions">
       <a class="track-action track-action-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
       <a class="track-action track-action-download" href="/listen?release=${encodeURIComponent(release.id)}#download">Download</a>
-      <a class="track-action track-action-support" href="/listen?release=${encodeURIComponent(release.id)}#support">Support</a>
+      <a class="track-action track-action-support" href="/listen?release=${encodeURIComponent(release.id)}#download">Support</a>
     </div>
   `;
   return row;
@@ -177,7 +177,7 @@ function releasePanel(release) {
 function linkHubPage(release, artist) {
   const wrap = document.createElement("article");
   wrap.className = "link-hub-card";
-  const pageMode = window.location.hash === "#download" ? "download" : window.location.hash === "#support" ? "support" : "listen";
+  const pageMode = window.location.hash === "#download" || window.location.hash === "#support" ? "download" : "listen";
   const artistLabel = artist?.name || release.artistName || "Independent Artist";
   const artistHandle = artist?.handle || `@${artistLabel.replace(/\s+/g, "").toLowerCase()}`;
   const releaseCoverSrc = release.cover || "Mba Logos/MusicBusiness Logo.png";
@@ -199,13 +199,14 @@ function linkHubPage(release, artist) {
   const platformRows = STREAMING_LINKS.map(([label, key, icon]) => {
     const href = release.streaming?.[key];
     if (!href) return "";
+    const actionLabel = key === "itunes" ? "Download" : "Play";
     return `
       <a class="service-row" href="${href}" target="_blank" rel="noreferrer">
         <span class="service-brand">
           <img src="${icon}" alt="">
           <strong>${label}</strong>
         </span>
-        <span class="service-action">Play</span>
+        <span class="service-action">${actionLabel}</span>
       </a>
     `;
   }).join("");
@@ -222,14 +223,10 @@ function linkHubPage(release, artist) {
             <button type="button" data-payment-placeholder data-payment-label="Pay with PayPal">Pay with PayPal</button>
           </div>
           <small>After payment is connected, this section will unlock the song file automatically.</small>
-        </section>
-      `
-      : pageMode === "support"
-        ? `
-          <section class="payment-panel" id="support" aria-label="Support ${artistLabel}">
+          <div class="support-inline-panel" id="support" aria-label="Support ${artistLabel}">
             <p class="eyebrow">Support</p>
-            <h2>Support ${artistLabel}</h2>
-            <p>Send any amount to support the artist directly.</p>
+            <h3>Support ${artistLabel}</h3>
+            <p>Fans can also support the artist with any amount before or after downloading.</p>
             <label class="support-amount">
               <span>Support amount</span>
               <input type="number" min="1" step="1" value="${donationAmount > 0 ? donationAmount : 5}" aria-label="Support amount">
@@ -238,10 +235,10 @@ function linkHubPage(release, artist) {
               <button type="button" data-payment-placeholder data-payment-label="Support with Stripe">Support with Stripe</button>
               <button type="button" data-payment-placeholder data-payment-label="Support with PayPal">Support with PayPal</button>
             </div>
-            <small>Artist payment links will be connected from Upload when payment setup is ready.</small>
-          </section>
-        `
-        : "";
+          </div>
+        </section>
+      `
+      : "";
 
   wrap.innerHTML = `
     <div class="link-profile-actions">
@@ -260,11 +257,7 @@ function linkHubPage(release, artist) {
     </section>
     ${
       pageMode === "listen"
-        ? `<section class="link-song-heading" aria-label="${release.title || "Song"} streaming links">
-            <p class="eyebrow">Choose a music service</p>
-            <h2>${release.title || "Untitled track"}</h2>
-            <span>Song · ${artistLabel}</span>
-          </section>`
+        ? ""
         : `<div class="featured-listing-card">
             <div class="link-cover-wrap">
               <img src="${releaseCoverSrc}" alt="${release.title} cover">
