@@ -1783,6 +1783,33 @@ select:focus {
   padding: 6px 12px;
 }
 
+.link-song-heading {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  margin: 4px 0 16px;
+  text-align: center;
+}
+
+.link-song-heading .eyebrow {
+  color: rgba(17, 20, 27, 0.48);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.link-song-heading h2 {
+  color: #11141b;
+  font-size: clamp(1.25rem, 3.6vw, 1.8rem);
+  line-height: 1.1;
+  margin: 0;
+}
+
+.link-song-heading span {
+  color: rgba(17, 20, 27, 0.58);
+  font-weight: 900;
+}
+
 .featured-listing-card {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(17, 20, 27, 0.06);

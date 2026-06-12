@@ -258,32 +258,40 @@ function linkHubPage(release, artist) {
       </div>
       <span class="link-followers">${Number(artist?.followers || artist?.follows || 0).toLocaleString()} followers</span>
     </section>
-    <div class="featured-listing-card">
-      <div class="link-cover-wrap">
-        <img src="${releaseCoverSrc}" alt="${release.title} cover">
-        ${
-          pageMode !== "listen" && release.audioUrl
-            ? `<div class="cover-player" aria-label="Song preview player">
-                <div class="cover-progress"><span></span></div>
-                <div class="cover-meta">
-                  <strong>${artistLabel}</strong>
-                  <span>${release.title || "Untitled track"}</span>
-                </div>
-                <span class="cover-time">0:00</span>
-                <div class="cover-controls">
-                  <button class="cover-skip-back" type="button" aria-label="Go back 10 seconds">|◀</button>
-                  <button class="link-play-preview" type="button" aria-label="Play preview">▶</button>
-                  <button class="cover-skip-forward" type="button" aria-label="Go forward 10 seconds">▶|</button>
-                </div>
-              </div>`
-            : ""
-        }
-      </div>
-      <div class="link-hub-title">
-        <h2>${release.title || "Untitled track"}</h2>
-        <span>Song · ${artistLabel}</span>
-      </div>
-    </div>
+    ${
+      pageMode === "listen"
+        ? `<section class="link-song-heading" aria-label="${release.title || "Song"} streaming links">
+            <p class="eyebrow">Choose a music service</p>
+            <h2>${release.title || "Untitled track"}</h2>
+            <span>Song · ${artistLabel}</span>
+          </section>`
+        : `<div class="featured-listing-card">
+            <div class="link-cover-wrap">
+              <img src="${releaseCoverSrc}" alt="${release.title} cover">
+              ${
+                release.audioUrl
+                  ? `<div class="cover-player" aria-label="Song preview player">
+                      <div class="cover-progress"><span></span></div>
+                      <div class="cover-meta">
+                        <strong>${artistLabel}</strong>
+                        <span>${release.title || "Untitled track"}</span>
+                      </div>
+                      <span class="cover-time">0:00</span>
+                      <div class="cover-controls">
+                        <button class="cover-skip-back" type="button" aria-label="Go back 10 seconds">|◀</button>
+                        <button class="link-play-preview" type="button" aria-label="Play preview">▶</button>
+                        <button class="cover-skip-forward" type="button" aria-label="Go forward 10 seconds">▶|</button>
+                      </div>
+                    </div>`
+                  : ""
+              }
+            </div>
+            <div class="link-hub-title">
+              <h2>${release.title || "Untitled track"}</h2>
+              <span>Song · ${artistLabel}</span>
+            </div>
+          </div>`
+    }
     ${paymentSection}
     ${
       pageMode === "listen"
