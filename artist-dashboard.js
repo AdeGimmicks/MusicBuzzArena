@@ -326,8 +326,6 @@ function fillReleaseForm(release) {
   releaseForm.releaseDate.value = release.releaseDate || "";
   releaseForm.producer.value = release.producer || "";
   releaseForm.price.value = release.price ?? "0.99";
-  releaseForm.donationAmount.value = release.donationAmount || "";
-  releaseForm.donationLink.value = release.donationLink || "";
   releaseForm.cityState.value = release.cityState || "";
   releaseForm.cover.required = false;
   releaseForm.audio.required = false;
@@ -454,7 +452,7 @@ artistForm.addEventListener("submit", async (event) => {
     renderArtistAccountPicker();
     fillArtistForm();
     renderDashboardReleases();
-    message(artistMessage, "Artist profile saved. Home, Music, Listen, Download, Support, and Video will use this artist workspace.");
+    message(artistMessage, "Artist profile saved. Home, Music, Listen, Download, and Video will use this artist workspace.");
   } catch (error) {
     message(artistMessage, error.message || "Artist profile did not save. Use the localhost website URL.", "error");
   }
@@ -529,8 +527,8 @@ releaseForm.addEventListener("submit", async (event) => {
     release.cityState = releaseForm.cityState.value.trim();
     release.location = [release.cityState, release.country].filter(Boolean).join(", ");
     release.price = Number(releaseForm.price.value || 0);
-    release.donationAmount = Number(releaseForm.donationAmount.value || 0);
-    release.donationLink = normalizeLink(releaseForm.donationLink.value);
+    release.donationAmount = 0;
+    release.donationLink = "";
     release.streaming = formLinks(releaseForm, STREAMING_LINKS);
     if (cover) release.cover = cover;
     if (audioData) {
@@ -551,7 +549,7 @@ releaseForm.addEventListener("submit", async (event) => {
     message(
       releaseMessage,
       existingIndex >= 0
-        ? "Artist song updated. Home, Music, Listen, Download, and Support will reflect the change."
+        ? "Artist song updated. Home, Music, Listen, and Download will reflect the change."
         : "Artist song saved. It will now show on Home and can be selected for the Music page."
     );
   } catch (error) {

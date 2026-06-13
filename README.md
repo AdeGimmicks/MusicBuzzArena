@@ -1,6 +1,6 @@
 # MusicBusiness Arena
 
-MusicBusiness Arena is an independent music platform where artists can upload releases, connect streaming links, share videos, receive fan support, and guide listeners to download or donate.
+MusicBusiness Arena is an independent music platform where artists can upload releases, connect streaming links, share videos, and sell paid song downloads.
 
 This project is packaged for GitHub and Render deployment under the folder/repo name `MusicBuzzArena`.
 
@@ -8,7 +8,7 @@ This project is packaged for GitHub and Render deployment under the folder/repo 
 
 - Public homepage with latest music releases
 - Artist profile page
-- Song listing page with streaming, download, and donation actions
+- Song listing page with streaming links and paid download actions
 - Artist video page with YouTube video and shorts sections
 - Artist upload dashboard
 - Store manager/admin prototype

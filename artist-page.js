@@ -94,7 +94,6 @@ function trackRow(release, artist) {
     <div class="track-actions" aria-label="${release.title || "Song"} actions">
       <a class="track-action track-action-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
       <a class="track-action track-action-download" href="/listen?release=${encodeURIComponent(release.id)}#download">Download</a>
-      <a class="track-action track-action-support" href="/listen?release=${encodeURIComponent(release.id)}#download">Support</a>
     </div>
   `;
   return row;
@@ -140,7 +139,6 @@ function releasePanel(release) {
           currency: "USD",
         }).format(release.price || 0)} to Unlock</button>
         <a class="secondary-button download-link disabled" href="${release.audioUrl || "#"}" download>Download</a>
-        ${release.donationLink ? `<a class="secondary-button" href="${release.donationLink}" target="_blank" rel="noreferrer">Donate</a>` : ""}
       </div>
     </div>
   `;
@@ -177,13 +175,12 @@ function releasePanel(release) {
 function linkHubPage(release, artist) {
   const wrap = document.createElement("article");
   wrap.className = "link-hub-card";
-  const pageMode = window.location.hash === "#download" || window.location.hash === "#support" ? "download" : "listen";
+  const pageMode = window.location.hash === "#download" ? "download" : "listen";
   const artistLabel = artist?.name || release.artistName || "Independent Artist";
   const artistHandle = artist?.handle || `@${artistLabel.replace(/\s+/g, "").toLowerCase()}`;
   const releaseCoverSrc = release.cover || "Mba Logos/MusicBusiness Logo.png";
   const artistPhotoSrc = releaseCoverSrc;
   const downloadAmount = money(release.price || 0);
-  const donationAmount = Number(release.donationAmount || release.donationPrice || release.supportAmount || 0);
   const shareUrl = `${window.location.origin}/listen?release=${encodeURIComponent(release.id)}`;
   const encodedShareUrl = encodeURIComponent(shareUrl);
   const encodedShareText = encodeURIComponent(`Listen to ${release.title || "this song"} by ${artistLabel}`);
@@ -219,23 +216,9 @@ function linkHubPage(release, artist) {
           <p>Pay ${downloadAmount} to unlock the full audio download set by ${artistLabel}.</p>
           <div class="payment-price">${downloadAmount}</div>
           <div class="payment-actions">
-            <button type="button" data-checkout-type="download" data-payment-label="Pay with Stripe">Pay with Stripe</button>
-            <button type="button" data-payment-placeholder data-payment-label="Pay with PayPal">Pay with PayPal</button>
+            <button type="button" data-checkout-type="download" data-payment-label="Pay Now">Pay Now</button>
           </div>
           <small>After payment is connected, this section will unlock the song file automatically.</small>
-          <div class="support-inline-panel" id="support" aria-label="Support ${artistLabel}">
-            <p class="eyebrow">Support</p>
-            <h3>Support ${artistLabel}</h3>
-            <p>Fans can also support the artist with any amount before or after downloading.</p>
-            <label class="support-amount">
-              <span>Support amount</span>
-              <input type="number" min="1" step="1" value="${donationAmount > 0 ? donationAmount : 5}" aria-label="Support amount">
-            </label>
-            <div class="payment-actions">
-              <button type="button" data-checkout-type="support" data-payment-label="Support with Stripe">Support with Stripe</button>
-              <button type="button" data-payment-placeholder data-payment-label="Support with PayPal">Support with PayPal</button>
-            </div>
-          </div>
         </section>
       `
       : "";
@@ -423,8 +406,6 @@ function linkHubPage(release, artist) {
   wrap.querySelectorAll("[data-checkout-type]").forEach((button) => {
     button.addEventListener("click", async () => {
       const label = button.dataset.paymentLabel || button.textContent;
-      const checkoutType = button.dataset.checkoutType || "download";
-      const supportInput = wrap.querySelector(".support-amount input");
       button.disabled = true;
       button.textContent = "Opening Stripe...";
 
@@ -434,8 +415,7 @@ function linkHubPage(release, artist) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             releaseId: release.id,
-            type: checkoutType,
-            amount: checkoutType === "support" ? supportInput?.value : undefined,
+            type: "download",
           }),
         });
         const payload = await response.json();
@@ -448,16 +428,6 @@ function linkHubPage(release, artist) {
           button.textContent = label;
         }, 2400);
       }
-    });
-  });
-
-  wrap.querySelectorAll("[data-payment-placeholder]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const label = button.dataset.paymentLabel || button.textContent;
-      button.textContent = "Payment setup coming";
-      window.setTimeout(() => {
-        button.textContent = label;
-      }, 1400);
     });
   });
 

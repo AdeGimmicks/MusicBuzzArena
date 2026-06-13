@@ -2054,7 +2054,7 @@ select:focus {
 .payment-actions {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .payment-actions button {
@@ -2067,49 +2067,6 @@ select:focus {
   font-weight: 900;
   min-height: 48px;
   padding: 12px;
-}
-
-.payment-actions button + button {
-  background: var(--gold);
-  color: #11141b;
-}
-
-.support-inline-panel {
-  border-top: 1px solid rgba(17, 20, 27, 0.08);
-  display: grid;
-  gap: 12px;
-  margin-top: 8px;
-  padding-top: 18px;
-}
-
-.support-inline-panel h3 {
-  color: #11141b;
-  font-size: 1.15rem;
-  line-height: 1.1;
-  margin: 0;
-}
-
-.support-inline-panel p {
-  margin: 0;
-}
-
-.support-amount {
-  display: grid;
-  gap: 7px;
-  text-align: left;
-}
-
-.support-amount span {
-  color: rgba(17, 20, 27, 0.62);
-  font-weight: 900;
-}
-
-.support-amount input {
-  border: 1px solid rgba(17, 20, 27, 0.12);
-  border-radius: 8px;
-  font: inherit;
-  font-weight: 900;
-  padding: 13px 14px;
 }
 
 .service-row[aria-disabled="true"] {

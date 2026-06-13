@@ -87,7 +87,7 @@ The persistent disk keeps uploaded cover artwork, artist photos, and audio files
 
 ## Stripe Checkout
 
-MusicBusiness Arena uses Stripe Checkout for paid downloads and support. The website code does not store Stripe keys. Add `STRIPE_SECRET_KEY` privately in Render, then redeploy.
+MusicBusiness Arena uses Stripe Checkout for paid song downloads. The website code does not store Stripe keys. Add `STRIPE_SECRET_KEY` privately in Render, then redeploy.
 
 Recommended Render values:
 

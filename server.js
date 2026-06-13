@@ -505,11 +505,11 @@ async function createCheckoutSession(request, response) {
   }
 
   const artist = (store.artists || []).find((item) => item.id === release.artistId) || {};
-  const checkoutType = body.type === "support" ? "support" : "download";
+  const checkoutType = "download";
   const artistLabel = artist.name || release.artistName || "Independent Artist";
   const currency = normalizedCurrency(body.currency || release.currency);
-  const fallbackAmount = checkoutType === "support" ? Number(release.donationAmount || 5) : Number(release.price || 0.99);
-  const amountMajor = cleanCheckoutAmount(body.amount, fallbackAmount, checkoutType === "support" ? 1 : 0.5);
+  const fallbackAmount = Number(release.price || 0.99);
+  const amountMajor = cleanCheckoutAmount(body.amount, fallbackAmount, 0.5);
   const unitAmount = toMinorUnits(amountMajor, currency);
 
   if (!unitAmount) {
@@ -522,10 +522,7 @@ async function createCheckoutSession(request, response) {
     ? PLATFORM_FEE_PERCENT
     : Number(store.site?.commissionRate || 10);
   const connectedAccountId = artist.stripeAccountId || release.stripeAccountId || "";
-  const productName =
-    checkoutType === "support"
-      ? `Support ${artistLabel}`
-      : `Download ${release.title || "song"} by ${artistLabel}`;
+  const productName = `Download ${release.title || "song"} by ${artistLabel}`;
   const metadata = {
     checkoutType,
     releaseId: release.id,
@@ -536,10 +533,7 @@ async function createCheckoutSession(request, response) {
   };
   const productData = {
     name: productName,
-    description:
-      checkoutType === "support"
-        ? `Fan support for ${artistLabel} on MusicBusiness Arena.`
-        : `Paid music download on MusicBusiness Arena.`,
+    description: `Paid music download on MusicBusiness Arena.`,
   };
   const imageUrl = checkoutImageUrl(origin, release.cover);
   if (imageUrl) productData.images = [imageUrl];
