@@ -37,6 +37,8 @@ const clearReleaseButton = document.querySelector("[data-clear-release]");
 
 let currentStore = window.MBA.defaults();
 let activeArtistId = localStorage.getItem("mba-active-artist-id") || "";
+const DEFAULT_PREVIEW_START = 0;
+const DEFAULT_PREVIEW_END = 60;
 
 function message(node, text, type = "success") {
   node.textContent = text;
@@ -185,6 +187,8 @@ function clearReleaseForm() {
   releaseForm.reset();
   releaseForm.editingId.value = "";
   releaseForm.price.value = "0.99";
+  releaseForm.previewStart.value = String(DEFAULT_PREVIEW_START);
+  releaseForm.previewEnd.value = String(DEFAULT_PREVIEW_END);
   releaseForm.cover.required = true;
   releaseForm.audio.required = true;
   songBioCount.textContent = "0";
@@ -326,6 +330,14 @@ function fillReleaseForm(release) {
   releaseForm.releaseDate.value = release.releaseDate || "";
   releaseForm.producer.value = release.producer || "";
   releaseForm.price.value = release.price ?? "0.99";
+  const storedPreviewStart = Math.max(0, Number(release.previewStart ?? DEFAULT_PREVIEW_START));
+  const storedPreviewEnd = Number(release.previewEnd ?? storedPreviewStart + Number(release.previewDuration || DEFAULT_PREVIEW_END));
+  releaseForm.previewStart.value = String(storedPreviewStart);
+  releaseForm.previewEnd.value = String(
+    Number.isFinite(storedPreviewEnd) && storedPreviewEnd > storedPreviewStart
+      ? storedPreviewEnd
+      : storedPreviewStart + DEFAULT_PREVIEW_END
+  );
   releaseForm.cityState.value = release.cityState || "";
   releaseForm.cover.required = false;
   releaseForm.audio.required = false;
@@ -527,6 +539,11 @@ releaseForm.addEventListener("submit", async (event) => {
     release.cityState = releaseForm.cityState.value.trim();
     release.location = [release.cityState, release.country].filter(Boolean).join(", ");
     release.price = Number(releaseForm.price.value || 0);
+    const previewStart = Math.max(0, Number(releaseForm.previewStart.value || DEFAULT_PREVIEW_START));
+    const requestedPreviewEnd = Number(releaseForm.previewEnd.value || DEFAULT_PREVIEW_END);
+    release.previewStart = previewStart;
+    release.previewEnd = requestedPreviewEnd > previewStart ? requestedPreviewEnd : previewStart + DEFAULT_PREVIEW_END;
+    release.previewDuration = release.previewEnd - release.previewStart;
     release.donationAmount = 0;
     release.donationLink = "";
     release.streaming = formLinks(releaseForm, STREAMING_LINKS);

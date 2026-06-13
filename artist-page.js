@@ -320,6 +320,11 @@ function linkHubPage(release, artist) {
     const progress = wrap.querySelector(".cover-progress span");
     const skipBack = wrap.querySelector(".cover-skip-back");
     const skipForward = wrap.querySelector(".cover-skip-forward");
+    const previewStart = Math.max(0, Number(release.previewStart || 0));
+    const requestedPreviewEnd = Number(release.previewEnd || previewStart + Number(release.previewDuration || 60));
+    const configuredPreviewEnd = requestedPreviewEnd > previewStart ? requestedPreviewEnd : previewStart + 60;
+    const previewEnd = () =>
+      Number.isFinite(audio.duration) ? Math.min(configuredPreviewEnd, audio.duration) : configuredPreviewEnd;
     let playCounted = false;
     let playStarting = false;
     const recordPlay = async () => {
@@ -338,9 +343,11 @@ function linkHubPage(release, artist) {
       return `${minutes}:${remaining}`;
     };
     const updatePlayer = () => {
-      if (time) time.textContent = formatTime(audio.currentTime);
+      const previewLength = Math.max(1, previewEnd() - previewStart);
+      const elapsed = Math.max(0, Math.min(audio.currentTime - previewStart, previewLength));
+      if (time) time.textContent = formatTime(elapsed);
       if (progress) {
-        const percent = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+        const percent = (elapsed / previewLength) * 100;
         progress.style.width = `${Math.min(percent, 100)}%`;
       }
     };
@@ -368,6 +375,9 @@ function linkHubPage(release, artist) {
       playStarting = true;
       activePreviewAudio = audio;
       activePreviewButton = preview;
+      if (audio.currentTime < previewStart || audio.currentTime >= previewEnd()) {
+        audio.currentTime = previewStart;
+      }
       setPreviewPlaying(true);
 
       try {
@@ -382,15 +392,24 @@ function linkHubPage(release, artist) {
       }
     });
     skipBack?.addEventListener("click", () => {
-      audio.currentTime = Math.max(0, audio.currentTime - 10);
+      audio.currentTime = Math.max(previewStart, audio.currentTime - 10);
       updatePlayer();
     });
     skipForward?.addEventListener("click", () => {
-      audio.currentTime = Math.min(audio.duration || audio.currentTime + 10, audio.currentTime + 10);
+      audio.currentTime = Math.min(previewEnd(), audio.currentTime + 10);
       updatePlayer();
     });
-    audio.addEventListener("timeupdate", updatePlayer);
-    audio.addEventListener("loadedmetadata", updatePlayer);
+    audio.addEventListener("timeupdate", () => {
+      if (audio.currentTime >= previewEnd()) {
+        audio.pause();
+        audio.currentTime = previewStart;
+      }
+      updatePlayer();
+    });
+    audio.addEventListener("loadedmetadata", () => {
+      audio.currentTime = previewStart;
+      updatePlayer();
+    });
     audio.addEventListener("play", () => setPreviewPlaying(true));
     audio.addEventListener("pause", () => {
       setPreviewPlaying(false);
