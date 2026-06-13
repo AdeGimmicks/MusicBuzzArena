@@ -110,11 +110,12 @@ function trackRow(release, artist, artistReleases = []) {
     <section class="music-release-hero" aria-label="${title} release">
       <img class="music-release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${title} cover" loading="eager" decoding="async">
       <div class="music-release-info">
-        <h1>${title} - ${releaseType}</h1>
+        <p class="music-release-kicker">${releaseType}</p>
+        <h1>${title}</h1>
         <p class="music-release-artist">${artistName}</p>
         <p class="music-release-meta">${release.genre || "Worldwide"} · ${year}</p>
         <div class="music-release-actions" aria-label="${title} actions">
-          <a class="music-capsule music-capsule-listen" href="/listen?release=${encodeURIComponent(release.id)}">▶ Listen</a>
+          <a class="music-capsule music-capsule-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
           <a class="music-capsule music-capsule-download" href="/download?release=${encodeURIComponent(release.id)}">Download</a>
         </div>
       </div>
@@ -135,15 +136,15 @@ function trackRow(release, artist, artistReleases = []) {
     </div>
     ${
       otherReleases.length
-        ? `<section class="music-more-by" aria-label="More by ${artistName}">
-            <h2>More By ${artistName}</h2>
+        ? `<section class="music-more-by" aria-label="More releases from ${artistName}">
+            <h2>More from ${artistName}</h2>
             <div class="music-more-grid">
               ${otherReleases
                 .map(
                   (item) => `
                     <a class="music-more-card" href="/music?release=${encodeURIComponent(item.id)}">
                       <img src="${item.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${item.title || "Song"} cover" loading="lazy" decoding="async">
-                      <strong>${item.title || "Untitled track"} - ${item.releaseType || "Single"}</strong>
+                      <strong>${item.title || "Untitled track"}</strong>
                       <span>${releaseYear(item)}</span>
                     </a>
                   `,
