@@ -70,6 +70,16 @@ function releaseCard(release, artist) {
   const card = document.createElement("article");
   card.className = "release-card";
   const listenUrl = `/listen?release=${encodeURIComponent(release.id)}`;
+  card.dataset.search = [
+    release.title,
+    artist?.name || release.artistName,
+    release.genre,
+    release.secondaryGenre,
+    release.releaseType,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
   card.dataset.href = listenUrl;
   card.tabIndex = 0;
   card.setAttribute("role", "link");
@@ -97,6 +107,26 @@ function releaseCard(release, artist) {
     window.location.href = listenUrl;
   });
   return card;
+}
+
+function applyHomeSearch() {
+  const input = document.querySelector("#homeSearch");
+  const grid = document.querySelector("#latestSongsGrid");
+  if (!input || !grid) return;
+
+  const query = input.value.trim().toLowerCase();
+  const cards = [...grid.querySelectorAll(".release-card")];
+  grid.querySelector(".search-empty-state")?.remove();
+
+  cards.forEach((card) => {
+    card.hidden = Boolean(query) && !card.dataset.search.includes(query);
+  });
+
+  if (query && cards.length && !cards.some((card) => !card.hidden)) {
+    const empty = emptyShelf("No songs matched your search.");
+    empty.classList.add("search-empty-state");
+    grid.append(empty);
+  }
 }
 
 function emptyShelf(text) {
@@ -165,11 +195,13 @@ async function renderHome(force = false) {
     store,
     "Approved songs will appear here after Store Manager approves uploads."
   );
+  applyHomeSearch();
 }
 
 renderHome(true);
 
 window.addEventListener("mba:store-saved", () => renderHome(true));
+document.querySelector("#homeSearch")?.addEventListener("input", applyHomeSearch);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) renderHome(true);
 });

@@ -11,6 +11,10 @@
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
       </a>
+      <form class="site-search" role="search">
+        <label class="sr-only" for="homeSearch">Search artist songs</label>
+        <input id="homeSearch" type="search" placeholder="Search songs or artists" autocomplete="off" />
+      </form>
       <nav class="site-nav" aria-label="Main navigation">
         <a href="/home">Home</a>
         <a href="/music">Music</a>
@@ -26,10 +30,11 @@
             <img id="homeArtistPhoto" src="Mba Logos/MusicBusiness Logo.png" alt="" />
           </div>
           <div class="feature-copy">
-            <p class="eyebrow">Featured artist</p>
-            <h2 id="homeArtistName">Independent Artist</h2>
+            <div class="feature-title-row">
+              <h2 id="homeArtistName">Independent Artist</h2>
+              <div class="home-socials icon-links" id="homeSocialLinks" aria-label="Artist social links"></div>
+            </div>
             <p id="homeArtistBio">Artist biography will appear here after the artist saves a profile.</p>
-            <div class="home-socials icon-links" id="homeSocialLinks" aria-label="Artist social links"></div>
             <a class="primary-button" id="homeVideoLink" href="/video">Watch Artist Videos</a>
           </div>
         </section>
