@@ -26,7 +26,21 @@ const MONGODB_URI = process.env.MONGODB_URI || "";
 const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || "musicbusinessarena";
 const MONGODB_COLLECTION = process.env.MONGODB_COLLECTION || "siteStore";
 const STORE_DOCUMENT_ID = "musicbusiness-arena";
-const STRIPE_SECRET_KEY = String(process.env.STRIPE_SECRET_KEY || process.env["Stripe Secret key"] || "").trim();
+function envValue(...keys) {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value) return String(value).trim();
+  }
+  return "";
+}
+
+const STRIPE_SECRET_KEY = envValue(
+  "STRIPE_SECRET_KEY",
+  "STRIPE_SECRET",
+  "STRIPE_API_KEY",
+  "Stripe Secret key",
+  "Stripe Secret Key"
+);
 const STRIPE_DEFAULT_CURRENCY = (process.env.STRIPE_DEFAULT_CURRENCY || "usd").toLowerCase();
 const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
 
@@ -565,8 +579,8 @@ async function createCheckoutSession(request, response) {
     ],
     metadata,
     payment_intent_data: { metadata },
-    success_url: `${origin}/listen?release=${encodeURIComponent(release.id)}&checkout=success&type=${checkoutType}#download`,
-    cancel_url: `${origin}/listen?release=${encodeURIComponent(release.id)}&checkout=cancelled#download`,
+    success_url: `${origin}/download?release=${encodeURIComponent(release.id)}&checkout=success&type=${checkoutType}`,
+    cancel_url: `${origin}/download?release=${encodeURIComponent(release.id)}&checkout=cancelled`,
   };
 
   if (connectedAccountId && checkoutType === "download") {
@@ -592,6 +606,7 @@ const CLEAN_ROUTES = {
   "/home": "/index.html",
   "/music": "/artist-page.html",
   "/listen": "/artist-page-2.html",
+  "/download": "/download.html",
   "/video": "/videos.html",
   "/upload": "/artist-dashboard.html",
   "/store-manager": "/store-manager.html",
