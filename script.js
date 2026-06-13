@@ -38,6 +38,7 @@ function renderHomeArtist(artist) {
   const photoNode = document.querySelector("#homeArtistPhoto");
   const nameNode = document.querySelector("#homeArtistName");
   const bioNode = document.querySelector("#homeArtistBio");
+  const bioToggle = document.querySelector("#homeBioToggle");
   const socialsNode = document.querySelector("#homeSocialLinks");
   const videoLink = document.querySelector("#homeVideoLink");
 
@@ -46,7 +47,19 @@ function renderHomeArtist(artist) {
     photoNode.alt = `${name} profile photo`;
   }
   if (nameNode) nameNode.textContent = name;
-  if (bioNode) bioNode.textContent = bio;
+  if (bioNode) {
+    bioNode.textContent = bio;
+    bioNode.classList.remove("is-expanded");
+  }
+  if (bioToggle) {
+    const canExpand = bio.length > 118;
+    bioToggle.hidden = !canExpand;
+    bioToggle.textContent = "More";
+    bioToggle.onclick = () => {
+      const expanded = bioNode?.classList.toggle("is-expanded");
+      bioToggle.textContent = expanded ? "Less" : "More";
+    };
+  }
   if (videoLink && artist?.id) videoLink.href = `/video?artist=${encodeURIComponent(artist.id)}`;
 
   if (!socialsNode) return;

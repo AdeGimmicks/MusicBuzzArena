@@ -88,8 +88,6 @@ function trackRow(release, artist) {
     <div class="track-copy">
       <p>${artist?.name || release.artistName || "Independent Artist"}</p>
       <h3>${release.title || "Untitled track"}</h3>
-      <span>Release Date: ${releaseDate} by ${artist?.name || release.artistName || "MusicBusiness Arena"}</span>
-      <div class="track-tags">${trackTags(release)}</div>
     </div>
     <div class="track-actions" aria-label="${release.title || "Song"} actions">
       <a class="track-action track-action-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>

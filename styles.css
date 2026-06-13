@@ -44,6 +44,19 @@ img {
   max-width: 100%;
 }
 
+.sr-only {
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 button,
 input,
 textarea,
@@ -297,11 +310,16 @@ h3 {
   padding: clamp(16px, 2.4vw, 28px);
 }
 
+.feature-copy .primary-button {
+  min-height: 40px;
+  padding: 11px 16px;
+}
+
 .feature-title-row {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 16px;
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
   margin-bottom: 10px;
 }
 
@@ -323,6 +341,32 @@ h3 {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.feature-copy p.is-expanded {
+  display: block;
+  overflow: visible;
+}
+
+.feature-bio-block {
+  display: grid;
+  gap: 4px;
+}
+
+.bio-toggle {
+  background: transparent;
+  border: 0;
+  color: var(--gold);
+  cursor: pointer;
+  display: none;
+  font-size: 0.74rem;
+  font-weight: 900;
+  justify-self: start;
+  padding: 0 0 8px;
+}
+
+.bio-toggle:not([hidden]) {
+  display: inline-flex;
 }
 
 .home-socials {
@@ -426,7 +470,7 @@ h3 {
     0 18px 38px rgba(17, 20, 27, 0.12),
     inset 0 0 0 1px rgba(255, 255, 255, 0.45);
   height: auto;
-  max-width: 154px;
+  max-width: 218px;
   padding: 5px;
   width: 100%;
 }
@@ -2659,12 +2703,12 @@ select:focus {
   }
 
   .release-grid {
-    gap: 24px 16px;
+    gap: 28px 18px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .release-cover-frame {
-    max-width: 136px;
+    max-width: 162px;
     padding: 4px;
   }
 
@@ -2673,8 +2717,8 @@ select:focus {
   }
 
   .release-body {
-    gap: 5px;
-    width: min(100%, 160px);
+    gap: 6px;
+    width: min(100%, 182px);
   }
 
   .release-meta {
@@ -2683,7 +2727,7 @@ select:focus {
 
   .release-body h3,
   .release-body span {
-    font-size: 0.86rem;
+    font-size: 0.94rem;
   }
 
   .mini-actions a {
@@ -2694,7 +2738,7 @@ select:focus {
   }
 
   .feature-banner {
-    grid-template-columns: minmax(118px, 0.42fr) minmax(0, 0.58fr);
+    grid-template-columns: minmax(112px, 0.38fr) minmax(0, 0.62fr);
     margin-bottom: 18px;
     min-height: 154px;
   }
@@ -2713,16 +2757,24 @@ select:focus {
   }
 
   .feature-copy h2 {
-    font-size: clamp(1.45rem, 6vw, 2rem);
+    font-size: clamp(1.24rem, 5vw, 1.8rem);
   }
 
   .feature-copy p:not(.eyebrow) {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     display: -webkit-box;
-    font-size: 0.82rem;
-    margin-bottom: 10px;
+    font-size: 0.78rem;
+    line-height: 1.26;
+    margin-bottom: 5px;
     overflow: hidden;
+  }
+
+  .feature-copy .primary-button {
+    font-size: 0.78rem;
+    min-height: 36px;
+    padding: 9px 12px;
+    white-space: nowrap;
   }
 
   .feature-title-row {
@@ -2887,12 +2939,12 @@ select:focus {
   }
 
   .release-grid {
-    gap: 22px 12px;
+    gap: 24px 14px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .release-cover-frame {
-    max-width: 118px;
+    max-width: 136px;
   }
 
   .release-card {
@@ -2906,7 +2958,7 @@ select:focus {
 
   .release-body h3,
   .release-body span {
-    font-size: 0.78rem;
+    font-size: 0.86rem;
     line-height: 1.15;
   }
 
@@ -2920,7 +2972,9 @@ select:focus {
   }
 
   .mini-actions a {
-    min-width: 78px;
+    font-size: 0.68rem;
+    min-height: 34px;
+    min-width: 84px;
   }
 
   .section-heading {
@@ -2936,10 +2990,10 @@ select:focus {
   }
 
   .feature-banner {
-    grid-template-columns: minmax(104px, 0.42fr) minmax(0, 0.58fr);
+    grid-template-columns: minmax(96px, 0.34fr) minmax(0, 0.66fr);
     margin-left: 0;
     margin-right: 0;
-    min-height: 132px;
+    min-height: 136px;
   }
 
   .feature-visual {
@@ -2947,8 +3001,8 @@ select:focus {
   }
 
   .feature-visual img {
-    height: 92px;
-    width: 92px;
+    height: 88px;
+    width: 88px;
   }
 
   .feature-copy {
@@ -2956,12 +3010,21 @@ select:focus {
   }
 
   .feature-copy h2 {
-    font-size: clamp(1.2rem, 6vw, 1.55rem);
+    font-size: clamp(1.05rem, 4.9vw, 1.32rem);
   }
 
   .feature-copy p:not(.eyebrow) {
-    font-size: 0.72rem;
-    line-height: 1.3;
+    font-size: 0.68rem;
+    line-height: 1.22;
+    margin-bottom: 4px;
+  }
+
+  .feature-copy .primary-button {
+    border-radius: 7px;
+    font-size: 0.62rem;
+    min-height: 30px;
+    padding: 7px 9px;
+    white-space: nowrap;
   }
 
   .home-socials {
