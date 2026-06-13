@@ -1557,6 +1557,168 @@ select:focus {
   color: #10131a;
 }
 
+.music-showcase {
+  max-width: 100%;
+  padding: clamp(26px, 4vw, 48px) clamp(18px, 4vw, 64px) clamp(54px, 7vw, 88px);
+}
+
+.music-release-page {
+  color: #14171f;
+  display: grid;
+  gap: 26px;
+}
+
+.music-release-hero {
+  align-items: center;
+  display: grid;
+  gap: clamp(22px, 4vw, 42px);
+  grid-template-columns: minmax(230px, 330px) minmax(0, 1fr);
+}
+
+.music-release-cover {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  box-shadow: 0 18px 42px rgba(17, 20, 27, 0.18);
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.music-release-info h1 {
+  color: #151820;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.music-release-artist {
+  color: #c72f2f;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 800;
+  margin: 4px 0 0;
+}
+
+.music-release-meta {
+  color: #6d7280;
+  font-weight: 800;
+  margin: 4px 0 0;
+}
+
+.music-release-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: clamp(40px, 7vw, 82px);
+}
+
+.music-capsule {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 900;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 30px;
+  text-decoration: none;
+}
+
+.music-capsule-listen {
+  background: #050505;
+  color: #fff;
+}
+
+.music-capsule-download {
+  background: #f4c430;
+  color: #11141b;
+}
+
+.music-track-table {
+  border-bottom: 1px solid rgba(17, 20, 27, 0.12);
+  border-top: 1px solid rgba(17, 20, 27, 0.12);
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.music-track-table li {
+  align-items: center;
+  color: #2d3138;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 18px 28px minmax(0, 1fr) auto 34px;
+  min-height: 50px;
+}
+
+.music-track-dot,
+.music-track-number,
+.music-track-duration,
+.music-track-menu {
+  color: #7a808b;
+  font-weight: 800;
+}
+
+.music-track-title {
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-release-note {
+  color: #777d88;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.music-release-note p {
+  margin: 2px 0;
+}
+
+.music-more-by {
+  background: rgba(17, 20, 27, 0.035);
+  margin: 24px calc(clamp(18px, 4vw, 64px) * -1) 0;
+  padding: 34px clamp(18px, 4vw, 64px) 10px;
+}
+
+.music-more-by h2 {
+  color: #151820;
+  font-size: 1.15rem;
+  margin: 0 0 16px;
+}
+
+.music-more-grid {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.music-more-card {
+  color: #161922;
+  display: grid;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.music-more-card img {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(17, 20, 27, 0.16);
+  object-fit: cover;
+  width: 100%;
+}
+
+.music-more-card strong {
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.music-more-card span {
+  color: #777d88;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
 .artist-more-section {
   margin-top: clamp(34px, 5vw, 58px);
 }
@@ -3041,6 +3203,64 @@ select:focus {
     width: 12px;
   }
 
+  .music-showcase {
+    padding: 22px 16px 46px;
+  }
+
+  .music-release-page {
+    gap: 18px;
+  }
+
+  .music-release-hero {
+    align-items: start;
+    gap: 14px;
+    grid-template-columns: 108px minmax(0, 1fr);
+  }
+
+  .music-release-info h1 {
+    font-size: 1.15rem;
+    line-height: 1.15;
+  }
+
+  .music-release-artist {
+    font-size: 1rem;
+  }
+
+  .music-release-meta {
+    font-size: 0.78rem;
+  }
+
+  .music-release-actions {
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .music-capsule {
+    font-size: 0.78rem;
+    min-height: 34px;
+    padding: 0 14px;
+  }
+
+  .music-track-table li {
+    font-size: 0.82rem;
+    grid-template-columns: 12px 20px minmax(0, 1fr) auto 24px;
+    min-height: 44px;
+  }
+
+  .music-release-note {
+    font-size: 0.8rem;
+  }
+
+  .music-more-by {
+    margin-inline: -16px;
+    padding: 26px 16px 6px;
+  }
+
+  .music-more-grid {
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .artist-track-row {
     grid-template-columns: 1fr;
     justify-items: center;
@@ -3052,5 +3272,15 @@ select:focus {
 
   .track-star-frame {
     max-width: 260px;
+  }
+}
+
+@media (max-width: 420px) {
+  .music-release-hero {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .music-capsule {
+    padding: 0 12px;
   }
 }

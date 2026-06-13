@@ -72,27 +72,87 @@ function artistForPage(store, approvedReleases) {
   );
 }
 
-function trackRow(release, artist) {
+function formattedReleaseDate(release) {
+  if (release.releaseDate) {
+    return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(
+      new Date(`${release.releaseDate}T00:00:00`),
+    );
+  }
+  if (release.createdAt) {
+    return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(release.createdAt));
+  }
+  return "Release date coming soon";
+}
+
+function releaseYear(release) {
+  const source = release.releaseDate || release.createdAt;
+  if (!source) return new Date().getFullYear();
+  const date = release.releaseDate ? new Date(`${release.releaseDate}T00:00:00`) : new Date(source);
+  return Number.isNaN(date.getFullYear()) ? new Date().getFullYear() : date.getFullYear();
+}
+
+function releaseDurationText(release) {
+  return release.duration || release.trackLength || release.length || "";
+}
+
+function trackRow(release, artist, artistReleases = []) {
   const row = document.createElement("article");
-  row.className = "artist-track-row";
-  const releaseDate = release.releaseDate
-    ? new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${release.releaseDate}T00:00:00`))
-    : release.createdAt
-      ? new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(release.createdAt))
-      : "Release date coming soon";
+  row.className = "music-release-page";
+  const artistName = artist?.name || release.artistName || "Independent Artist";
+  const title = release.title || "Untitled track";
+  const releaseType = release.releaseType || "Single";
+  const releaseDate = formattedReleaseDate(release);
+  const year = releaseYear(release);
+  const duration = releaseDurationText(release);
+  const otherReleases = artistReleases.filter((item) => item.id !== release.id).slice(0, 8);
 
   row.innerHTML = `
-    <div class="track-star-frame">
-      <img class="track-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover">
+    <section class="music-release-hero" aria-label="${title} release">
+      <img class="music-release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${title} cover" loading="eager" decoding="async">
+      <div class="music-release-info">
+        <h1>${title} - ${releaseType}</h1>
+        <p class="music-release-artist">${artistName}</p>
+        <p class="music-release-meta">${release.genre || "Worldwide"} · ${year}</p>
+        <div class="music-release-actions" aria-label="${title} actions">
+          <a class="music-capsule music-capsule-listen" href="/listen?release=${encodeURIComponent(release.id)}">▶ Listen</a>
+          <a class="music-capsule music-capsule-download" href="/download?release=${encodeURIComponent(release.id)}">Download</a>
+        </div>
+      </div>
+    </section>
+    <ol class="music-track-table" aria-label="${title} track list">
+      <li>
+        <span class="music-track-dot">•</span>
+        <span class="music-track-number">1</span>
+        <span class="music-track-title">${title}</span>
+        <span class="music-track-duration">${duration}</span>
+        <span class="music-track-menu">•••</span>
+      </li>
+    </ol>
+    <div class="music-release-note">
+      <p>${releaseDate}</p>
+      <p>1 song${duration ? `, ${duration}` : ""}</p>
+      <p>© ${year} ${artistName}</p>
     </div>
-    <div class="track-copy">
-      <p>${artist?.name || release.artistName || "Independent Artist"}</p>
-      <h3>${release.title || "Untitled track"}</h3>
-    </div>
-    <div class="track-actions" aria-label="${release.title || "Song"} actions">
-      <a class="track-action track-action-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
-      <a class="track-action track-action-download" href="/listen?release=${encodeURIComponent(release.id)}#download">Download</a>
-    </div>
+    ${
+      otherReleases.length
+        ? `<section class="music-more-by" aria-label="More by ${artistName}">
+            <h2>More By ${artistName}</h2>
+            <div class="music-more-grid">
+              ${otherReleases
+                .map(
+                  (item) => `
+                    <a class="music-more-card" href="/music?release=${encodeURIComponent(item.id)}">
+                      <img src="${item.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${item.title || "Song"} cover" loading="lazy" decoding="async">
+                      <strong>${item.title || "Untitled track"} - ${item.releaseType || "Single"}</strong>
+                      <span>${releaseYear(item)}</span>
+                    </a>
+                  `,
+                )
+                .join("")}
+            </div>
+          </section>`
+        : ""
+    }
   `;
   return row;
 }
@@ -106,11 +166,14 @@ function renderTopTracks(releases, artist) {
     return;
   }
 
+  const params = new URLSearchParams(window.location.search);
+  const requestedReleaseId = params.get("release");
   const selectedRelease =
+    (requestedReleaseId ? releases.find((release) => release.id === requestedReleaseId) : null) ||
     releases.find((release) => release.id === artist?.featuredReleaseId) ||
     releases.find((release) => release.id === artist?.bannerReleaseId) ||
     releases[0];
-  artistTrackList.append(trackRow(selectedRelease, artist));
+  artistTrackList.append(trackRow(selectedRelease, artist, releases));
 }
 
 function releasePanel(release) {
