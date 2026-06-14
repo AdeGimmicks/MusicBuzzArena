@@ -475,7 +475,14 @@ h3 {
   width: 100%;
 }
 
-
+.release-card .release-cover {
+  aspect-ratio: 1;
+  border: 4px solid rgba(255, 255, 255, 0.78);
+  border-radius: 999px;
+  clip-path: none;
+  height: 100%;
+  width: 100%;
+}
 
 .release-body,
 .admin-card-body {
