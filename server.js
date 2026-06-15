@@ -1,4 +1,5 @@
 const http = require("http");
+const crypto = require("crypto");
 const fs = require("fs/promises");
 const path = require("path");
 let MongoClient;
@@ -43,10 +44,16 @@ const STRIPE_SECRET_KEY = envValue(
 );
 const STRIPE_DEFAULT_CURRENCY = (process.env.STRIPE_DEFAULT_CURRENCY || "usd").toLowerCase();
 const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
+const STORE_MANAGER_PASSWORD = envValue("STORE_MANAGER_PASSWORD", "ADMIN_PASSWORD");
+const STORE_MANAGER_PASSWORD_HASH = envValue("STORE_MANAGER_PASSWORD_HASH", "ADMIN_PASSWORD_HASH");
+const SESSION_COOKIE_NAME = "mba_store_manager";
+const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
+const isProduction = process.env.NODE_ENV === "production";
 
 let mongoClient;
 let storeCollection;
 let cachedStore = null;
+const adminSessions = new Map();
 const stripe = STRIPE_SECRET_KEY && Stripe ? Stripe(STRIPE_SECRET_KEY) : null;
 const hasValidStripeSecretKey = /^sk_(test|live)_/.test(STRIPE_SECRET_KEY);
 
@@ -452,6 +459,86 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+function parseCookies(cookieHeader = "") {
+  return cookieHeader.split(";").reduce((cookies, part) => {
+    const [name, ...valueParts] = part.trim().split("=");
+    if (!name) return cookies;
+    cookies[name] = decodeURIComponent(valueParts.join("=") || "");
+    return cookies;
+  }, {});
+}
+
+function timingSafeEqualText(left, right) {
+  const leftBuffer = Buffer.from(String(left || ""));
+  const rightBuffer = Buffer.from(String(right || ""));
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function configuredAdminPassword() {
+  if (STORE_MANAGER_PASSWORD || STORE_MANAGER_PASSWORD_HASH) return true;
+  return !isProduction;
+}
+
+function verifyAdminPassword(password) {
+  const submitted = String(password || "");
+  if (STORE_MANAGER_PASSWORD_HASH) {
+    const hash = crypto.createHash("sha256").update(submitted).digest("hex");
+    return timingSafeEqualText(hash, STORE_MANAGER_PASSWORD_HASH);
+  }
+
+  const expected = STORE_MANAGER_PASSWORD || (isProduction ? "" : "admin123");
+  return expected ? timingSafeEqualText(submitted, expected) : false;
+}
+
+function sessionCookie(sessionId, options = {}) {
+  const maxAge = options.clear ? 0 : Math.floor(SESSION_TTL_MS / 1000);
+  const parts = [
+    `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId || "")}`,
+    "HttpOnly",
+    "Path=/",
+    "SameSite=Lax",
+    `Max-Age=${maxAge}`,
+  ];
+  if (isProduction) parts.push("Secure");
+  return parts.join("; ");
+}
+
+function cleanupAdminSessions() {
+  const now = Date.now();
+  for (const [sessionId, session] of adminSessions.entries()) {
+    if (!session || session.expiresAt <= now) adminSessions.delete(sessionId);
+  }
+}
+
+function createAdminSession() {
+  cleanupAdminSessions();
+  const sessionId = crypto.randomBytes(32).toString("base64url");
+  adminSessions.set(sessionId, { createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS });
+  return sessionId;
+}
+
+function getAdminSession(request) {
+  cleanupAdminSessions();
+  const cookies = parseCookies(request.headers.cookie || "");
+  const sessionId = cookies[SESSION_COOKIE_NAME];
+  if (!sessionId) return null;
+  const session = adminSessions.get(sessionId);
+  if (!session) return null;
+  session.expiresAt = Date.now() + SESSION_TTL_MS;
+  return { sessionId, session };
+}
+
+function isStoreManagerRequest(request) {
+  const url = new URL(request.url, `http://${request.headers.host}`);
+  const pathname = decodeURIComponent(url.pathname);
+  return pathname === "/store-manager" || pathname === "/store-manager.html";
+}
+
+function sendAdminUnauthorized(response) {
+  sendJson(response, 401, { error: "Store Manager login required." });
+}
+
 const ZERO_DECIMAL_CURRENCIES = new Set([
   "bif",
   "clp",
@@ -610,6 +697,7 @@ const CLEAN_ROUTES = {
   "/video": "/videos.html",
   "/upload": "/artist-dashboard.html",
   "/store-manager": "/store-manager.html",
+  "/store-manager-login": "/store-manager-login.html",
 };
 
 const LEGACY_REDIRECTS = Object.fromEntries(Object.entries(CLEAN_ROUTES).map(([clean, file]) => [file, clean]));
@@ -640,6 +728,11 @@ async function serveStatic(request, response) {
 
   if (LEGACY_REDIRECTS[requestedPath]) {
     redirect(response, `${LEGACY_REDIRECTS[requestedPath]}${url.search}`);
+    return;
+  }
+
+  if (isStoreManagerRequest(request) && !getAdminSession(request)) {
+    redirect(response, "/store-manager-login");
     return;
   }
 
@@ -695,6 +788,68 @@ async function handleRequest(request, response) {
         storage: MONGODB_URI ? "mongodb" : "file",
         service: "MusicBusiness Arena",
       });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/session" && request.method === "GET") {
+      sendJson(response, 200, {
+        authenticated: Boolean(getAdminSession(request)),
+        configured: configuredAdminPassword(),
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/login" && request.method === "POST") {
+      if (!configuredAdminPassword()) {
+        sendJson(response, 503, {
+          error: "Store Manager password is not configured. Add STORE_MANAGER_PASSWORD in Render environment variables.",
+        });
+        return;
+      }
+
+      const bodyText = await readRequestBody(request);
+      const body = bodyText ? JSON.parse(bodyText) : {};
+      if (!verifyAdminPassword(body.password)) {
+        sendJson(response, 401, { error: "Incorrect Store Manager password." });
+        return;
+      }
+
+      const sessionId = createAdminSession();
+      response.writeHead(200, {
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json; charset=utf-8",
+        "Set-Cookie": sessionCookie(sessionId),
+      });
+      response.end(JSON.stringify({ ok: true }));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/logout" && request.method === "POST") {
+      const adminSession = getAdminSession(request);
+      if (adminSession) adminSessions.delete(adminSession.sessionId);
+      response.writeHead(200, {
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json; charset=utf-8",
+        "Set-Cookie": sessionCookie("", { clear: true }),
+      });
+      response.end(JSON.stringify({ ok: true }));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/store" && request.method === "POST") {
+      if (!getAdminSession(request)) {
+        sendAdminUnauthorized(response);
+        return;
+      }
+
+      const body = await readRequestBody(request);
+      const store = await normalizeUploads(JSON.parse(body));
+      await writeStore(store);
+      sendJson(response, 200, store);
       return;
     }
 

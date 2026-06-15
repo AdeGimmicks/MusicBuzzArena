@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Store Manager Login | MusicBusiness Arena</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="manager-login-body">
+    <main class="manager-login-shell">
+      <section class="manager-login-panel" aria-labelledby="managerLoginTitle">
+        <img class="manager-login-logo" src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
+        <p class="eyebrow">Secure admin access</p>
+        <h1 id="managerLoginTitle">Store Manager</h1>
+        <p class="manager-login-copy">
+          Sign in to approve releases, manage artist pages, review records, and update platform settings.
+        </p>
+
+        <form id="storeManagerLoginForm" class="manager-login-form">
+          <label>
+            Password
+            <input name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="primary-button" type="submit">Unlock Store Manager</button>
+          <p class="form-message" id="storeManagerLoginMessage" role="status"></p>
+        </form>
+
+        <a class="manager-login-home" href="/home">Return to website</a>
+      </section>
+    </main>
+
+    <script src="store-manager-login.js"></script>
+  </body>
+</html>

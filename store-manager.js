@@ -7,8 +7,42 @@ const totalArtists = document.querySelector("#totalArtists");
 const pendingReleases = document.querySelector("#pendingReleases");
 const totalDownloads = document.querySelector("#totalDownloads");
 const totalEarnings = document.querySelector("#totalEarnings");
+const storeManagerLogout = document.querySelector("#storeManagerLogout");
 
 let currentStore = window.MBA.defaults();
+
+async function requireStoreManagerSession() {
+  const response = await fetch("/api/admin/session", { credentials: "same-origin" });
+  const session = response.ok ? await response.json() : { authenticated: false };
+  if (!session.authenticated) {
+    window.location.assign("/store-manager-login");
+    return false;
+  }
+  return true;
+}
+
+async function saveAdminStore(store) {
+  const response = await fetch("/api/admin/store", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(store),
+  });
+
+  if (response.status === 401) {
+    window.location.assign("/store-manager-login");
+    throw new Error("Store Manager login required.");
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Unable to save Store Manager changes.");
+  }
+
+  return response.json();
+}
 
 function money(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
@@ -223,7 +257,7 @@ function renderRecords() {
 }
 
 async function saveAndRender() {
-  currentStore = await window.MBA.saveStore(currentStore);
+  currentStore = await saveAdminStore(currentStore);
   renderAll();
 }
 
@@ -243,7 +277,7 @@ siteForm.addEventListener("submit", async (event) => {
   };
   if (logo) currentStore.site.logo = logo;
 
-  currentStore = await window.MBA.saveStore(currentStore);
+  currentStore = await saveAdminStore(currentStore);
   applyLogo();
   fillSiteForm();
   siteForm.logo.value = "";
@@ -329,8 +363,18 @@ function renderAll() {
 }
 
 async function initStoreManager() {
+  const hasSession = await requireStoreManagerSession();
+  if (!hasSession) return;
   currentStore = await window.MBA.loadStore();
   renderAll();
 }
+
+storeManagerLogout?.addEventListener("click", async () => {
+  await fetch("/api/admin/logout", {
+    method: "POST",
+    credentials: "same-origin",
+  }).catch(() => {});
+  window.location.assign("/store-manager-login");
+});
 
 initStoreManager();

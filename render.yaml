@@ -25,6 +25,8 @@ services:
         value: /var/data/uploads
       - key: PUBLIC_SITE_URL
         value: https://musicbusinessarena.com
+      - key: STORE_MANAGER_PASSWORD
+        sync: false
     disk:
       name: musicbusinessarena-uploads
       mountPath: /var/data

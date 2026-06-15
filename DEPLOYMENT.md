@@ -41,12 +41,13 @@ MONGODB_DB_NAME=musicbusinessarena
 MONGODB_COLLECTION=siteStore
 UPLOAD_DIR=/var/data/uploads
 PUBLIC_SITE_URL=https://musicbusinessarena.com
+STORE_MANAGER_PASSWORD=replace_with_a_strong_private_password
 STRIPE_SECRET_KEY=sk_live_your_private_key
 STRIPE_DEFAULT_CURRENCY=usd
 PLATFORM_FEE_PERCENT=10
 ```
 
-Do not commit `.env` to GitHub. Stripe keys must be added only in Render environment variables, never inside the source code.
+Do not commit `.env` to GitHub. Stripe keys and the Store Manager password must be added only in Render environment variables, never inside the source code.
 
 ## MongoDB Atlas
 

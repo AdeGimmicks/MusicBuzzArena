@@ -125,8 +125,18 @@ select {
   color: rgba(255, 255, 255, 0.78);
 }
 
-.site-nav a:hover {
+.site-nav a:hover,
+.nav-button:hover {
   color: var(--gold);
+}
+
+.nav-button {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+  font-weight: 900;
+  padding: 0;
 }
 
 .home-hero {
@@ -582,7 +592,8 @@ h3 {
 }
 
 .dashboard-body,
-.manager-body {
+.manager-body,
+.manager-login-body {
   background: var(--paper);
   color: var(--text);
 }
@@ -590,6 +601,67 @@ h3 {
 .dashboard-body .site-header,
 .manager-body .site-header {
   background: #24272e;
+}
+
+.manager-login-body {
+  min-height: 100vh;
+}
+
+.manager-login-shell {
+  align-items: center;
+  display: grid;
+  min-height: 100vh;
+  padding: clamp(22px, 5vw, 70px);
+}
+
+.manager-login-panel {
+  background:
+    linear-gradient(135deg, rgba(244, 196, 48, 0.12), transparent 42%),
+    var(--white);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 18px;
+  margin: 0 auto;
+  max-width: 520px;
+  padding: clamp(28px, 5vw, 48px);
+  width: 100%;
+}
+
+.manager-login-logo {
+  height: 66px;
+  object-fit: contain;
+  object-position: left center;
+  width: 156px;
+}
+
+.manager-login-panel h1 {
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  line-height: 0.95;
+  margin: 0;
+}
+
+.manager-login-copy {
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.manager-login-form {
+  display: grid;
+  gap: 14px;
+}
+
+.manager-login-form .primary-button {
+  width: 100%;
+}
+
+.manager-login-home {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 900;
 }
 
 .dashboard-intro {
