@@ -3582,3 +3582,52 @@ select:focus {
     width: 100%;
   }
 }
+
+.legal-container {
+    max-width: 900px;
+    margin: 50px auto;
+    padding: 30px;
+}
+
+.last-updated {
+    color: #777;
+    margin-bottom: 20px;
+}
+
+.legal-page {
+  padding: 40px 20px;
+}
+
+.legal-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.legal-container h1 {
+  font-size: 3rem;
+  margin-bottom: 10px;
+}
+
+.legal-container h2 {
+  font-size: 1.8rem;
+  margin-top: 40px;
+  margin-bottom: 15px;
+}
+
+.legal-container p,
+.legal-container li {
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.last-updated {
+  margin-bottom: 30px;
+}
+
+.legal-container h2 {
+    font-size: 1.5rem;
+}
+
+.legal-container h2 {
+    margin-top: 50px;
+}
