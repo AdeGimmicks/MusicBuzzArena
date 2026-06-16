@@ -34,11 +34,63 @@ const artistAccountMessage = document.querySelector("#artistAccountMessage");
 const uploadStatusTitle = document.querySelector("#uploadStatusTitle");
 const uploadStatusText = document.querySelector("#uploadStatusText");
 const clearReleaseButton = document.querySelector("[data-clear-release]");
+const workspaceTitle = document.querySelector("#artistWorkspaceTitle");
+const dashboardSections = [...document.querySelectorAll(".artist-dashboard-section")];
+const dashboardNavLinks = [...document.querySelectorAll("[data-dashboard-section]")];
+const openSongEditorButtons = document.querySelectorAll("[data-open-song-editor]");
+const artistLogoutButtons = document.querySelectorAll("[data-artist-logout]");
+const songSearchInput = document.querySelector("#songSearchInput");
+const songGenreFilter = document.querySelector("#songGenreFilter");
+const songStatusFilter = document.querySelector("#songStatusFilter");
+const songSortSelect = document.querySelector("#songSortSelect");
+const artistSongTable = document.querySelector("#artistSongTable");
+const deleteEditingSong = document.querySelector("#deleteEditingSong");
+const artistVideoList = document.querySelector("#artistVideoList");
+const artistDownloadTable = document.querySelector("#artistDownloadTable");
+const recentActivityList = document.querySelector("#recentActivityList");
+const recentDownloadsList = document.querySelector("#recentDownloadsList");
+const recentUploadsList = document.querySelector("#recentUploadsList");
+const payoutHistoryList = document.querySelector("#payoutHistoryList");
 
 let currentStore = window.MBA.defaults();
 let activeArtistId = localStorage.getItem("mba-active-artist-id") || "";
 const DEFAULT_PREVIEW_START = 0;
 const DEFAULT_PREVIEW_END = 60;
+
+function money(value) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
+}
+
+function setText(selector, value) {
+  const node = document.querySelector(selector);
+  if (node) node.textContent = value;
+}
+
+function showDashboardSection(sectionId) {
+  dashboardSections.forEach((section) => {
+    section.classList.toggle("is-active", section.id === sectionId);
+  });
+  dashboardNavLinks.forEach((link) => {
+    link.classList.toggle("is-active", link.dataset.dashboardSection === sectionId);
+  });
+  const section = dashboardSections.find((item) => item.id === sectionId);
+  if (workspaceTitle && section) workspaceTitle.textContent = section.dataset.sectionTitle || "Artist Dashboard";
+}
+
+function artistReleases() {
+  const artist = primaryArtist();
+  return currentStore.releases.filter((release) => release.artistId === artist.id);
+}
+
+function artistTransactions() {
+  const releases = artistReleases();
+  const releaseIds = new Set(releases.map((release) => release.id));
+  return (currentStore.transactions || []).filter((transaction) => releaseIds.has(transaction.releaseId));
+}
+
+function releaseRevenue(release) {
+  return Number(release.earnings || 0) || Number(release.downloads || 0) * Number(release.price || 0);
+}
 
 function message(node, text, type = "success") {
   node.textContent = text;
@@ -54,6 +106,17 @@ function normalizeLink(value) {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
   return trimmed;
+}
+
+function escapeText(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeAttr(value) {
+  return escapeText(value).replace(/"/g, "&quot;");
 }
 
 function fileToDataUrl(file) {
@@ -166,6 +229,8 @@ function fillArtistForm() {
   artistForm.name.value = artist.name || "";
   artistForm.handle.value = artist.handle || "";
   artistForm.bio.value = artist.bio || "";
+  if (artistForm.location) artistForm.location.value = artist.location || artist.cityState || "";
+  if (artistForm.email) artistForm.email.value = artist.email || artist.socials?.email?.replace(/^mailto:/i, "") || "";
   artistBioCount.textContent = String(artistForm.bio.value.length);
   renderLinkInputs(socialFields, SOCIAL_LINKS, artist.socials || {});
   updateArtistPreview();
@@ -329,6 +394,7 @@ function fillReleaseForm(release) {
   releaseForm.songBio.value = release.songBio || "";
   releaseForm.releaseDate.value = release.releaseDate || "";
   releaseForm.producer.value = release.producer || "";
+  if (releaseForm.writer) releaseForm.writer.value = release.writer || "";
   releaseForm.price.value = release.price ?? "0.99";
   const storedPreviewStart = Math.max(0, Number(release.previewStart ?? DEFAULT_PREVIEW_START));
   const storedPreviewEnd = Number(release.previewEnd ?? storedPreviewStart + Number(release.previewDuration || DEFAULT_PREVIEW_END));
@@ -410,19 +476,241 @@ function updateFeaturedReleasePreview() {
 
 function renderDashboardReleases() {
   const artist = primaryArtist();
-  const releases = currentStore.releases.filter((release) => release.artistId === artist.id);
-  releaseList.replaceChildren();
+  const releases = artistReleases();
+  releaseList?.replaceChildren();
   renderFeaturedReleasePicker();
 
-  if (!releases.length) {
+  if (releaseList && !releases.length) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
     empty.textContent = "Your uploaded releases will appear here for editing.";
     releaseList.append(empty);
+  }
+
+  if (releaseList && releases.length) releases.forEach((release) => releaseList.append(releaseSummary(release)));
+  renderSongControls();
+  renderSongTable();
+  renderArtistConsole();
+}
+
+function renderSongControls() {
+  if (!songGenreFilter) return;
+  const currentValue = songGenreFilter.value;
+  const genres = [...new Set(artistReleases().map((release) => release.genre).filter(Boolean))].sort();
+  songGenreFilter.replaceChildren(new Option("All genres", ""));
+  genres.forEach((genre) => songGenreFilter.append(new Option(genre, genre)));
+  songGenreFilter.value = genres.includes(currentValue) ? currentValue : "";
+}
+
+function filteredArtistReleases() {
+  let releases = artistReleases();
+  const query = String(songSearchInput?.value || "").trim().toLowerCase();
+  const genre = songGenreFilter?.value || "";
+  const status = songStatusFilter?.value || "";
+  const sort = songSortSelect?.value || "newest";
+
+  if (query) {
+    releases = releases.filter((release) =>
+      [release.title, release.artistName, release.genre, release.secondaryGenre, release.songBio]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }
+  if (genre) releases = releases.filter((release) => release.genre === genre);
+  if (status) releases = releases.filter((release) => (release.status || "pending") === status);
+
+  releases = releases.slice().sort((a, b) => {
+    const aTime = new Date(a.createdAt || a.releaseDate || 0).getTime();
+    const bTime = new Date(b.createdAt || b.releaseDate || 0).getTime();
+    return sort === "oldest" ? aTime - bTime : bTime - aTime;
+  });
+
+  return releases;
+}
+
+function renderSongTable() {
+  if (!artistSongTable) return;
+  const artist = primaryArtist();
+  const releases = filteredArtistReleases();
+
+  if (!releases.length) {
+    artistSongTable.innerHTML = `<p class="empty-state">No songs match the current filters.</p>`;
     return;
   }
 
-  releases.forEach((release) => releaseList.append(releaseSummary(release)));
+  artistSongTable.innerHTML = `
+    <div class="song-table-header">
+      <span>Artwork</span>
+      <span>Song Title</span>
+      <span>Genre</span>
+      <span>Price</span>
+      <span>Downloads</span>
+      <span>Status</span>
+      <span>Date Created</span>
+      <span>Actions</span>
+    </div>
+    ${releases
+      .map(
+        (release) => `
+          <article class="song-table-row">
+            <img src="${escapeAttr(release.cover || "Mba Logos/MusicBusiness Logo.png")}" alt="">
+            <strong>${escapeText(release.title || "Untitled song")}</strong>
+            <span>${escapeText(release.genre || "Music")}</span>
+            <span>${money(release.price || 0)}</span>
+            <span>${Number(release.downloads || 0)}</span>
+            <span><mark>${escapeText(release.status || "pending")}</mark></span>
+            <span>${formatReleaseDate((release.createdAt || "").slice(0, 10) || release.releaseDate)}</span>
+            <div class="song-row-actions">
+              <button type="button" data-edit-release="${release.id}">Edit</button>
+              <a href="/music" target="_blank" rel="noreferrer">Preview</a>
+              <button type="button" data-delete-release="${release.id}">Delete</button>
+              <button type="button" data-feature-release="${release.id}">${artist.featuredReleaseId === release.id ? "Featured" : "Feature"}</button>
+              <button type="button" data-duplicate-release="${release.id}">Duplicate</button>
+            </div>
+          </article>
+        `
+      )
+      .join("")}
+  `;
+}
+
+function emptyLine(text) {
+  return `<p class="empty-state">${escapeText(text)}</p>`;
+}
+
+function renderActivityList(container, items, emptyText) {
+  if (!container) return;
+  container.innerHTML = items.length
+    ? items
+        .map(
+          (item) => `
+            <article>
+              <strong>${escapeText(item.title)}</strong>
+              <span>${escapeText(item.meta)}</span>
+            </article>
+          `
+        )
+        .join("")
+    : emptyLine(emptyText);
+}
+
+function videoEntries(artist) {
+  const videos = artist.videos || currentStore.site?.videos || {};
+  return [
+    ["YouTube Video", videos.mainVideoTitle || "Featured video", videos.mainVideoUrl],
+    ["YouTube Shorts", "Short video", videos.shortVideoUrl],
+    ["TikTok / Instagram Reels", "Short-form video", videos.tiktokUrl],
+  ].filter(([, , url]) => url);
+}
+
+function renderVideosPanel() {
+  if (!artistVideoList) return;
+  const entries = videoEntries(primaryArtist());
+  artistVideoList.innerHTML = entries.length
+    ? entries
+        .map(
+          ([type, title, url]) => `
+            <article>
+              <div>
+                <strong>${escapeText(title)}</strong>
+                <span>${escapeText(type)}</span>
+              </div>
+              <a href="${escapeAttr(url)}" target="_blank" rel="noreferrer">Open</a>
+            </article>
+          `
+        )
+        .join("")
+    : emptyLine("Video links will appear here after they are saved.");
+}
+
+function renderDownloadsPanel() {
+  const releases = artistReleases();
+  const transactions = artistTransactions();
+  const topRelease = releases.slice().sort((a, b) => Number(b.downloads || 0) - Number(a.downloads || 0))[0];
+  const totalDownloads = releases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
+  setText("#downloadsTotalCount", String(totalDownloads));
+  setText("#downloadsTopSong", topRelease?.title || "None");
+  setText("#downloadsRecent", transactions[0]?.createdAt ? formatReleaseDate(transactions[0].createdAt.slice(0, 10)) : "None");
+
+  if (!artistDownloadTable) return;
+  const rows = releases.filter((release) => Number(release.downloads || 0) > 0);
+  artistDownloadTable.innerHTML = rows.length
+    ? `
+      <div class="download-table-header">
+        <span>Song Name</span><span>Price</span><span>Downloads</span><span>Revenue</span><span>Purchase Date</span><span>Country</span>
+      </div>
+      ${rows
+        .map(
+          (release) => `
+            <article class="download-table-row">
+              <strong>${escapeText(release.title || "Untitled song")}</strong>
+              <span>${money(release.price || 0)}</span>
+              <span>${Number(release.downloads || 0)}</span>
+              <span>${money(releaseRevenue(release))}</span>
+              <span>${formatReleaseDate((release.updatedAt || release.createdAt || "").slice(0, 10))}</span>
+              <span>${escapeText(release.country || "United States")}</span>
+            </article>
+          `
+        )
+        .join("")}
+    `
+    : emptyLine("Download records will appear here after fans purchase songs.");
+}
+
+function renderArtistConsole() {
+  const artist = primaryArtist();
+  const releases = artistReleases();
+  const videos = videoEntries(artist);
+  const totalDownloads = releases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
+  const totalRevenue = releases.reduce((sum, release) => sum + releaseRevenue(release), 0);
+  const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
+  const topRelease = releases.slice().sort((a, b) => Number(b.plays || 0) + Number(b.downloads || 0) - (Number(a.plays || 0) + Number(a.downloads || 0)))[0];
+  const topPlatform = releases.flatMap((release) => Object.entries(release.streaming || {}).filter(([, value]) => value)).map(([key]) => key)[0] || "None";
+  const platformFee = totalRevenue * Number(currentStore.site?.commissionRate || 10) / 100;
+
+  setText("#artistTotalSongs", String(releases.length));
+  setText("#artistTotalVideos", String(videos.length));
+  setText("#artistTotalDownloads", String(totalDownloads));
+  setText("#artistTotalRevenue", money(totalRevenue));
+  setText("#artistProfileViews", String(Number(artist.profileViews || artist.followers || 0)));
+  setText("#artistStreamingClicks", String(streamingClicks));
+
+  setText("#analyticsProfileViews", String(Number(artist.profileViews || artist.followers || 0)));
+  setText("#analyticsArtistVisits", String(Number(artist.artistPageVisits || 0)));
+  setText("#analyticsMusicVisits", String(Number(artist.musicPageVisits || releases.reduce((sum, release) => sum + Number(release.plays || 0), 0))));
+  setText("#analyticsVideoVisits", String(Number(artist.videoPageVisits || 0)));
+  setText("#analyticsStreamingClicks", String(streamingClicks));
+  setText("#analyticsDownloadVisits", String(totalDownloads));
+  setText("#analyticsTopSong", topRelease?.title || "None");
+  setText("#analyticsTopVideo", videos[0]?.[1] || "None");
+  setText("#analyticsTopPlatform", topPlatform);
+  setText("#analyticsTrafficSources", artist.trafficSources || "Direct");
+
+  setText("#earningsTotalRevenue", money(totalRevenue));
+  setText("#earningsAvailableBalance", money(Math.max(0, totalRevenue - platformFee)));
+  setText("#earningsPendingBalance", money(0));
+  setText("#earningsPlatformFees", money(platformFee));
+  setText("#earningsNetRevenue", money(Math.max(0, totalRevenue - platformFee)));
+  setText("#earningsDownloadRevenue", money(totalRevenue));
+
+  renderActivityList(
+    recentActivityList,
+    releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: `${release.status || "pending"} | ${formatReleaseDate((release.updatedAt || release.createdAt || "").slice(0, 10))}` })),
+    "Recent activity will appear after songs are saved."
+  );
+  renderActivityList(
+    recentDownloadsList,
+    releases.filter((release) => Number(release.downloads || 0) > 0).slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: `${release.downloads} downloads | ${money(releaseRevenue(release))}` })),
+    "Recent downloads will appear after purchases."
+  );
+  renderActivityList(
+    recentUploadsList,
+    releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: formatReleaseDate((release.createdAt || "").slice(0, 10) || release.releaseDate) })),
+    "Recent uploads will appear here."
+  );
+  renderActivityList(payoutHistoryList, [], "Payout history will appear after payouts are processed.");
+  renderVideosPanel();
+  renderDownloadsPanel();
 }
 
 artistForm.bio.addEventListener("input", () => {
@@ -451,7 +739,10 @@ artistForm.addEventListener("submit", async (event) => {
     artist.name = artistForm.name.value.trim();
     artist.handle = artistForm.handle.value.trim();
     artist.bio = artistForm.bio.value.trim();
+    artist.location = artistForm.location?.value.trim() || "";
+    artist.email = artistForm.email?.value.trim() || "";
     artist.socials = formLinks(artistForm, SOCIAL_LINKS);
+    if (artist.email && !artist.socials.email) artist.socials.email = `mailto:${artist.email}`;
     artist.status = "approved";
     if (photo) artist.photo = photo;
     if (banner) {
@@ -535,6 +826,7 @@ releaseForm.addEventListener("submit", async (event) => {
     release.songBio = releaseForm.songBio.value.trim();
     release.releaseDate = releaseForm.releaseDate.value;
     release.producer = releaseForm.producer.value.trim();
+    release.writer = releaseForm.writer?.value.trim() || "";
     release.country = releaseForm.country.value;
     release.cityState = releaseForm.cityState.value.trim();
     release.location = [release.cityState, release.country].filter(Boolean).join(", ");
@@ -574,7 +866,7 @@ releaseForm.addEventListener("submit", async (event) => {
   }
 });
 
-releaseList.addEventListener("click", (event) => {
+releaseList?.addEventListener("click", (event) => {
   const editButton = event.target.closest("[data-edit-release]");
   const featureButton = event.target.closest("[data-feature-release]");
 
@@ -587,6 +879,96 @@ releaseList.addEventListener("click", (event) => {
   if (featureButton) {
     selectFeaturedRelease(featureButton.dataset.featureRelease);
   }
+});
+
+artistSongTable?.addEventListener("click", async (event) => {
+  const editButton = event.target.closest("[data-edit-release]");
+  const featureButton = event.target.closest("[data-feature-release]");
+  const deleteButton = event.target.closest("[data-delete-release]");
+  const duplicateButton = event.target.closest("[data-duplicate-release]");
+
+  if (editButton) {
+    const release = currentStore.releases.find((item) => item.id === editButton.dataset.editRelease);
+    if (release) {
+      fillReleaseForm(release);
+      showDashboardSection("songEditorSection");
+    }
+    return;
+  }
+
+  if (featureButton) {
+    await selectFeaturedRelease(featureButton.dataset.featureRelease);
+    return;
+  }
+
+  if (deleteButton) {
+    const releaseId = deleteButton.dataset.deleteRelease;
+    currentStore.releases = currentStore.releases.filter((release) => release.id !== releaseId);
+    if (releaseForm.editingId.value === releaseId) clearReleaseForm();
+    currentStore = await window.MBA.saveStore(currentStore);
+    renderDashboardReleases();
+    message(releaseMessage, "Song deleted.", "pending");
+    return;
+  }
+
+  if (duplicateButton) {
+    const source = currentStore.releases.find((release) => release.id === duplicateButton.dataset.duplicateRelease);
+    if (!source) return;
+    const copy = {
+      ...JSON.parse(JSON.stringify(source)),
+      id: window.MBA.uid("release"),
+      title: `${source.title || "Untitled song"} Copy`,
+      status: "pending",
+      downloads: 0,
+      earnings: 0,
+      donations: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    currentStore.releases.unshift(copy);
+    currentStore = await window.MBA.saveStore(currentStore);
+    renderDashboardReleases();
+  }
+});
+
+[songSearchInput, songGenreFilter, songStatusFilter, songSortSelect].forEach((control) => {
+  control?.addEventListener("input", renderSongTable);
+  control?.addEventListener("change", renderSongTable);
+});
+
+dashboardNavLinks.forEach((link) => {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    showDashboardSection(link.dataset.dashboardSection);
+  });
+});
+
+openSongEditorButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    clearReleaseForm();
+    showDashboardSection("songEditorSection");
+  });
+});
+
+artistLogoutButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    localStorage.removeItem("mba-active-artist-id");
+    window.location.assign("/home");
+  });
+});
+
+deleteEditingSong?.addEventListener("click", async () => {
+  const releaseId = releaseForm.editingId.value;
+  if (!releaseId) {
+    clearReleaseForm();
+    message(releaseMessage, "No saved song is selected.", "pending");
+    return;
+  }
+  currentStore.releases = currentStore.releases.filter((release) => release.id !== releaseId);
+  currentStore = await window.MBA.saveStore(currentStore);
+  clearReleaseForm();
+  renderDashboardReleases();
+  showDashboardSection("songsSection");
 });
 
 async function selectFeaturedRelease(releaseId) {
@@ -640,6 +1022,7 @@ artistAccountSelect?.addEventListener("change", () => {
   clearReleaseForm();
   renderDashboardReleases();
   updateFeaturedReleasePreview();
+  renderArtistConsole();
   message(artistAccountMessage, `${artistLabel(primaryArtist())} is selected. Upload now edits this artist.`);
 });
 
@@ -656,7 +1039,26 @@ createArtistProfile?.addEventListener("click", async () => {
   fillVideoForm();
   clearReleaseForm();
   renderDashboardReleases();
+  renderArtistConsole();
   message(artistAccountMessage, "New artist profile created. Edit the name, biography, social links, songs, and videos below.");
+});
+
+document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () => {
+  const artist = primaryArtist();
+  artist.videos = {
+    mainVideoUrl: "",
+    mainVideoTitle: "",
+    shortVideoUrl: "",
+    tiktokUrl: "",
+    moreVideosUrl: "",
+    moreShortsUrl: "",
+  };
+  currentStore.site = currentStore.site || {};
+  currentStore.site.videos = artist.videos;
+  currentStore = await window.MBA.saveStore(currentStore);
+  fillVideoForm();
+  renderArtistConsole();
+  message(videoMessage, "Video links removed.", "pending");
 });
 
 async function initDashboard() {
@@ -669,7 +1071,12 @@ async function initDashboard() {
   renderDashboardReleases();
   const editId = new URLSearchParams(window.location.search).get("edit");
   const editRelease = currentStore.releases.find((release) => release.id === editId);
-  if (editRelease) fillReleaseForm(editRelease);
+  if (editRelease) {
+    fillReleaseForm(editRelease);
+    showDashboardSection("songEditorSection");
+  } else {
+    showDashboardSection("dashboardOverview");
+  }
 }
 
 initDashboard();

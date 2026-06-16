@@ -708,6 +708,337 @@ h3 {
   padding: clamp(20px, 4vw, 32px);
 }
 
+.artist-console-body {
+  background: #eef1f5;
+}
+
+.artist-console {
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(220px, 270px) minmax(0, 1fr);
+  margin: 0 auto;
+  max-width: 1600px;
+  min-height: calc(100vh - 72px);
+}
+
+.artist-console-sidebar {
+  align-self: start;
+  background: #10131a;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  display: grid;
+  gap: 22px;
+  min-height: calc(100vh - 72px);
+  padding: 24px 18px;
+  position: sticky;
+  top: 72px;
+}
+
+.artist-console-brand h1 {
+  color: var(--white);
+  font-size: 2rem;
+  line-height: 1;
+  margin: 0;
+}
+
+.artist-console-nav,
+.artist-console-links {
+  display: grid;
+  gap: 8px;
+}
+
+.artist-console-nav a,
+.artist-console-links a,
+.artist-console-links button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.artist-console-nav a:hover,
+.artist-console-nav a.is-active,
+.artist-console-links a:hover,
+.artist-console-links button:hover {
+  background: rgba(244, 196, 48, 0.14);
+  border-color: rgba(244, 196, 48, 0.32);
+  color: var(--gold);
+}
+
+.artist-console-links {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 14px;
+}
+
+.artist-console-main {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: clamp(18px, 3vw, 34px);
+}
+
+.artist-console-topbar,
+.artist-console-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(17, 20, 27, 0.08);
+  color: var(--text);
+}
+
+.artist-console-topbar {
+  align-items: end;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.9fr);
+  padding: clamp(18px, 3vw, 28px);
+}
+
+.artist-console-topbar h2,
+.artist-section-heading h2 {
+  font-size: clamp(1.8rem, 3.4vw, 3rem);
+  line-height: 1;
+  margin: 0;
+}
+
+.artist-dashboard-section {
+  display: none;
+  gap: 18px;
+}
+
+.artist-dashboard-section.is-active {
+  display: grid;
+}
+
+.artist-section-heading {
+  align-items: end;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.artist-section-heading p {
+  color: var(--muted);
+  font-weight: 800;
+  margin: 8px 0 0;
+}
+
+.artist-metric-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.artist-metric-grid article {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 16px 42px rgba(17, 20, 27, 0.07);
+  display: grid;
+  gap: 8px;
+  min-height: 116px;
+  padding: 20px;
+}
+
+.artist-metric-grid span,
+.artist-card-heading p,
+.compact-activity-list span,
+.artist-video-list span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.artist-metric-grid strong {
+  color: var(--text);
+  font-size: clamp(1.45rem, 3vw, 2.2rem);
+  line-height: 1.05;
+}
+
+.artist-dashboard-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.artist-console-card {
+  display: grid;
+  gap: 16px;
+  padding: clamp(18px, 3vw, 26px);
+}
+
+.artist-console-card h3 {
+  color: var(--text);
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.artist-console-card label,
+.artist-console-card .field-note,
+.artist-console-card .form-message {
+  color: #3f4652;
+}
+
+.artist-console-card input,
+.artist-console-card textarea,
+.artist-console-card select {
+  background: #f8fafc;
+  border-color: #dce1ea;
+  color: var(--text);
+}
+
+.song-tools {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1.4fr repeat(3, minmax(150px, 0.7fr));
+}
+
+.artist-song-table,
+.artist-download-table {
+  display: grid;
+  gap: 8px;
+}
+
+.song-table-header,
+.song-table-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 58px minmax(160px, 1.2fr) minmax(90px, 0.65fr) 78px 84px 86px 112px minmax(260px, 1.5fr);
+}
+
+.download-table-header,
+.download-table-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 1.3fr) 90px 100px 110px 130px 120px;
+}
+
+.song-table-header,
+.download-table-header {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.song-table-row,
+.download-table-row,
+.compact-activity-list article,
+.artist-video-list article {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.song-table-row img {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  object-fit: cover;
+  width: 58px;
+}
+
+.song-table-row strong,
+.download-table-row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-table-row span,
+.download-table-row span {
+  color: #4d5563;
+  font-size: 0.9rem;
+  font-weight: 800;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-table-row mark {
+  background: rgba(244, 196, 48, 0.18);
+  border-radius: 999px;
+  color: #6d5300;
+  font-size: 0.72rem;
+  font-weight: 1000;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.song-row-actions,
+.settings-action-list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.song-row-actions button,
+.song-row-actions a {
+  background: #11141b;
+  border: 0;
+  border-radius: 6px;
+  color: var(--white);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 900;
+  min-height: 32px;
+  padding: 8px 10px;
+}
+
+.compact-activity-list,
+.artist-video-list {
+  display: grid;
+  gap: 10px;
+}
+
+.compact-activity-list article,
+.artist-video-list article {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.compact-activity-list strong,
+.artist-video-list strong {
+  color: var(--text);
+}
+
+.artist-video-list a {
+  color: var(--gold-dark);
+  font-weight: 1000;
+}
+
+.artist-console-card .compact-settings-form {
+  border-top: 0;
+  padding: 0;
+}
+
+.inline-check {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.inline-check input {
+  min-height: auto;
+  width: auto;
+}
+
+.danger-action {
+  color: #f7b7b9;
+}
+
 .creator-upload-layout {
   display: grid;
   gap: clamp(18px, 3vw, 30px);
@@ -2962,6 +3293,50 @@ select:focus {
 }
 
 @media (max-width: 860px) {
+  .artist-console {
+    grid-template-columns: 1fr;
+  }
+
+  .artist-console-sidebar {
+    min-height: auto;
+    position: static;
+  }
+
+  .artist-console-nav,
+  .artist-console-links {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .artist-console-topbar,
+  .artist-dashboard-grid,
+  .artist-metric-grid,
+  .song-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .song-table-header,
+  .download-table-header {
+    display: none;
+  }
+
+  .song-table-row,
+  .download-table-row {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .song-table-row span,
+  .song-table-row .song-row-actions,
+  .download-table-row span {
+    grid-column: 2;
+  }
+
+  .artist-section-heading,
+  .upload-form-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .site-header {
     align-items: center;
     flex-direction: row;
