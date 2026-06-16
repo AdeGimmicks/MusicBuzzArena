@@ -579,6 +579,14 @@ async function renderArtistPage(force = false) {
 
   const approvedReleases = (store.releases || []).filter((release) => release.status === "approved");
   const artist = artistForPage(store, approvedReleases);
+
+  if (artist) {
+    artist.artistPageVisits =
+      Number(artist.artistPageVisits || 0) + 1;
+
+    await window.MBA.saveStore(store);
+  }
+
   applySite(store);
 
   if (!artist || artist.status === "denied") {
