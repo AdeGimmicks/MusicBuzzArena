@@ -260,7 +260,11 @@ function linkHubPage(release, artist) {
     if (!href) return "";
     const actionLabel = key === "itunes" ? "Download" : "Play";
     return `
-      <a class="service-row" href="${href}" target="_blank" rel="noreferrer">
+      <a class="service-row streaming-link"
+   data-release-id="${release.id}"
+   href="${href}"
+   target="_blank"
+   rel="noreferrer">
         <span class="service-brand">
           <img src="${icon}" alt="">
           <strong>${label}</strong>
@@ -540,9 +544,25 @@ function linkHubPage(release, artist) {
     });
   });
 
-  return wrap;
-}
+  wrap.querySelectorAll(".streaming-link").forEach((link) => {
+  link.addEventListener("click", async () => {
+    const store = await window.MBA.loadStore({ force: true });
 
+    const saved = store.releases.find(
+      (item) => item.id === link.dataset.releaseId
+    );
+
+    if (!saved) return;
+
+    saved.streamingClicks =
+      Number(saved.streamingClicks || 0) + 1;
+
+    await window.MBA.saveStore(store);
+  });
+});
+
+return wrap;
+}
 let lastArtistSnapshot = "";
 
 async function renderArtistPage(force = false) {
