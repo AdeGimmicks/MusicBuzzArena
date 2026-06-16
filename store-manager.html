@@ -6,98 +6,237 @@
     <title>Store Manager | MusicBusiness Arena</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="manager-body">
+  <body class="manager-body manager-console-body">
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
       </a>
       <nav class="site-nav" aria-label="Main navigation">
         <a href="/home">Home</a>
-        <a href="/music">Artist Page</a>
+        <a href="/music">Music</a>
         <a href="/upload">Artist Dashboard</a>
         <button class="nav-button" id="storeManagerLogout" type="button">Log Out</button>
       </nav>
     </header>
 
-    <main class="dashboard-layout">
-      <section class="dashboard-intro">
-        <p class="eyebrow">Store manager</p>
-        <h1>Approve releases, manage homepage content, and monitor the platform.</h1>
-        <p>
-          Store Manager controls the website and moderation. Music uploads stay inside Artist Dashboard.
-        </p>
-      </section>
-
-      <section class="stats-grid">
-        <article><strong id="totalArtists">0</strong><span>artists</span></article>
-        <article><strong id="pendingReleases">0</strong><span>pending releases</span></article>
-        <article><strong id="totalDownloads">0</strong><span>downloads</span></article>
-        <article><strong id="totalEarnings">$0.00</strong><span>artist earnings</span></article>
-      </section>
-
-      <section class="panel">
-        <div class="section-heading">
-          <p class="eyebrow">Website CMS</p>
-          <h2>Homepage and platform settings</h2>
+    <main class="manager-console">
+      <aside class="manager-console-sidebar" aria-label="Store Manager navigation">
+        <div class="manager-console-brand">
+          <p class="eyebrow">Platform admin</p>
+          <h1>Store Manager</h1>
         </div>
-        <form id="siteForm" class="form-grid">
-          <label>
-            Website logo
-            <input name="logo" type="file" accept="image/*" />
-          </label>
-          <label>
-            Website title
-            <input name="title" type="text" />
-          </label>
-          <label>
-            Tagline
-            <input name="tagline" type="text" />
-          </label>
-          <label>
-            Homepage intro
-            <textarea name="intro" rows="4"></textarea>
-          </label>
-          <div class="form-row">
-            <label>
-              Primary button text
-              <input name="primaryCta" type="text" />
-            </label>
-            <label>
-              Secondary button text
-              <input name="secondaryCta" type="text" />
-            </label>
+        <nav class="manager-console-nav">
+          <a class="is-active" href="#managerDashboard" data-manager-section="managerDashboard">Dashboard</a>
+          <a href="#managerArtists" data-manager-section="managerArtists">Artists</a>
+          <a href="#managerSongs" data-manager-section="managerSongs">Songs</a>
+          <a href="#managerVideos" data-manager-section="managerVideos">Videos</a>
+          <a href="#managerDownloads" data-manager-section="managerDownloads">Downloads</a>
+          <a href="#managerPayouts" data-manager-section="managerPayouts">Payouts</a>
+          <a href="#managerAnalytics" data-manager-section="managerAnalytics">Analytics</a>
+          <a href="#managerSupport" data-manager-section="managerSupport">Support</a>
+          <a href="#managerReports" data-manager-section="managerReports">Reports</a>
+          <a href="#managerSettings" data-manager-section="managerSettings">Platform Settings</a>
+          <a href="#managerSecurity" data-manager-section="managerSecurity">Security</a>
+        </nav>
+        <div class="manager-console-links">
+          <a href="/home" target="_blank" rel="noreferrer">View Website</a>
+          <button type="button" id="storeManagerSidebarLogout">Logout</button>
+        </div>
+      </aside>
+
+      <section class="manager-console-main">
+        <section class="manager-console-topbar">
+          <div>
+            <p class="eyebrow">MusicBusiness Arena</p>
+            <h2 id="managerWorkspaceTitle">Dashboard</h2>
           </div>
-          <label>
-            Platform commission percentage
-            <input name="commissionRate" type="number" min="0" max="100" step="1" />
-          </label>
-          <button class="primary-button" type="submit">Save Website Settings</button>
-          <p class="form-message" id="siteMessage" role="status"></p>
-        </form>
-      </section>
+          <div class="manager-topbar-actions">
+            <a class="secondary-button" href="/upload" target="_blank" rel="noreferrer">Open Artist Dashboard</a>
+            <a class="primary-button" href="/home" target="_blank" rel="noreferrer">View Public Site</a>
+          </div>
+        </section>
 
-      <section class="panel">
-        <div class="section-heading">
-          <p class="eyebrow">Approval queue</p>
-          <h2>Artist song submissions</h2>
-        </div>
-        <div class="approval-list" id="approvalList"></div>
-      </section>
+        <section class="manager-dashboard-section is-active" id="managerDashboard" data-section-title="Dashboard">
+          <div class="manager-section-heading">
+            <div>
+              <p class="eyebrow">Platform-wide statistics</p>
+              <h2>Dashboard</h2>
+            </div>
+          </div>
+          <section class="manager-metric-grid">
+            <article><span>Total Artists</span><strong id="managerTotalArtists">0</strong></article>
+            <article><span>Total Songs</span><strong id="managerTotalSongs">0</strong></article>
+            <article><span>Total Videos</span><strong id="managerTotalVideos">0</strong></article>
+            <article><span>Total Downloads</span><strong id="managerTotalDownloads">0</strong></article>
+            <article><span>Total Revenue</span><strong id="managerTotalRevenue">$0.00</strong></article>
+            <article><span>Pending Payouts</span><strong id="managerPendingPayouts">0</strong></article>
+            <article><span>Pending Reviews</span><strong id="managerPendingReviews">0</strong></article>
+            <article><span>Open Support Tickets</span><strong id="managerOpenTickets">0</strong></article>
+          </section>
+          <section class="manager-dashboard-grid">
+            <article class="manager-console-card"><h3>Recent Activity</h3><div class="manager-list" id="managerRecentActivity"></div></article>
+            <article class="manager-console-card"><h3>Newest Artists</h3><div class="manager-list" id="managerNewestArtists"></div></article>
+            <article class="manager-console-card"><h3>Newest Songs</h3><div class="manager-list" id="managerNewestSongs"></div></article>
+            <article class="manager-console-card"><h3>Newest Downloads</h3><div class="manager-list" id="managerNewestDownloads"></div></article>
+            <article class="manager-console-card"><h3>Newest Support Requests</h3><div class="manager-list" id="managerNewestSupport"></div></article>
+          </section>
+        </section>
 
-      <section class="panel">
-        <div class="section-heading">
-          <p class="eyebrow">Artist profiles</p>
-          <h2>Manage website artist pages</h2>
-        </div>
-        <div class="records-list" id="artistManagerList"></div>
-      </section>
+        <section class="manager-dashboard-section" id="managerArtists" data-section-title="Artists">
+          <div class="manager-section-heading">
+            <div><p class="eyebrow">Artist accounts</p><h2>Artists Management</h2></div>
+          </div>
+          <section class="manager-console-card">
+            <div class="manager-tools">
+              <label>Search Artist <input id="artistSearchInput" type="search" placeholder="Name, handle, status" /></label>
+              <label>Filter Artist Status <select id="artistStatusFilter"><option value="">All statuses</option><option>approved</option><option>pending</option><option>denied</option><option>suspended</option></select></label>
+              <label>Sort Artists <select id="artistSortSelect"><option value="joinDate">Sort by Join Date</option><option value="revenue">Sort by Revenue</option><option value="downloads">Sort by Downloads</option></select></label>
+            </div>
+            <div class="manager-table manager-artist-table" id="managerArtistTable"></div>
+          </section>
+          <section class="manager-console-card">
+            <h3>Edit Artist</h3>
+            <form id="managerArtistForm" class="manager-edit-form">
+              <input name="id" type="hidden" />
+              <div class="form-row">
+                <label>Artist Name <input name="name" type="text" /></label>
+                <label>Status <select name="status"><option>approved</option><option>pending</option><option>denied</option><option>suspended</option></select></label>
+              </div>
+              <label>Biography <textarea name="bio" rows="4"></textarea></label>
+              <button class="primary-button" type="submit">Save Artist</button>
+              <p class="form-message" id="managerArtistMessage" role="status"></p>
+            </form>
+          </section>
+        </section>
 
-      <section class="panel">
-        <div class="section-heading">
-          <p class="eyebrow">Records</p>
-          <h2>Downloads, fees, and payouts</h2>
-        </div>
-        <div class="records-list" id="recordsList"></div>
+        <section class="manager-dashboard-section" id="managerSongs" data-section-title="Songs">
+          <div class="manager-section-heading">
+            <div><p class="eyebrow">Content approval workflow</p><h2>Songs Management</h2></div>
+          </div>
+          <section class="manager-console-card">
+            <div class="manager-tools">
+              <label>Search Songs <input id="songSearchInput" type="search" placeholder="Title, artist, genre" /></label>
+              <label>Filter by Artist <select id="songArtistFilter"><option value="">All artists</option></select></label>
+              <label>Filter by Status <select id="songStatusFilter"><option value="">All statuses</option><option>approved</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
+              <label>Filter by Genre <select id="songGenreFilter"><option value="">All genres</option></select></label>
+            </div>
+            <div class="manager-table manager-song-table" id="managerSongTable"></div>
+          </section>
+          <section class="manager-console-card">
+            <h3>Edit Song</h3>
+            <form id="managerSongForm" class="manager-edit-form">
+              <input name="id" type="hidden" />
+              <div class="form-row">
+                <label>Song Title <input name="title" type="text" /></label>
+                <label>Artist <input name="artistName" type="text" /></label>
+              </div>
+              <div class="form-row">
+                <label>Genre <input name="genre" type="text" /></label>
+                <label>Price <input name="price" type="number" min="0" step="0.01" /></label>
+              </div>
+              <label>Status <select name="status"><option>approved</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
+              <label>Description <textarea name="songBio" rows="4"></textarea></label>
+              <button class="primary-button" type="submit">Save Song</button>
+              <p class="form-message" id="managerSongMessage" role="status"></p>
+            </form>
+          </section>
+        </section>
+
+        <section class="manager-dashboard-section" id="managerVideos" data-section-title="Videos">
+          <div class="manager-section-heading"><div><p class="eyebrow">Artist videos</p><h2>Videos Management</h2></div></div>
+          <section class="manager-console-card"><div class="manager-table manager-video-table" id="managerVideoTable"></div></section>
+        </section>
+
+        <section class="manager-dashboard-section" id="managerDownloads" data-section-title="Downloads">
+          <div class="manager-section-heading">
+            <div><p class="eyebrow">Purchases</p><h2>Downloads Management</h2></div>
+            <div class="manager-topbar-actions"><button class="secondary-button" id="exportDownloadsCsv" type="button">Export CSV</button><button class="secondary-button" type="button">Export Excel</button></div>
+          </div>
+          <section class="manager-console-card">
+            <div class="manager-tools">
+              <label>Search Downloads <input id="downloadSearchInput" type="search" placeholder="Song, artist, country" /></label>
+              <label>Filter by Artist <select id="downloadArtistFilter"><option value="">All artists</option></select></label>
+              <label>Filter by Country <select id="downloadCountryFilter"><option value="">All countries</option></select></label>
+            </div>
+            <div class="manager-table manager-download-table" id="managerDownloadTable"></div>
+          </section>
+        </section>
+
+        <section class="manager-dashboard-section" id="managerPayouts" data-section-title="Payouts">
+          <div class="manager-section-heading"><div><p class="eyebrow">Artist earnings</p><h2>Payout Management</h2></div><button class="secondary-button" type="button">Export Payout Report</button></div>
+          <section class="manager-console-card"><div class="manager-table manager-payout-table" id="managerPayoutTable"></div></section>
+        </section>
+
+        <section class="manager-dashboard-section" id="managerAnalytics" data-section-title="Analytics">
+          <div class="manager-section-heading"><div><p class="eyebrow">Platform growth</p><h2>Analytics</h2></div></div>
+          <section class="manager-metric-grid analytics-grid">
+            <article><span>Total Artists</span><strong id="analyticsTotalArtists">0</strong></article>
+            <article><span>Total Songs</span><strong id="analyticsTotalSongs">0</strong></article>
+            <article><span>Total Downloads</span><strong id="analyticsTotalDownloads">0</strong></article>
+            <article><span>Total Revenue</span><strong id="analyticsTotalRevenue">$0.00</strong></article>
+            <article><span>Top Artists</span><strong id="analyticsTopArtist">None</strong></article>
+            <article><span>Top Songs</span><strong id="analyticsTopSong">None</strong></article>
+            <article><span>Top Download Countries</span><strong id="analyticsTopCountry">None</strong></article>
+            <article><span>Most Clicked Streaming Platforms</span><strong id="analyticsTopPlatform">None</strong></article>
+            <article><span>Traffic Sources</span><strong>Direct</strong></article>
+            <article><span>Monthly Growth Charts</span><strong>Ready</strong></article>
+            <article><span>Yearly Growth Charts</span><strong>Ready</strong></article>
+          </section>
+        </section>
+
+        <section class="manager-dashboard-section" id="managerSupport" data-section-title="Support">
+          <div class="manager-section-heading"><div><p class="eyebrow">Support center</p><h2>Support Requests</h2></div></div>
+          <section class="manager-console-card"><div class="manager-table manager-support-table" id="managerSupportTable"></div></section>
+        </section>
+
+        <section class="manager-dashboard-section" id="managerReports" data-section-title="Reports">
+          <div class="manager-section-heading"><div><p class="eyebrow">Reports center</p><h2>Reports</h2></div></div>
+          <section class="manager-console-card"><div class="manager-table manager-report-table" id="managerReportTable"></div></section>
+        </section>
+
+        <section class="manager-dashboard-section" id="managerSettings" data-section-title="Platform Settings">
+          <div class="manager-section-heading"><div><p class="eyebrow">Platform settings</p><h2>Settings</h2></div></div>
+          <section class="manager-console-card">
+            <form id="siteForm" class="form-grid">
+              <label>Site Logo <input name="logo" type="file" accept="image/*" /></label>
+              <label>Website title <input name="title" type="text" /></label>
+              <label>Homepage Banner / Tagline <input name="tagline" type="text" /></label>
+              <label>Homepage Content <textarea name="intro" rows="4"></textarea></label>
+              <div class="form-row">
+                <label>Primary button text <input name="primaryCta" type="text" /></label>
+                <label>Secondary button text <input name="secondaryCta" type="text" /></label>
+              </div>
+              <div class="form-row">
+                <label>Platform Fee Percentage <input name="commissionRate" type="number" min="0" max="100" step="1" /></label>
+                <label>Favicon <input name="favicon" type="file" accept="image/*" /></label>
+              </div>
+              <div class="form-row">
+                <label>Google Analytics <input name="googleAnalytics" type="text" placeholder="Measurement ID" /></label>
+                <label>Facebook Pixel <input name="facebookPixel" type="text" placeholder="Pixel ID" /></label>
+              </div>
+              <div class="form-row">
+                <label>Stripe Settings <input name="stripeSettings" type="text" placeholder="Configured in Render" /></label>
+                <label>Email Settings <input name="emailSettings" type="text" placeholder="Support email" /></label>
+              </div>
+              <button class="primary-button" type="submit">Save Platform Settings</button>
+              <p class="form-message" id="siteMessage" role="status"></p>
+            </form>
+          </section>
+        </section>
+
+        <section class="manager-dashboard-section" id="managerSecurity" data-section-title="Security">
+          <div class="manager-section-heading"><div><p class="eyebrow">Security center</p><h2>Security</h2></div></div>
+          <section class="manager-dashboard-grid">
+            <article class="manager-console-card"><h3>Admin Login History</h3><div class="manager-list" id="adminLoginHistory"></div></article>
+            <article class="manager-console-card"><h3>Failed Login Attempts</h3><div class="manager-list" id="failedLoginAttempts"></div></article>
+            <article class="manager-console-card"><h3>Artist Login Activity</h3><div class="manager-list" id="artistLoginActivity"></div></article>
+            <article class="manager-console-card"><h3>IP Logs</h3><div class="manager-list" id="ipLogs"></div></article>
+            <article class="manager-console-card"><h3>Admin Accounts</h3><div class="manager-list"><p class="empty-state">Admin account roles will appear here.</p></div></article>
+            <article class="manager-console-card"><h3>Backup Controls</h3><button class="secondary-button" type="button">Export Platform Backup</button></article>
+            <article class="manager-console-card"><h3>Audit Logs</h3><div class="manager-list" id="auditLogs"></div></article>
+            <article class="manager-console-card"><h3>Platform Health</h3><div class="manager-list"><article><strong>MongoDB</strong><span>Connected through production health check</span></article></div></article>
+          </section>
+        </section>
       </section>
     </main>
 
