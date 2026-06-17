@@ -51,6 +51,14 @@ function artistForVideoPage(store) {
 async function renderVideos() {
   const store = await window.MBA.loadStore();
   const artist = artistForVideoPage(store);
+
+  if (artist) {
+    artist.videoPageVisits =
+      Number(artist.videoPageVisits || 0) + 1;
+
+    await window.MBA.saveStore(store);
+  }
+
   const videos = artist?.videos || store.site?.videos || {};
   const artistName = artist?.name || "Focuzman";
 
