@@ -204,11 +204,22 @@
     });
   }
 
-  async function init() {
-    try {
-      const store = await window.MBA.loadStore({ force: true });
-      renderPage(store);
-    } catch (error) {
+async function init() {
+  try {
+    const store = await window.MBA.loadStore({ force: true });
+
+    const release = selectedRelease(store);
+    const artist = selectedArtist(store, release);
+
+    if (artist) {
+      artist.downloadPageVisits =
+        Number(artist.downloadPageVisits || 0) + 1;
+
+      await window.MBA.saveStore(store);
+    }
+
+    renderPage(store);
+  } catch (error) {
       page.innerHTML = `
         <div class="download-empty">
           <p class="download-eyebrow">Download</p>
