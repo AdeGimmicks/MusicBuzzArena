@@ -680,7 +680,12 @@ function renderArtistConsole() {
   setText("#analyticsMusicVisits", String(Number(artist.musicPageVisits || releases.reduce((sum, release) => sum + Number(release.plays || 0), 0))));
   setText("#analyticsVideoVisits", String(Number(artist.videoPageVisits || 0)));
   setText("#analyticsStreamingClicks", String(streamingClicks));
-  setText("#analyticsDownloadVisits", String(totalDownloads));
+
+  const downloadPageVisits =
+    Number(artist.downloadPageVisits || 0);
+
+  setText("#analyticsDownloadVisits", String(downloadPageVisits));
+
   setText("#analyticsTopSong", topRelease?.title || "None");
   setText("#analyticsTopVideo", videos[0]?.[1] || "None");
   setText("#analyticsTopPlatform", topPlatform);
