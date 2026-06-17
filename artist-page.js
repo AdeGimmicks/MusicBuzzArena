@@ -610,11 +610,6 @@ async function renderArtistPage(force = false) {
   }
 
 if (document.querySelector(".artist-catalog-page")) {
-  artist.musicPageVisits =
-    Number(artist.musicPageVisits || 0) + 1;
-
-  await window.MBA.saveStore(store);
-
   const currentRelease = selectedRelease(releases);
   artistReleaseList.append(linkHubPage(currentRelease, artist));
   return;
