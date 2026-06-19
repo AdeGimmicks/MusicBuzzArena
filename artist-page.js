@@ -262,6 +262,7 @@ function linkHubPage(release, artist) {
     return `
       <a class="service-row streaming-link"
    data-release-id="${release.id}"
+   data-platform-key="${key}"
    href="${href}"
    target="_blank"
    rel="noreferrer">
@@ -545,21 +546,22 @@ function linkHubPage(release, artist) {
   });
 
   wrap.querySelectorAll(".streaming-link").forEach((link) => {
-  link.addEventListener("click", async () => {
-    const store = await window.MBA.loadStore({ force: true });
+    link.addEventListener("click", async () => {
+      const store = await window.MBA.loadStore({ force: true });
+      const saved = store.releases.find((item) => item.id === link.dataset.releaseId);
+      const platformKey = link.dataset.platformKey;
 
-    const saved = store.releases.find(
-      (item) => item.id === link.dataset.releaseId
-    );
+      if (!saved || !platformKey) return;
 
-    if (!saved) return;
+      saved.streamingClicks = Number(saved.streamingClicks || 0) + 1;
+      saved.platformClicks = {
+        ...(saved.platformClicks || {}),
+        [platformKey]: Number(saved.platformClicks?.[platformKey] || 0) + 1,
+      };
 
-    saved.streamingClicks =
-      Number(saved.streamingClicks || 0) + 1;
-
-    await window.MBA.saveStore(store);
+      await window.MBA.saveStore(store);
+    });
   });
-});
 
 return wrap;
 }

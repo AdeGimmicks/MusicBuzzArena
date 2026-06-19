@@ -647,15 +647,11 @@ function topVideoItems(artist) {
 }
 
 function platformClickMapForRelease(release) {
-  return release.streamingPlatformClicks
-    || release.streamingClicksByPlatform
-    || release.platformClicks
-    || release.streamingClickCounts
-    || {};
+  return release.platformClicks || {};
 }
 
 function topStreamingPlatformItems(artist, releases) {
-  const totals = { ...(artist.streamingPlatformClicks || artist.streamingClicksByPlatform || artist.platformClicks || {}) };
+  const totals = {};
   releases.forEach((release) => {
     const clickMap = platformClickMapForRelease(release);
     Object.entries(clickMap).forEach(([platform, count]) => {
@@ -666,8 +662,7 @@ function topStreamingPlatformItems(artist, releases) {
   return Object.entries(totals)
     .map(([platform, clicks]) => ({ title: platformLabel(platform), clicks: Number(clicks || 0) }))
     .filter((item) => item.clicks > 0)
-    .sort((a, b) => b.clicks - a.clicks || a.title.localeCompare(b.title))
-    .slice(0, 3);
+    .sort((a, b) => b.clicks - a.clicks || a.title.localeCompare(b.title));
 }
 
 function platformLabel(key) {
