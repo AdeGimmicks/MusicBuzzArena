@@ -603,6 +603,103 @@ function videoEntries(artist) {
   ].filter(([, , url]) => url);
 }
 
+function streamClickCount(release) {
+  return Number(release.streamingClicks || release.streamClicks || 0);
+}
+
+function topSongItems(releases) {
+  return releases
+    .map((release) => ({
+      title: release.title || "Untitled song",
+      downloads: Number(release.downloads || 0),
+      streamClicks: streamClickCount(release),
+    }))
+    .sort((a, b) => b.downloads - a.downloads || b.streamClicks - a.streamClicks || a.title.localeCompare(b.title))
+    .slice(0, 3);
+}
+
+function videoActivityCount(artist, videoKey) {
+  const videos = artist.videos || {};
+  const analytics = artist.videoAnalytics || videos.analytics || {};
+  const directValue = videos[`${videoKey}Views`] ?? videos[`${videoKey}Clicks`] ?? analytics[videoKey];
+  if (typeof directValue === "number") return directValue;
+  if (directValue && typeof directValue === "object") return Number(directValue.views || directValue.clicks || 0);
+  return 0;
+}
+
+function topVideoItems(artist) {
+  const videos = artist.videos || currentStore.site?.videos || {};
+  return [
+    { title: videos.mainVideoTitle || "YouTube Video", type: "YouTube Video", count: videoActivityCount(artist, "mainVideo") },
+    { title: "YouTube Shorts", type: "YouTube Shorts", count: videoActivityCount(artist, "shortVideo") },
+    { title: "TikTok / Instagram Reels", type: "Short-form video", count: videoActivityCount(artist, "tiktok") },
+  ]
+    .filter((item, index) => [videos.mainVideoUrl, videos.shortVideoUrl, videos.tiktokUrl][index])
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title))
+    .slice(0, 3);
+}
+
+function platformClickMapForRelease(release) {
+  return release.streamingPlatformClicks
+    || release.streamingClicksByPlatform
+    || release.platformClicks
+    || release.streamingClickCounts
+    || {};
+}
+
+function topStreamingPlatformItems(artist, releases) {
+  const totals = { ...(artist.streamingPlatformClicks || artist.streamingClicksByPlatform || artist.platformClicks || {}) };
+  releases.forEach((release) => {
+    const clickMap = platformClickMapForRelease(release);
+    Object.entries(clickMap).forEach(([platform, count]) => {
+      totals[platform] = Number(totals[platform] || 0) + Number(count || 0);
+    });
+  });
+
+  return Object.entries(totals)
+    .map(([platform, clicks]) => ({ title: platformLabel(platform), clicks: Number(clicks || 0) }))
+    .filter((item) => item.clicks > 0)
+    .sort((a, b) => b.clicks - a.clicks || a.title.localeCompare(b.title))
+    .slice(0, 3);
+}
+
+function platformLabel(key) {
+  const match = STREAMING_LINKS.find(([, value]) => value === key);
+  return match?.[0] || String(key || "Platform").replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
+}
+
+function renderExpandableAnalyticsCard(containerSelector, items, emptyText, formatMeta) {
+  const container = document.querySelector(containerSelector);
+  if (!container) return;
+
+  if (!items.length) {
+    container.innerHTML = `<strong>${escapeText(emptyText)}</strong>`;
+    return;
+  }
+
+  const [firstItem] = items;
+  const rows = items
+    .map(
+      (item, index) => `
+        <li>
+          <strong>${index + 1}. ${escapeText(item.title)}</strong>
+          <span>${escapeText(formatMeta(item))}</span>
+        </li>
+      `
+    )
+    .join("");
+
+  container.innerHTML = `
+    <strong>${escapeText(firstItem.title)}</strong>
+    <span>${escapeText(formatMeta(firstItem))}</span>
+    <details class="analytics-view-all">
+      <summary>View All</summary>
+      <ol>${rows}</ol>
+    </details>
+  `;
+}
+
 function renderVideosPanel() {
   if (!artistVideoList) return;
   const entries = videoEntries(primaryArtist());
@@ -664,8 +761,6 @@ function renderArtistConsole() {
   const totalDownloads = releases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
   const totalRevenue = releases.reduce((sum, release) => sum + releaseRevenue(release), 0);
   const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
-  const topRelease = releases.slice().sort((a, b) => Number(b.plays || 0) + Number(b.downloads || 0) - (Number(a.plays || 0) + Number(a.downloads || 0)))[0];
-  const topPlatform = releases.flatMap((release) => Object.entries(release.streaming || {}).filter(([, value]) => value)).map(([key]) => key)[0] || "None";
   const platformFee = totalRevenue * Number(currentStore.site?.commissionRate || 10) / 100;
 
   setText("#artistTotalSongs", String(releases.length));
@@ -687,9 +782,24 @@ function renderArtistConsole() {
   setText("#analyticsDownloadVisits", String(downloadPageVisits));
   setText("#analyticsDownloadCount", String(totalDownloads));
 
-  setText("#analyticsTopSong", topRelease?.title || "None");
-  setText("#analyticsTopVideo", videos[0]?.[1] || "None");
-  setText("#analyticsTopPlatform", topPlatform);
+  renderExpandableAnalyticsCard(
+    "#analyticsTopSongs",
+    topSongItems(releases),
+    "No song activity yet.",
+    (item) => `${item.downloads} downloads · ${item.streamClicks} stream clicks`
+  );
+  renderExpandableAnalyticsCard(
+    "#analyticsTopVideos",
+    topVideoItems(artist),
+    "No video activity yet.",
+    (item) => `${item.count} views/clicks · ${item.type}`
+  );
+  renderExpandableAnalyticsCard(
+    "#analyticsTopPlatforms",
+    topStreamingPlatformItems(artist, releases),
+    "No platform clicks yet.",
+    (item) => `${item.clicks} clicks`
+  );
   setText("#analyticsTrafficSources", artist.trafficSources || "Direct");
 
   setText("#earningsTotalRevenue", money(totalRevenue));

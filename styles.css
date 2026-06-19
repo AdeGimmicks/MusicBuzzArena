@@ -860,6 +860,62 @@ h3 {
   line-height: 1.05;
 }
 
+.analytics-expand-card > div {
+  display: grid;
+  gap: 8px;
+}
+
+.analytics-expand-card > div > strong {
+  color: var(--text);
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  line-height: 1.18;
+}
+
+.analytics-expand-card > div > span,
+.analytics-view-all span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.analytics-view-all {
+  margin-top: 4px;
+}
+
+.analytics-view-all summary {
+  color: var(--gold-dark);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 1000;
+  list-style: none;
+}
+
+.analytics-view-all summary::-webkit-details-marker {
+  display: none;
+}
+
+.analytics-view-all ol {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.analytics-view-all li {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+}
+
+.analytics-view-all li strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
 .artist-dashboard-grid {
   display: grid;
   gap: 16px;
