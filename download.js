@@ -102,19 +102,25 @@
 
   const downloadButton = page.querySelector(".download-file-button");
 
-  downloadButton?.addEventListener("click", async (event) => {
-    event.preventDefault();
+downloadButton?.addEventListener("click", async (event) => {
+  event.preventDefault();
 
-    const store = await window.MBA.loadStore({ force: true });
-    const saved = store.releases.find((item) => item.id === release.id);
+  const store = await window.MBA.loadStore({ force: true });
 
-    if (saved) {
-      saved.downloads = Number(saved.downloads || 0) + 1;
-      await window.MBA.saveStore(store);
-    }
+  const saved = store.releases.find((item) => item.id === release.id);
 
-    window.location.href = downloadButton.href;
-  });
+  if (saved) {
+    saved.downloads = Number(saved.downloads || 0) + 1;
+    await window.MBA.saveStore(store);
+  }
+
+  const fileLink = document.createElement("a");
+  fileLink.href = downloadButton.href;
+  fileLink.download = "";
+  document.body.appendChild(fileLink);
+  fileLink.click();
+  fileLink.remove();
+});
     
   }
 
