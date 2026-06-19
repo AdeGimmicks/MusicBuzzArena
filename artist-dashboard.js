@@ -51,11 +51,19 @@ const recentActivityList = document.querySelector("#recentActivityList");
 const recentDownloadsList = document.querySelector("#recentDownloadsList");
 const recentUploadsList = document.querySelector("#recentUploadsList");
 const payoutHistoryList = document.querySelector("#payoutHistoryList");
+const analyticsTopModal = document.querySelector("#analyticsTopModal");
+const analyticsTopModalTitle = document.querySelector("#analyticsTopModalTitle");
+const analyticsTopModalList = document.querySelector("#analyticsTopModalList");
 
 let currentStore = window.MBA.defaults();
 let activeArtistId = localStorage.getItem("mba-active-artist-id") || "";
 const DEFAULT_PREVIEW_START = 0;
 const DEFAULT_PREVIEW_END = 60;
+const analyticsTopLists = {
+  songs: [],
+  videos: [],
+  platforms: [],
+};
 
 function money(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
@@ -604,11 +612,12 @@ function videoEntries(artist) {
 }
 
 function streamClickCount(release) {
-  return Number(release.streamingClicks || release.streamClicks || 0);
+  return Number(release.streamingClicks || 0);
 }
 
 function topSongItems(releases) {
   return releases
+    .filter((release) => (release.status || "pending") === "approved")
     .map((release) => ({
       title: release.title || "Untitled song",
       downloads: Number(release.downloads || 0),
@@ -628,15 +637,14 @@ function videoActivityCount(artist, videoKey) {
 }
 
 function topVideoItems(artist) {
-  const videos = artist.videos || currentStore.site?.videos || {};
+  const videos = artist.videos || {};
   return [
-    { title: videos.mainVideoTitle || "YouTube Video", type: "YouTube Video", count: videoActivityCount(artist, "mainVideo") },
-    { title: "YouTube Shorts", type: "YouTube Shorts", count: videoActivityCount(artist, "shortVideo") },
-    { title: "TikTok / Instagram Reels", type: "Short-form video", count: videoActivityCount(artist, "tiktok") },
+    { title: videos.mainVideoTitle || "YouTube Video", type: "YouTube Video", count: videoActivityCount(artist, "mainVideo"), order: 0 },
+    { title: "YouTube Shorts", type: "YouTube Shorts", count: videoActivityCount(artist, "shortVideo"), order: 1 },
+    { title: "TikTok / Instagram Reels", type: "Short-form video", count: videoActivityCount(artist, "tiktok"), order: 2 },
   ]
     .filter((item, index) => [videos.mainVideoUrl, videos.shortVideoUrl, videos.tiktokUrl][index])
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title))
+    .sort((a, b) => b.count - a.count || a.order - b.order)
     .slice(0, 3);
 }
 
@@ -669,9 +677,13 @@ function platformLabel(key) {
   return match?.[0] || String(key || "Platform").replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
 }
 
-function renderExpandableAnalyticsCard(containerSelector, items, emptyText, formatMeta) {
+function renderExpandableAnalyticsCard(containerSelector, listKey, items, emptyText, formatMeta) {
   const container = document.querySelector(containerSelector);
   if (!container) return;
+  analyticsTopLists[listKey] = items.map((item) => ({
+    title: item.title,
+    meta: formatMeta(item),
+  }));
 
   if (!items.length) {
     container.innerHTML = `<strong>${escapeText(emptyText)}</strong>`;
@@ -679,24 +691,10 @@ function renderExpandableAnalyticsCard(containerSelector, items, emptyText, form
   }
 
   const [firstItem] = items;
-  const rows = items
-    .map(
-      (item, index) => `
-        <li>
-          <strong>${index + 1}. ${escapeText(item.title)}</strong>
-          <span>${escapeText(formatMeta(item))}</span>
-        </li>
-      `
-    )
-    .join("");
-
   container.innerHTML = `
     <strong>${escapeText(firstItem.title)}</strong>
     <span>${escapeText(formatMeta(firstItem))}</span>
-    <details class="analytics-view-all">
-      <summary>View All</summary>
-      <ol>${rows}</ol>
-    </details>
+    <button class="analytics-view-all" type="button" data-analytics-top-list="${listKey}">View All</button>
   `;
 }
 
@@ -784,20 +782,23 @@ function renderArtistConsole() {
 
   renderExpandableAnalyticsCard(
     "#analyticsTopSongs",
+    "songs",
     topSongItems(releases),
-    "No song activity yet.",
+    "No activity yet.",
     (item) => `${item.downloads} downloads · ${item.streamClicks} stream clicks`
   );
   renderExpandableAnalyticsCard(
     "#analyticsTopVideos",
+    "videos",
     topVideoItems(artist),
-    "No video activity yet.",
-    (item) => `${item.count} views/clicks · ${item.type}`
+    "No videos yet.",
+    (item) => `${item.count} views · ${item.type}`
   );
   renderExpandableAnalyticsCard(
     "#analyticsTopPlatforms",
+    "platforms",
     topStreamingPlatformItems(artist, releases),
-    "No platform clicks yet.",
+    "No activity yet.",
     (item) => `${item.clicks} clicks`
   );
   setText("#analyticsTrafficSources", artist.trafficSources || "Direct");
@@ -828,6 +829,52 @@ function renderArtistConsole() {
   renderVideosPanel();
   renderDownloadsPanel();
 }
+
+function analyticsListTitle(listKey) {
+  if (listKey === "songs") return "Top Songs";
+  if (listKey === "videos") return "Top Videos";
+  if (listKey === "platforms") return "Top Streaming Platforms";
+  return "Top Items";
+}
+
+function openAnalyticsTopModal(listKey) {
+  if (!analyticsTopModal || !analyticsTopModalTitle || !analyticsTopModalList) return;
+  const items = analyticsTopLists[listKey] || [];
+  analyticsTopModalTitle.textContent = analyticsListTitle(listKey);
+  analyticsTopModalList.innerHTML = items.length
+    ? items
+        .map(
+          (item, index) => `
+            <li>
+              <strong>${index + 1}. ${escapeText(item.title)}</strong>
+              <span>${escapeText(item.meta)}</span>
+            </li>
+          `
+        )
+        .join("")
+    : `<li><strong>No activity yet.</strong></li>`;
+  analyticsTopModal.setAttribute("aria-hidden", "false");
+}
+
+function closeAnalyticsTopModal() {
+  analyticsTopModal?.setAttribute("aria-hidden", "true");
+}
+
+document.querySelector("#analyticsSection")?.addEventListener("click", (event) => {
+  const viewAllButton = event.target.closest("[data-analytics-top-list]");
+  if (viewAllButton) {
+    openAnalyticsTopModal(viewAllButton.dataset.analyticsTopList);
+    return;
+  }
+
+  if (event.target.closest("[data-close-analytics-modal]") || event.target === analyticsTopModal) {
+    closeAnalyticsTopModal();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeAnalyticsTopModal();
+});
 
 artistForm.bio.addEventListener("input", () => {
   artistBioCount.textContent = String(artistForm.bio.value.length);

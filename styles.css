@@ -872,37 +872,70 @@ h3 {
 }
 
 .analytics-expand-card > div > span,
-.analytics-view-all span {
+.analytics-modal-panel span {
   color: var(--muted);
   font-size: 0.86rem;
   font-weight: 900;
 }
 
 .analytics-view-all {
-  margin-top: 4px;
-}
-
-.analytics-view-all summary {
+  background: transparent;
+  border: 0;
   color: var(--gold-dark);
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 1000;
-  list-style: none;
-}
-
-.analytics-view-all summary::-webkit-details-marker {
-  display: none;
-}
-
-.analytics-view-all ol {
-  display: grid;
-  gap: 8px;
-  list-style: none;
-  margin: 10px 0 0;
+  justify-self: start;
+  margin-top: 4px;
   padding: 0;
 }
 
-.analytics-view-all li {
+.analytics-modal {
+  align-items: center;
+  background: rgba(17, 20, 27, 0.58);
+  inset: 0;
+  justify-content: center;
+  padding: 22px;
+  position: fixed;
+  z-index: 60;
+}
+
+.analytics-modal[aria-hidden="true"] {
+  display: none;
+}
+
+.analytics-modal[aria-hidden="false"] {
+  display: flex;
+}
+
+.analytics-modal-panel {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 14px;
+  max-width: 520px;
+  padding: clamp(20px, 4vw, 30px);
+  position: relative;
+  width: min(100%, 520px);
+}
+
+.analytics-modal-panel h3 {
+  color: var(--text);
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  margin: 0;
+}
+
+.analytics-modal-panel ol {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.analytics-modal-panel li {
   background: #f8fafc;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -911,9 +944,22 @@ h3 {
   padding: 9px 10px;
 }
 
-.analytics-view-all li strong {
+.analytics-modal-panel li strong {
   color: var(--text);
   font-size: 0.9rem;
+}
+
+.analytics-modal-close {
+  background: #11141b;
+  border: 0;
+  border-radius: 6px;
+  color: var(--white);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  justify-self: end;
+  min-height: 34px;
+  padding: 8px 12px;
 }
 
 .artist-dashboard-grid {
