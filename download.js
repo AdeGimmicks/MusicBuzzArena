@@ -97,8 +97,25 @@
       </article>
     `;
 
-    setupPreview(release);
-    setupCheckout(release);
+  setupPreview(release);
+  setupCheckout(release);
+
+  const downloadButton = page.querySelector(".download-file-button");
+
+  downloadButton?.addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    const store = await window.MBA.loadStore({ force: true });
+    const saved = store.releases.find((item) => item.id === release.id);
+
+    if (saved) {
+      saved.downloads = Number(saved.downloads || 0) + 1;
+      await window.MBA.saveStore(store);
+    }
+
+    window.location.href = downloadButton.href;
+  });
+    
   }
 
   function renderPreview(release) {
