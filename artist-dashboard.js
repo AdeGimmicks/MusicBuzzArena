@@ -685,6 +685,7 @@ function renderArtistConsole() {
     Number(artist.downloadPageVisits || 0);
 
   setText("#analyticsDownloadVisits", String(downloadPageVisits));
+  setText("#analyticsDownloadCount", String(totalDownloads));
 
   setText("#analyticsTopSong", topRelease?.title || "None");
   setText("#analyticsTopVideo", videos[0]?.[1] || "None");
