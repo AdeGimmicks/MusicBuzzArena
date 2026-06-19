@@ -546,11 +546,18 @@ function linkHubPage(release, artist) {
   });
 
   wrap.querySelectorAll(".streaming-link").forEach((link) => {
-    link.addEventListener("click", async () => {
+    link.addEventListener("click", async (event) => {
+      event.preventDefault();
       const releaseId = link.dataset.releaseId;
       const platformKey = link.dataset.platformKey;
+      const destination = link.href;
+      const platformTab = window.open("about:blank", "_blank", "noopener,noreferrer");
 
-      if (!releaseId || !platformKey) return;
+      if (!releaseId || !platformKey) {
+        if (platformTab) platformTab.location.href = destination;
+        else window.location.href = destination;
+        return;
+      }
 
       try {
         const response = await fetch("/api/streaming-click", {
@@ -562,6 +569,8 @@ function linkHubPage(release, artist) {
 
         if (response.ok) {
           await window.MBA.loadStore({ force: true });
+          if (platformTab) platformTab.location.href = destination;
+          else window.location.href = destination;
           return;
         }
       } catch {
@@ -580,6 +589,8 @@ function linkHubPage(release, artist) {
       };
 
       await window.MBA.saveStore(store);
+      if (platformTab) platformTab.location.href = destination;
+      else window.location.href = destination;
     });
   });
 
