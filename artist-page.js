@@ -547,11 +547,31 @@ function linkHubPage(release, artist) {
 
   wrap.querySelectorAll(".streaming-link").forEach((link) => {
     link.addEventListener("click", async () => {
-      const store = await window.MBA.loadStore({ force: true });
-      const saved = store.releases.find((item) => item.id === link.dataset.releaseId);
+      const releaseId = link.dataset.releaseId;
       const platformKey = link.dataset.platformKey;
 
-      if (!saved || !platformKey) return;
+      if (!releaseId || !platformKey) return;
+
+      try {
+        const response = await fetch("/api/streaming-click", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ releaseId, platformKey }),
+          keepalive: true,
+        });
+
+        if (response.ok) {
+          await window.MBA.loadStore({ force: true });
+          return;
+        }
+      } catch {
+        // Fall back to the full-store save path for static/local file use.
+      }
+
+      const store = await window.MBA.loadStore({ force: true });
+      const saved = store.releases.find((item) => item.id === releaseId);
+
+      if (!saved) return;
 
       saved.streamingClicks = Number(saved.streamingClicks || 0) + 1;
       saved.platformClicks = {

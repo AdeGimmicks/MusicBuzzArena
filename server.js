@@ -459,6 +459,46 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+function validPlatformKey(value) {
+  const key = String(value || "");
+  return /^[a-zA-Z0-9_-]{1,64}$/.test(key) && !["__proto__", "constructor", "prototype"].includes(key);
+}
+
+async function recordStreamingClick(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const releaseId = String(body.releaseId || "");
+  const platformKey = String(body.platformKey || "");
+
+  if (!releaseId || !validPlatformKey(platformKey)) {
+    sendJson(response, 400, { error: "A valid release and platform are required." });
+    return;
+  }
+
+  const store = await readStore();
+  const release = (store.releases || []).find((item) => item.id === releaseId);
+
+  if (!release) {
+    sendJson(response, 404, { error: "Release not found." });
+    return;
+  }
+
+  release.streamingClicks = Number(release.streamingClicks || 0) + 1;
+  release.platformClicks = {
+    ...(release.platformClicks || {}),
+    [platformKey]: Number(release.platformClicks?.[platformKey] || 0) + 1,
+  };
+
+  await writeStore(store);
+  sendJson(response, 200, {
+    ok: true,
+    releaseId,
+    platformKey,
+    streamingClicks: release.streamingClicks,
+    platformClicks: release.platformClicks,
+  });
+}
+
 function parseCookies(cookieHeader = "") {
   return cookieHeader.split(";").reduce((cookies, part) => {
     const [name, ...valueParts] = part.trim().split("=");
@@ -858,6 +898,11 @@ async function handleRequest(request, response) {
       const store = await normalizeUploads(JSON.parse(body));
       await writeStore(store);
       sendJson(response, 200, store);
+      return;
+    }
+
+    if (url.pathname === "/api/streaming-click" && request.method === "POST") {
+      await recordStreamingClick(request, response);
       return;
     }
 
