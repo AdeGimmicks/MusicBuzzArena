@@ -623,12 +623,11 @@ function topSongItems(releases) {
       downloads: Number(release.downloads || 0),
       streamClicks: streamClickCount(release),
     }))
-    .sort((a, b) => b.downloads - a.downloads || b.streamClicks - a.streamClicks || a.title.localeCompare(b.title))
-    .slice(0, 3);
+    .sort((a, b) => b.downloads - a.downloads || b.streamClicks - a.streamClicks || a.title.localeCompare(b.title));
 }
 
 function videoActivityCount(artist, videoKey) {
-  const videos = artist.videos || {};
+  const videos = artist.videos || currentStore.site?.videos || {};
   const analytics = artist.videoAnalytics || videos.analytics || {};
   const directValue = videos[`${videoKey}Views`] ?? videos[`${videoKey}Clicks`] ?? analytics[videoKey];
   if (typeof directValue === "number") return directValue;
@@ -637,15 +636,14 @@ function videoActivityCount(artist, videoKey) {
 }
 
 function topVideoItems(artist) {
-  const videos = artist.videos || {};
+  const videos = artist.videos || currentStore.site?.videos || {};
   return [
     { title: videos.mainVideoTitle || "YouTube Video", type: "YouTube Video", count: videoActivityCount(artist, "mainVideo"), order: 0 },
     { title: "YouTube Shorts", type: "YouTube Shorts", count: videoActivityCount(artist, "shortVideo"), order: 1 },
     { title: "TikTok / Instagram Reels", type: "Short-form video", count: videoActivityCount(artist, "tiktok"), order: 2 },
   ]
     .filter((item, index) => [videos.mainVideoUrl, videos.shortVideoUrl, videos.tiktokUrl][index])
-    .sort((a, b) => b.count - a.count || a.order - b.order)
-    .slice(0, 3);
+    .sort((a, b) => b.count - a.count || a.order - b.order);
 }
 
 function platformClickMapForRelease(release) {

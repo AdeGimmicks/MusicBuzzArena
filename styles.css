@@ -915,6 +915,7 @@ h3 {
   box-shadow: var(--shadow);
   display: grid;
   gap: 14px;
+  max-height: min(82vh, 720px);
   max-width: 520px;
   padding: clamp(20px, 4vw, 30px);
   position: relative;
@@ -932,6 +933,8 @@ h3 {
   gap: 10px;
   list-style: none;
   margin: 0;
+  max-height: 48vh;
+  overflow: auto;
   padding: 0;
 }
 
