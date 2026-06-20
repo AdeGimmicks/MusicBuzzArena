@@ -49,14 +49,14 @@ function artistForVideoPage(store) {
 }
 
 async function renderVideos() {
-  const store = await window.MBA.loadStore();
+  let store = await window.MBA.loadStore({ force: true });
   const artist = artistForVideoPage(store);
 
   if (artist) {
     artist.videoPageVisits =
       Number(artist.videoPageVisits || 0) + 1;
 
-    await window.MBA.saveStore(store);
+    store = await window.MBA.saveStore(store);
   }
 
   const videos = artist?.videos || store.site?.videos || {};

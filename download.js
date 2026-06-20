@@ -21,6 +21,29 @@
     return `${code} ${Number.isFinite(value) ? value.toFixed(2) : "0.99"}`;
   }
 
+  function parsePreviewTime(value, fallbackSeconds = 0) {
+    if (typeof value === "number") return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallbackSeconds;
+    const text = String(value ?? "").trim();
+    if (!text) return fallbackSeconds;
+    if (text.includes(":")) {
+      const [minutesText, secondsText] = text.split(":");
+      const minutes = Number(minutesText);
+      const seconds = Number(secondsText);
+      if (
+        Number.isInteger(minutes) &&
+        Number.isInteger(seconds) &&
+        minutes >= 0 &&
+        seconds >= 0 &&
+        seconds < 60
+      ) {
+        return minutes * 60 + seconds;
+      }
+      return fallbackSeconds;
+    }
+    const seconds = Number(text);
+    return Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : fallbackSeconds;
+  }
+
   function releaseDateLabel(release) {
     if (!release.releaseDate) return "Release date will appear here";
     const date = new Date(release.releaseDate);
@@ -166,18 +189,37 @@
       previewAudio = null;
     }
 
-    const start = Math.max(0, Number(release.previewStart || 0));
-    const defaultEnd = start + Number(release.previewDuration || 60);
-    const configuredEnd = Number(release.previewEnd || 0);
+    const start = parsePreviewTime(release.previewStart, 0);
+    const duration = Math.max(1, parsePreviewTime(release.previewDuration, 60));
+    const defaultEnd = start + duration;
+    const configuredEnd = parsePreviewTime(release.previewEnd, defaultEnd);
     const end = configuredEnd > start ? configuredEnd : defaultEnd;
 
     previewAudio = new Audio(release.audioUrl);
     previewAudio.preload = "metadata";
 
+    const previewEnd = () =>
+      Number.isFinite(previewAudio.duration) ? Math.min(end, previewAudio.duration) : end;
+    const previewStart = () =>
+      Number.isFinite(previewAudio.duration) ? Math.min(start, Math.max(0, previewAudio.duration - 0.25)) : start;
+    const seekToPreviewStart = () => {
+      previewAudio.currentTime = previewStart();
+      fill.style.width = "0%";
+    };
+    const waitForMetadata = () => {
+      if (previewAudio.readyState >= 1) return Promise.resolve();
+      previewAudio.load();
+      return new Promise((resolve) => {
+        previewAudio.addEventListener("loadedmetadata", resolve, { once: true });
+        previewAudio.addEventListener("error", resolve, { once: true });
+      });
+    };
+
     button.addEventListener("click", async () => {
       if (previewAudio.paused) {
-        if (previewAudio.currentTime < start || previewAudio.currentTime >= end) {
-          previewAudio.currentTime = start;
+        await waitForMetadata();
+        if (previewAudio.currentTime < previewStart() || previewAudio.currentTime >= previewEnd()) {
+          seekToPreviewStart();
         }
         await previewAudio.play();
         button.textContent = "Pause";
@@ -188,19 +230,24 @@
     });
 
     previewAudio.addEventListener("timeupdate", () => {
-      const progress = Math.max(0, Math.min(100, ((previewAudio.currentTime - start) / (end - start)) * 100));
+      const currentStart = previewStart();
+      const currentEnd = previewEnd();
+      const progress = Math.max(0, Math.min(100, ((previewAudio.currentTime - currentStart) / (currentEnd - currentStart)) * 100));
       fill.style.width = `${progress}%`;
-      if (previewAudio.currentTime >= end) {
+      if (previewAudio.currentTime >= currentEnd) {
         previewAudio.pause();
-        previewAudio.currentTime = start;
-        fill.style.width = "0%";
+        seekToPreviewStart();
         button.textContent = "Preview";
       }
     });
 
+    previewAudio.addEventListener("loadedmetadata", seekToPreviewStart);
+    previewAudio.addEventListener("playing", () => {
+      if (previewAudio.currentTime < previewStart()) seekToPreviewStart();
+    });
+
     previewAudio.addEventListener("ended", () => {
-      previewAudio.currentTime = start;
-      fill.style.width = "0%";
+      seekToPreviewStart();
       button.textContent = "Preview";
     });
   }
@@ -305,7 +352,7 @@
 
 async function init() {
   try {
-    const store = await window.MBA.loadStore({ force: true });
+    let store = await window.MBA.loadStore({ force: true });
 
     const release = selectedRelease(store);
     const artist = selectedArtist(store, release);
@@ -314,7 +361,7 @@ async function init() {
       artist.downloadPageVisits =
         Number(artist.downloadPageVisits || 0) + 1;
 
-      await window.MBA.saveStore(store);
+      store = await window.MBA.saveStore(store);
     }
 
     const downloadState = await loadDownloadState();
