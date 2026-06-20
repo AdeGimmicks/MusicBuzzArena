@@ -23,7 +23,7 @@
       <aside class="artist-console-sidebar" aria-label="Artist dashboard navigation">
         <div class="artist-console-brand">
           <p class="eyebrow">Artist center</p>
-          <h1>Dashboard</h1>
+          <h1>Artist Center</h1>
         </div>
         <nav class="artist-console-nav">
           <a class="is-active" href="#dashboardOverview" data-dashboard-section="dashboardOverview">Dashboard</a>
@@ -182,7 +182,31 @@
             </div>
           </div>
 
-          <section class="artist-console-card upload-song-card" id="songUpload">
+          <section class="artist-console-card release-type-gate" id="releaseTypeGate" aria-labelledby="releaseTypeGateTitle">
+            <div class="release-type-gate-heading">
+              <p class="eyebrow">Start a release</p>
+              <h3 id="releaseTypeGateTitle">Choose your release type</h3>
+            </div>
+            <div class="release-type-options" role="list">
+              <button class="release-type-option" type="button" data-start-release="Single" role="listitem">
+                <span class="release-type-icon">♪</span>
+                <strong>Single Song</strong>
+                <small>One song release</small>
+              </button>
+              <button class="release-type-option" type="button" data-start-release="EP" role="listitem">
+                <span class="release-type-icon">◉</span>
+                <strong>EP</strong>
+                <small>Short collection</small>
+              </button>
+              <button class="release-type-option" type="button" data-start-release="Album" role="listitem">
+                <span class="release-type-icon">▣</span>
+                <strong>Album</strong>
+                <small>Full project</small>
+              </button>
+            </div>
+          </section>
+
+          <section class="artist-console-card upload-song-card is-hidden" id="songUpload">
             <form id="releaseForm" class="creator-form">
               <input name="editingId" type="hidden" />
               <div class="creator-form-grid">
@@ -390,9 +414,9 @@
                   <button class="primary-button" type="submit">Save Song</button>
                 </div>
               </div>
-              <p class="form-message" id="releaseMessage" role="status"></p>
             </form>
           </section>
+          <p class="form-message" id="releaseMessage" role="status"></p>
         </section>
 
         <section class="artist-dashboard-section" id="profileSection" data-section-title="Profile">

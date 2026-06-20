@@ -34,6 +34,9 @@ const artistAccountMessage = document.querySelector("#artistAccountMessage");
 const uploadStatusTitle = document.querySelector("#uploadStatusTitle");
 const uploadStatusText = document.querySelector("#uploadStatusText");
 const clearReleaseButton = document.querySelector("[data-clear-release]");
+const releaseTypeGate = document.querySelector("#releaseTypeGate");
+const songUploadSection = document.querySelector("#songUpload");
+const releaseTypeOptions = document.querySelectorAll("[data-start-release]");
 const workspaceTitle = document.querySelector("#artistWorkspaceTitle");
 const dashboardSections = [...document.querySelectorAll(".artist-dashboard-section")];
 const dashboardNavLinks = [...document.querySelectorAll("[data-dashboard-section]")];
@@ -283,6 +286,18 @@ function fillVideoForm() {
   updateVideoPreview();
 }
 
+function showReleaseTypeChoice() {
+  releaseTypeGate?.classList.remove("is-hidden");
+  songUploadSection?.classList.add("is-hidden");
+}
+
+function showReleaseForm(releaseType = "Single") {
+  releaseTypeGate?.classList.add("is-hidden");
+  songUploadSection?.classList.remove("is-hidden");
+  if (!releaseForm.editingId.value) setSelectValue(releaseForm.releaseType, releaseType);
+  updateHomePreview();
+}
+
 function clearReleaseForm() {
   releaseForm.reset();
   releaseForm.editingId.value = "";
@@ -296,6 +311,7 @@ function clearReleaseForm() {
   renderLinkInputs(streamingFields, STREAMING_LINKS);
   updateHomePreview();
   updateUploadStatus();
+  showReleaseTypeChoice();
 }
 
 function updateHomePreview(coverSrc = "") {
@@ -442,6 +458,7 @@ function populateCountrySelect(selectedValue = "") {
 
 function fillReleaseForm(release) {
   releaseForm.editingId.value = release.id;
+  showReleaseForm(release.releaseType || "Single");
   releaseForm.title.value = release.title || "";
   releaseForm.artistName.value = release.artistName || primaryArtist().name || "";
   setSelectValue(releaseForm.releaseType, release.releaseType || "Single");
@@ -987,7 +1004,16 @@ releaseForm.cover.addEventListener("change", async () => {
 
 clearReleaseButton?.addEventListener("click", () => {
   clearReleaseForm();
-  message(releaseMessage, "Ready for a new song upload.", "pending");
+  message(releaseMessage, "Choose a release type to start a new upload.", "pending");
+});
+
+releaseTypeOptions.forEach((button) => {
+  button.addEventListener("click", () => {
+    const releaseType = button.dataset.startRelease || "Single";
+    showReleaseForm(releaseType);
+    message(releaseMessage, `${releaseType} upload started.`, "pending");
+    songUploadSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 });
 
 function updateVideoPreview() {
@@ -1290,7 +1316,7 @@ async function initDashboard() {
     fillReleaseForm(editRelease);
     showDashboardSection("songEditorSection");
   } else {
-    showDashboardSection("dashboardOverview");
+    showDashboardSection("songEditorSection");
   }
 }
 

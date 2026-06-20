@@ -1627,6 +1627,86 @@ h3 {
   color: #11141b;
 }
 
+.is-hidden {
+  display: none !important;
+}
+
+.release-type-gate {
+  min-height: clamp(430px, 56vh, 620px);
+  place-content: center;
+}
+
+.release-type-gate-heading {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.release-type-gate-heading h3 {
+  color: var(--white);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1;
+  margin: 0;
+}
+
+.release-type-options {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: repeat(3, minmax(0, 260px));
+  justify-content: center;
+}
+
+.release-type-option {
+  align-content: center;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(17, 20, 27, 0.14);
+  border-radius: 8px;
+  color: #11141b;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  min-height: 260px;
+  padding: 26px 22px;
+  text-align: center;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.release-type-option:hover,
+.release-type-option:focus-visible {
+  border-color: var(--gold);
+  box-shadow: 0 22px 44px rgba(17, 20, 27, 0.24);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+.release-type-option strong {
+  color: #11141b;
+  font-size: clamp(1.25rem, 2.2vw, 1.7rem);
+}
+
+.release-type-option small {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.release-type-icon {
+  align-items: center;
+  background: linear-gradient(135deg, #fff0a3, var(--gold));
+  border-radius: 999px;
+  color: #11141b;
+  display: inline-flex;
+  font-size: 2.6rem;
+  font-weight: 1000;
+  height: 78px;
+  justify-content: center;
+  line-height: 1;
+  width: 78px;
+}
+
 .creator-form {
   display: grid;
   gap: 16px;
@@ -4031,6 +4111,18 @@ select:focus {
 
   .upload-steps {
     grid-template-columns: 1fr;
+  }
+
+  .release-type-gate {
+    min-height: auto;
+  }
+
+  .release-type-options {
+    grid-template-columns: 1fr;
+  }
+
+  .release-type-option {
+    min-height: 180px;
   }
 
   .upload-form-footer {
