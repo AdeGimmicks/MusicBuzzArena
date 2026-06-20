@@ -90,7 +90,7 @@
   }
 
   function downloadStatusText(isSuccess, isCancelled, downloadState) {
-    if (downloadState?.downloaded) return "This song has already been downloaded for this purchase.";
+    if (downloadState?.downloaded) return "Thank you, this song has already been downloaded for this purchase.";
     if (isSuccess && !checkoutSessionId) return "Unable to verify this purchase. Please use the Stripe success link.";
     if (isSuccess) return "Payment complete. Your song file is ready.";
     if (isCancelled) return "Payment was cancelled. You can try again.";
@@ -241,7 +241,7 @@
     });
   }
 
-  function markDownloaded(message = "This song has already been downloaded for this purchase.") {
+  function markDownloaded(message = "Thank you, this song has already been downloaded for this purchase.") {
     const button = document.getElementById("downloadFileButton");
     const status = document.getElementById("downloadStatus");
     if (button) {
@@ -272,7 +272,7 @@
         const response = await fetch(claimDownloadUrl());
         if (response.status === 409) {
           const data = await response.json().catch(() => ({}));
-          markDownloaded(data.error || "This song has already been downloaded for this purchase.");
+          markDownloaded(data.error || "Thank you, this song has already been downloaded for this purchase.");
           return;
         }
 

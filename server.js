@@ -809,7 +809,7 @@ async function claimPaidDownload(request, response, url) {
   const { store, release, transaction } = result;
   if (transaction.downloaded) {
     sendJson(response, 409, {
-      error: "This song has already been downloaded for this purchase.",
+      error: "Thank you, this song has already been downloaded for this purchase.",
       downloaded: true,
       downloadedAt: transaction.downloadedAt || "",
     });
