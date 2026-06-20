@@ -274,12 +274,13 @@ function updateHomePreview(coverSrc = "") {
   const artist = primaryArtist();
   const releaseType = releaseForm.releaseType.value || "Single";
   const genre = releaseForm.genre.value || "Music";
+  const artworkSrc = String(coverSrc || "").includes("Mba Logos/MusicBusiness Logo.png") ? "" : coverSrc;
   if (homePreviewMeta) homePreviewMeta.textContent = `${releaseType} | ${genre}`;
   if (homePreviewSong) homePreviewSong.textContent = releaseForm.title.value.trim() || "Song title";
   if (homePreviewArtist) homePreviewArtist.textContent = releaseForm.artistName.value.trim() || artist.name || "Artist name";
   if (homePreviewCover) {
-    homePreviewCover.closest(".upload-dropzone")?.classList.toggle("has-artwork", Boolean(coverSrc));
-    homePreviewCover.src = coverSrc || "";
+    homePreviewCover.closest(".upload-dropzone")?.classList.toggle("has-artwork", Boolean(artworkSrc));
+    homePreviewCover.src = artworkSrc || "";
   }
   updateMusicPreview(coverSrc);
   updateUploadStatus();
