@@ -72,6 +72,30 @@ function money(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
 }
 
+function formatPreviewTime(seconds) {
+  const totalSeconds = Math.max(0, Math.floor(Number(seconds || 0)));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function parsePreviewTime(value, fallbackSeconds = 0) {
+  const text = String(value || "").trim();
+  if (!text) return fallbackSeconds;
+
+  if (text.includes(":")) {
+    const parts = text.split(":");
+    if (parts.length !== 2) return NaN;
+    const minutes = Number(parts[0]);
+    const seconds = Number(parts[1]);
+    if (!Number.isInteger(minutes) || !Number.isInteger(seconds) || minutes < 0 || seconds < 0 || seconds > 59) return NaN;
+    return minutes * 60 + seconds;
+  }
+
+  const seconds = Number(text);
+  return Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : NaN;
+}
+
 function setText(selector, value) {
   const node = document.querySelector(selector);
   if (node) node.textContent = value;
@@ -264,8 +288,8 @@ function clearReleaseForm() {
   releaseForm.editingId.value = "";
   populateCountrySelect();
   releaseForm.price.value = "0.99";
-  releaseForm.previewStart.value = String(DEFAULT_PREVIEW_START);
-  releaseForm.previewEnd.value = String(DEFAULT_PREVIEW_END);
+  releaseForm.previewStart.value = formatPreviewTime(DEFAULT_PREVIEW_START);
+  releaseForm.previewEnd.value = formatPreviewTime(DEFAULT_PREVIEW_END);
   releaseForm.cover.required = true;
   releaseForm.audio.required = true;
   songBioCount.textContent = "0";
@@ -434,8 +458,8 @@ function fillReleaseForm(release) {
   releaseForm.price.value = release.price ?? "0.99";
   const storedPreviewStart = Math.max(0, Number(release.previewStart ?? DEFAULT_PREVIEW_START));
   const storedPreviewEnd = Number(release.previewEnd ?? storedPreviewStart + Number(release.previewDuration || DEFAULT_PREVIEW_END));
-  releaseForm.previewStart.value = String(storedPreviewStart);
-  releaseForm.previewEnd.value = String(
+  releaseForm.previewStart.value = formatPreviewTime(storedPreviewStart);
+  releaseForm.previewEnd.value = formatPreviewTime(
     Number.isFinite(storedPreviewEnd) && storedPreviewEnd > storedPreviewStart
       ? storedPreviewEnd
       : storedPreviewStart + DEFAULT_PREVIEW_END
@@ -1015,11 +1039,17 @@ releaseForm.addEventListener("submit", async (event) => {
     release.cityState = releaseForm.cityState.value.trim();
     release.location = [release.cityState, release.country].filter(Boolean).join(", ");
     release.price = Number(releaseForm.price.value || 0);
-    const previewStart = Math.max(0, Number(releaseForm.previewStart.value || DEFAULT_PREVIEW_START));
-    const requestedPreviewEnd = Number(releaseForm.previewEnd.value || DEFAULT_PREVIEW_END);
+    const previewStart = parsePreviewTime(releaseForm.previewStart.value, DEFAULT_PREVIEW_START);
+    const requestedPreviewEnd = parsePreviewTime(releaseForm.previewEnd.value, DEFAULT_PREVIEW_END);
+    if (!Number.isFinite(previewStart) || !Number.isFinite(requestedPreviewEnd) || requestedPreviewEnd <= previewStart) {
+      message(releaseMessage, "Enter preview times like 0:30 and 1:30. Preview stop must be after preview start.", "error");
+      return;
+    }
     release.previewStart = previewStart;
-    release.previewEnd = requestedPreviewEnd > previewStart ? requestedPreviewEnd : previewStart + DEFAULT_PREVIEW_END;
+    release.previewEnd = requestedPreviewEnd;
     release.previewDuration = release.previewEnd - release.previewStart;
+    releaseForm.previewStart.value = formatPreviewTime(previewStart);
+    releaseForm.previewEnd.value = formatPreviewTime(requestedPreviewEnd);
     release.donationAmount = 0;
     release.donationLink = "";
     release.streaming = formLinks(releaseForm, STREAMING_LINKS);
