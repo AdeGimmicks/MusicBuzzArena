@@ -54,9 +54,29 @@ const isProduction = process.env.NODE_ENV === "production";
 let mongoClient;
 let storeCollection;
 let cachedStore = null;
+let storeWriteQueue = Promise.resolve();
 const adminSessions = new Map();
 const stripe = STRIPE_SECRET_KEY && Stripe ? Stripe(STRIPE_SECRET_KEY) : null;
 const hasValidStripeSecretKey = /^sk_(test|live)_/.test(STRIPE_SECRET_KEY);
+
+const PROTECTED_ANALYTICS_FIELDS = new Set([
+  "artistPageVisits",
+  "clicks",
+  "donations",
+  "downloadPageVisits",
+  "downloads",
+  "earnings",
+  "followers",
+  "musicPageVisits",
+  "plays",
+  "profileViews",
+  "revenue",
+  "streamingClicks",
+  "videoPageVisits",
+  "views",
+]);
+
+const PROTECTED_ANALYTICS_OBJECTS = new Set(["platformClicks", "videoAnalytics"]);
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -289,9 +309,126 @@ function mergeStore(store) {
   };
 }
 
+function cloneValue(value) {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasSavedValue(value) {
+  if (value === undefined || value === null || value === "") return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function mergeSavedValue(existing, incoming, key = "", options = {}) {
+  if (!hasSavedValue(incoming)) return cloneValue(existing);
+
+  const protectAllNumbers = options.protectAllNumbers || PROTECTED_ANALYTICS_OBJECTS.has(key);
+  if (typeof incoming === "number" && (protectAllNumbers || PROTECTED_ANALYTICS_FIELDS.has(key))) {
+    if (options.allowAnalyticsReset) return incoming;
+    return Math.max(Number(existing || 0), incoming);
+  }
+
+  if (key === "downloaded") return Boolean(existing) || Boolean(incoming);
+
+  if (isPlainObject(incoming)) {
+    const source = isPlainObject(existing) ? existing : {};
+    const merged = { ...cloneValue(source) };
+    Object.entries(incoming).forEach(([childKey, childValue]) => {
+      merged[childKey] = mergeSavedValue(source[childKey], childValue, childKey, {
+        ...options,
+        protectAllNumbers,
+      });
+    });
+    return merged;
+  }
+
+  if (Array.isArray(incoming)) return incoming.length ? cloneValue(incoming) : cloneValue(existing || []);
+  return cloneValue(incoming);
+}
+
+function mergeEntityLists(existingList, incomingList, options = {}) {
+  const deletedIds = new Set((options.deletedIds || []).map(String));
+  const incomingById = new Map(
+    (Array.isArray(incomingList) ? incomingList : [])
+      .filter((item) => item?.id)
+      .map((item) => [String(item.id), item])
+  );
+  const merged = [];
+
+  (Array.isArray(existingList) ? existingList : []).forEach((existing) => {
+    const id = String(existing?.id || "");
+    if (!id || deletedIds.has(id)) return;
+    const incoming = incomingById.get(id);
+    merged.push(incoming ? mergeSavedValue(existing, incoming, "", options) : cloneValue(existing));
+    incomingById.delete(id);
+  });
+
+  incomingById.forEach((incoming, id) => {
+    if (!deletedIds.has(id)) merged.push(cloneValue(incoming));
+  });
+  return merged;
+}
+
+function applyExplicitClears(store, clears = []) {
+  for (const clear of Array.isArray(clears) ? clears : []) {
+    const collectionName = clear?.collection;
+    const entityId = String(clear?.id || "");
+    const fields = Array.isArray(clear?.fields) ? clear.fields : [];
+    let entity = null;
+    if (collectionName === "site") {
+      entity = store.site;
+    } else if (entityId && ["artists", "releases"].includes(collectionName)) {
+      entity = (store[collectionName] || []).find((item) => String(item.id) === entityId);
+    }
+    if (!entity) continue;
+    const clearValue = Object.prototype.hasOwnProperty.call(clear, "value")
+      ? clear.value
+      : "";
+    fields.forEach((field) => {
+      if (typeof field === "string" && /^[a-zA-Z0-9_]+$/.test(field)) {
+        entity[field] = cloneValue(clearValue);
+      }
+    });
+  }
+}
+
+function mergePersistentStore(existingStore, incomingStore, options = {}) {
+  const existing = mergeStore(existingStore);
+  const incoming = incomingStore && typeof incomingStore === "object" ? incomingStore : {};
+  const deletions = options.deletions || {};
+  const deletedArtistIds = new Set((deletions.artistIds || []).map(String));
+  const deletedReleaseIds = new Set((deletions.releaseIds || []).map(String));
+
+  for (const release of existing.releases || []) {
+    if (deletedArtistIds.has(String(release.artistId || ""))) deletedReleaseIds.add(String(release.id || ""));
+  }
+
+  const merged = {
+    ...mergeSavedValue(existing, incoming, "", options),
+    site: mergeSavedValue(existing.site, incoming.site || {}, "site", options),
+    artists: mergeEntityLists(existing.artists, incoming.artists || [], {
+      ...options,
+      deletedIds: [...deletedArtistIds],
+    }),
+    releases: mergeEntityLists(existing.releases, incoming.releases || [], {
+      ...options,
+      deletedIds: [...deletedReleaseIds],
+    }),
+    donations: mergeEntityLists(existing.donations, incoming.donations || [], options),
+    transactions: mergeEntityLists(existing.transactions, incoming.transactions || [], options),
+  };
+
+  applyExplicitClears(merged, options.clears);
+  return mergeStore(merged);
+}
+
 async function readStore() {
   await ensureStorage();
-  if (cachedStore) return cachedStore;
+  if (cachedStore) return cloneValue(cachedStore);
 
   const collection = await connectMongo();
   if (collection) {
@@ -313,23 +450,23 @@ async function readStore() {
         { upsert: true }
       );
       cachedStore = mergeStore(seededStore);
-      return cachedStore;
+      return cloneValue(cachedStore);
     }
     cachedStore = store;
-    return store;
+    return cloneValue(store);
   }
 
   try {
     const content = await fs.readFile(DB_FILE, "utf8");
     cachedStore = mergeStore(JSON.parse(content));
-    return cachedStore;
+    return cloneValue(cachedStore);
   } catch {
     cachedStore = defaultStore();
-    return cachedStore;
+    return cloneValue(cachedStore);
   }
 }
 
-async function writeStore(store) {
+async function persistStore(store) {
   await ensureStorage();
   const normalized = mergeStore(store);
   const collection = await connectMongo();
@@ -347,12 +484,46 @@ async function writeStore(store) {
       },
       { upsert: true }
     );
-    cachedStore = normalized;
-    return;
+    cachedStore = cloneValue(normalized);
+    return cloneValue(normalized);
   }
 
   await fs.writeFile(DB_FILE, JSON.stringify(normalized, null, 2));
-  cachedStore = normalized;
+  cachedStore = cloneValue(normalized);
+  return cloneValue(normalized);
+}
+
+async function writeStore(store) {
+  const snapshot = cloneValue(store);
+  let saved;
+  storeWriteQueue = storeWriteQueue.catch(() => {}).then(async () => {
+    const existing = await readStore();
+    saved = await persistStore(mergePersistentStore(existing, snapshot));
+  });
+  await storeWriteQueue;
+  return cloneValue(saved);
+}
+
+async function mergeAndWriteStore(incomingStore, options = {}) {
+  const incoming = cloneValue(incomingStore || {});
+  let saved;
+  storeWriteQueue = storeWriteQueue.catch(() => {}).then(async () => {
+    const existing = await readStore();
+    saved = await persistStore(mergePersistentStore(existing, incoming, options));
+  });
+  await storeWriteQueue;
+  return cloneValue(saved);
+}
+
+async function mutateStore(mutator) {
+  let result;
+  storeWriteQueue = storeWriteQueue.catch(() => {}).then(async () => {
+    const store = await readStore();
+    result = await mutator(store);
+    await persistStore(store);
+  });
+  await storeWriteQueue;
+  return result;
 }
 
 function readRequestBody(request) {
@@ -422,8 +593,9 @@ async function saveDataUrl(dataUrl, folder, preferredName) {
 }
 
 async function normalizeUploads(store) {
+  store = store && typeof store === "object" ? store : {};
   const normalized = {
-    site: { ...defaultStore().site, ...(store.site || {}) },
+    site: { ...(store.site || {}) },
     artists: Array.isArray(store.artists) ? store.artists.map((artist) => ({ ...artist })) : [],
     releases: Array.isArray(store.releases) ? store.releases.map((release) => ({ ...release })) : [],
     donations: Array.isArray(store.donations) ? store.donations : [],
@@ -476,28 +648,65 @@ async function recordStreamingClick(request, response) {
     return;
   }
 
-  const store = await readStore();
-  const release = (store.releases || []).find((item) => item.id === releaseId);
+  const result = await mutateStore((store) => {
+    const release = (store.releases || []).find((item) => item.id === releaseId);
+    if (!release) return null;
+    release.streamingClicks = Number(release.streamingClicks || 0) + 1;
+    release.platformClicks = {
+      ...(release.platformClicks || {}),
+      [platformKey]: Number(release.platformClicks?.[platformKey] || 0) + 1,
+    };
+    return {
+      streamingClicks: release.streamingClicks,
+      platformClicks: release.platformClicks,
+    };
+  });
 
-  if (!release) {
+  if (!result) {
     sendJson(response, 404, { error: "Release not found." });
     return;
   }
-
-  release.streamingClicks = Number(release.streamingClicks || 0) + 1;
-  release.platformClicks = {
-    ...(release.platformClicks || {}),
-    [platformKey]: Number(release.platformClicks?.[platformKey] || 0) + 1,
-  };
-
-  await writeStore(store);
   sendJson(response, 200, {
     ok: true,
     releaseId,
     platformKey,
-    streamingClicks: release.streamingClicks,
-    platformClicks: release.platformClicks,
+    streamingClicks: result.streamingClicks,
+    platformClicks: result.platformClicks,
   });
+}
+
+const ALLOWED_ANALYTICS_INCREMENTS = {
+  artist: new Set(["artistPageVisits", "downloadPageVisits", "musicPageVisits", "profileViews", "videoPageVisits"]),
+  release: new Set(["plays", "views"]),
+};
+
+async function incrementAnalytics(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const entityType = String(body.entityType || "");
+  const entityId = String(body.entityId || "");
+  const field = String(body.field || "");
+  const allowedFields = ALLOWED_ANALYTICS_INCREMENTS[entityType];
+
+  if (!entityId || !allowedFields?.has(field)) {
+    sendJson(response, 400, { error: "A valid analytics entity and field are required." });
+    return;
+  }
+
+  const result = await mutateStore((store) => {
+    const collection = entityType === "artist" ? store.artists : store.releases;
+    const entity = (collection || []).find((item) => String(item.id) === entityId);
+    if (!entity) return null;
+    entity[field] = Number(entity[field] || 0) + 1;
+    return { value: entity[field] };
+  });
+
+  if (!result) {
+    sendJson(response, 404, { error: "Analytics entity not found." });
+    return;
+  }
+
+  sendJson(response, 200, { ok: true, entityType, entityId, field, value: result.value });
 }
 
 function parseCookies(cookieHeader = "") {
@@ -1032,22 +1241,37 @@ async function handleRequest(request, response) {
       }
 
       const body = await readRequestBody(request);
-      const store = await normalizeUploads(JSON.parse(body));
-      await writeStore(store);
+      const payload = JSON.parse(body);
+      const incoming = await normalizeUploads(payload.store || payload);
+      const store = await mergeAndWriteStore(incoming, {
+        deletions: payload.deletions || {},
+        clears: payload.clears || [],
+        allowAnalyticsReset: payload.resetAnalytics === true,
+      });
       sendJson(response, 200, store);
       return;
     }
 
     if (url.pathname === "/api/store" && request.method === "POST") {
       const body = await readRequestBody(request);
-      const store = await normalizeUploads(JSON.parse(body));
-      await writeStore(store);
+      const payload = JSON.parse(body);
+      const incoming = await normalizeUploads(payload.store || payload);
+      const store = await mergeAndWriteStore(incoming, {
+        deletions: payload.deletions || {},
+        clears: payload.clears || [],
+        allowAnalyticsReset: false,
+      });
       sendJson(response, 200, store);
       return;
     }
 
     if (url.pathname === "/api/streaming-click" && request.method === "POST") {
       await recordStreamingClick(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/analytics-increment" && request.method === "POST") {
+      await incrementAnalytics(request, response);
       return;
     }
 

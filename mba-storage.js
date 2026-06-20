@@ -230,14 +230,18 @@ async function loadStore(options = {}) {
   }
 }
 
-async function saveStore(store) {
+async function saveStore(store, options = {}) {
   try {
     const response = await fetch(apiUrl("/api/store"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(store),
+      body: JSON.stringify({
+        store,
+        deletions: options.deletions || {},
+        clears: options.clears || [],
+      }),
     });
 
     if (response.ok) {
@@ -266,6 +270,17 @@ async function saveStore(store) {
   }
 }
 
+async function incrementAnalytics(entityType, entityId, field) {
+  const response = await fetch(apiUrl("/api/analytics-increment"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entityType, entityId, field }),
+    keepalive: true,
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
 function uid(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -277,6 +292,7 @@ function approvedReleases(store) {
 window.MBA = {
   loadStore,
   saveStore,
+  incrementAnalytics,
   uid,
   approvedReleases,
   defaults: cloneDefaultStore,

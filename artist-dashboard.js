@@ -1150,7 +1150,9 @@ artistSongTable?.addEventListener("click", async (event) => {
     const releaseId = deleteButton.dataset.deleteRelease;
     currentStore.releases = currentStore.releases.filter((release) => release.id !== releaseId);
     if (releaseForm.editingId.value === releaseId) clearReleaseForm();
-    currentStore = await window.MBA.saveStore(currentStore);
+    currentStore = await window.MBA.saveStore(currentStore, {
+      deletions: { releaseIds: [releaseId] },
+    });
     renderDashboardReleases();
     message(releaseMessage, "Song deleted.", "pending");
     return;
@@ -1210,7 +1212,9 @@ deleteEditingSong?.addEventListener("click", async () => {
     return;
   }
   currentStore.releases = currentStore.releases.filter((release) => release.id !== releaseId);
-  currentStore = await window.MBA.saveStore(currentStore);
+  currentStore = await window.MBA.saveStore(currentStore, {
+    deletions: { releaseIds: [releaseId] },
+  });
   clearReleaseForm();
   renderDashboardReleases();
   showDashboardSection("songsSection");
@@ -1300,7 +1304,12 @@ document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () 
   };
   currentStore.site = currentStore.site || {};
   currentStore.site.videos = artist.videos;
-  currentStore = await window.MBA.saveStore(currentStore);
+  currentStore = await window.MBA.saveStore(currentStore, {
+    clears: [
+      { collection: "artists", id: artist.id, fields: ["videos"], value: {} },
+      { collection: "site", fields: ["videos"], value: {} },
+    ],
+  });
   fillVideoForm();
   renderArtistConsole();
   message(videoMessage, "Video links removed.", "pending");

@@ -41,12 +41,17 @@ async function requireStoreManagerSession() {
   return true;
 }
 
-async function saveAdminStore(store) {
+async function saveAdminStore(store, options = {}) {
   const response = await fetch("/api/admin/store", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(store),
+    body: JSON.stringify({
+      store,
+      deletions: options.deletions || {},
+      clears: options.clears || [],
+      resetAnalytics: options.resetAnalytics === true,
+    }),
   });
 
   if (response.status === 401) {
@@ -461,8 +466,8 @@ function renderAll() {
   renderSupportAndReports();
 }
 
-async function saveAndRender() {
-  currentStore = await saveAdminStore(currentStore);
+async function saveAndRender(options = {}) {
+  currentStore = await saveAdminStore(currentStore, options);
   renderAll();
 }
 
@@ -511,9 +516,12 @@ managerArtistTable?.addEventListener("click", async (event) => {
   }
 
   if (event.target.closest("[data-delete-artist]")) {
+    const releaseIds = currentStore.releases
+      .filter((release) => release.artistId === artist.id)
+      .map((release) => release.id);
     currentStore.artists = currentStore.artists.filter((item) => item.id !== artist.id);
     currentStore.releases = currentStore.releases.filter((release) => release.artistId !== artist.id);
-    await saveAndRender();
+    await saveAndRender({ deletions: { artistIds: [artist.id], releaseIds } });
   }
 
   if (event.target.closest("[data-message-artist]")) {
@@ -559,7 +567,7 @@ managerSongTable?.addEventListener("click", async (event) => {
 
   if (event.target.closest("[data-delete-song]")) {
     currentStore.releases = currentStore.releases.filter((item) => item.id !== release.id);
-    await saveAndRender();
+    await saveAndRender({ deletions: { releaseIds: [release.id] } });
   }
 
   if (event.target.closest("[data-feature-song]")) {

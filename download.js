@@ -352,16 +352,18 @@
 
 async function init() {
   try {
-    let store = await window.MBA.loadStore({ force: true });
+    const store = await window.MBA.loadStore({ force: true });
 
     const release = selectedRelease(store);
     const artist = selectedArtist(store, release);
 
     if (artist) {
-      artist.downloadPageVisits =
-        Number(artist.downloadPageVisits || 0) + 1;
-
-      store = await window.MBA.saveStore(store);
+      const result = await window.MBA.incrementAnalytics(
+        "artist",
+        artist.id,
+        "downloadPageVisits"
+      );
+      if (result) artist.downloadPageVisits = result.value;
     }
 
     const downloadState = await loadDownloadState();

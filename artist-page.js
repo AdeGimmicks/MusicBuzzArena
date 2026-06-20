@@ -397,11 +397,8 @@ function linkHubPage(release, artist) {
     const recordPlay = async () => {
       if (playCounted) return;
       playCounted = true;
-      const store = await window.MBA.loadStore({ force: true });
-      const saved = store.releases.find((item) => item.id === release.id);
-      if (!saved) return;
-      saved.plays = Number(saved.plays || 0) + 1;
-      await window.MBA.saveStore(store);
+      const result = await window.MBA.incrementAnalytics("release", release.id, "plays");
+      if (result) release.plays = result.value;
     };
     const formatTime = (seconds) => {
       if (!Number.isFinite(seconds)) return "0:00";
@@ -614,10 +611,12 @@ async function renderArtistPage(force = false) {
   const artist = artistForPage(store, approvedReleases);
 
   if (artist) {
-    artist.artistPageVisits =
-      Number(artist.artistPageVisits || 0) + 1;
-
-    await window.MBA.saveStore(store);
+    const result = await window.MBA.incrementAnalytics(
+      "artist",
+      artist.id,
+      "artistPageVisits"
+    );
+    if (result) artist.artistPageVisits = result.value;
   }
 
   applySite(store);
