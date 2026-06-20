@@ -1085,9 +1085,10 @@ releaseForm.addEventListener("submit", async (event) => {
     release.streaming = formLinks(releaseForm, STREAMING_LINKS);
     if (cover) release.cover = cover;
     if (audioData) {
-      release.audioData = audioData;
-      release.audioName = releaseForm.audio.files[0].name;
-    }
+  release.audioData = audioData;
+  release.audioUrl = audioData;
+  release.audioName = releaseForm.audio.files[0].name;
+}
     release.updatedAt = new Date().toISOString();
     if (existingIndex >= 0) {
       currentStore.releases[existingIndex] = release;
