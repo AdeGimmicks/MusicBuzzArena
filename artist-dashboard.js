@@ -277,8 +277,10 @@ function updateHomePreview(coverSrc = "") {
   if (homePreviewMeta) homePreviewMeta.textContent = `${releaseType} | ${genre}`;
   if (homePreviewSong) homePreviewSong.textContent = releaseForm.title.value.trim() || "Song title";
   if (homePreviewArtist) homePreviewArtist.textContent = releaseForm.artistName.value.trim() || artist.name || "Artist name";
-  if (coverSrc) homePreviewCover.src = coverSrc;
-  if (!releaseForm.cover.files.length && !coverSrc) homePreviewCover.src = "Mba Logos/MusicBusiness Logo.png";
+  if (homePreviewCover) {
+    homePreviewCover.closest(".upload-dropzone")?.classList.toggle("has-artwork", Boolean(coverSrc));
+    homePreviewCover.src = coverSrc || "";
+  }
   updateMusicPreview(coverSrc);
   updateUploadStatus();
 }
@@ -328,7 +330,7 @@ function updateUploadStatus() {
   if (!uploadStatusTitle || !uploadStatusText) return;
   const title = releaseForm.title.value.trim();
   const editing = Boolean(releaseForm.editingId.value);
-  uploadStatusTitle.textContent = title || (editing ? "Editing artist song" : "New artist song");
+  uploadStatusTitle.textContent = editing ? "Edit Song" : "Upload Song";
   uploadStatusText.textContent = editing ? "Edit mode" : title ? "Draft in progress" : "Ready to upload";
 }
 

@@ -1638,38 +1638,90 @@ h3 {
   grid-template-columns: minmax(190px, 260px) minmax(0, 1fr);
 }
 
+.upload-form-group {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
 .artwork-uploader {
   align-content: start;
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .artwork-uploader img {
   aspect-ratio: 1;
-  background: #10131a;
-  border: 1px solid rgba(244, 196, 48, 0.28);
-  border-radius: 8px;
+  border-radius: 7px;
+  display: none;
   object-fit: cover;
   width: 100%;
 }
 
+.upload-dropzone.has-artwork img {
+  display: block;
+}
+
 .artwork-button,
 .audio-picker {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px dashed rgba(17, 20, 27, 0.24);
   border-radius: 8px;
+  color: var(--text);
   cursor: pointer;
-  padding: 12px;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.upload-dropzone {
+  align-content: center;
+  aspect-ratio: 1;
+  justify-items: center;
+  min-height: 210px;
+  text-align: center;
+}
+
+.upload-dropzone.has-artwork {
+  align-content: start;
+  border-style: solid;
+  min-height: 0;
+}
+
+.upload-dropzone.has-artwork span,
+.upload-dropzone.has-artwork small {
+  justify-self: start;
+  text-align: left;
+}
+
+.artwork-button span,
+.audio-picker span {
+  font-size: 0.98rem;
+  font-weight: 1000;
+}
+
+.artwork-button small,
+.audio-picker small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.upload-file-box {
+  min-height: 96px;
 }
 
 .artwork-button input,
 .audio-picker input {
-  margin-top: 8px;
+  max-width: 100%;
 }
 
 .creator-fields {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .compact-details {
