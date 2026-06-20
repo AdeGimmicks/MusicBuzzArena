@@ -1654,7 +1654,7 @@ h3 {
 .release-type-options {
   display: grid;
   gap: 22px;
-  grid-template-columns: repeat(3, minmax(0, 260px));
+  grid-template-columns: repeat(2, minmax(0, 280px));
   justify-content: center;
 }
 
@@ -1705,6 +1705,102 @@ h3 {
   justify-content: center;
   line-height: 1;
   width: 78px;
+}
+
+.upload-workflow-shell {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+}
+
+.upload-release-rail {
+  align-self: start;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 18px;
+  position: sticky;
+  top: 18px;
+}
+
+.upload-release-rail ol {
+  display: grid;
+  gap: 18px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.upload-release-rail li {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  position: relative;
+}
+
+.upload-release-rail li:not(:last-child)::after {
+  background: rgba(255, 255, 255, 0.14);
+  content: "";
+  height: calc(100% + 18px);
+  left: 14px;
+  position: absolute;
+  top: 31px;
+  width: 1px;
+}
+
+.upload-release-rail li > span {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72);
+  display: inline-flex;
+  font-size: 0.84rem;
+  font-weight: 1000;
+  height: 30px;
+  justify-content: center;
+  position: relative;
+  width: 30px;
+  z-index: 1;
+}
+
+.upload-release-rail li.is-active > span {
+  background: var(--gold);
+  color: #11141b;
+}
+
+.upload-release-rail strong {
+  color: var(--white);
+  display: block;
+  font-size: 0.94rem;
+  line-height: 1.2;
+}
+
+.upload-release-rail small {
+  color: rgba(255, 255, 255, 0.54);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.upload-workflow-main {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.upload-workflow-title {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.upload-workflow-title h3 {
+  color: var(--white);
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+  line-height: 1;
+  margin: 0;
 }
 
 .creator-form {
@@ -4091,6 +4187,7 @@ select:focus {
   .creator-upload-layout,
   .artist-account-card,
   .artist-account-controls,
+  .upload-workflow-shell,
   .creator-form-grid,
   .compact-link-fields {
     grid-template-columns: 1fr;
@@ -4101,6 +4198,10 @@ select:focus {
   }
 
   .creator-sidebar {
+    position: static;
+  }
+
+  .upload-release-rail {
     position: static;
   }
 

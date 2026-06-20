@@ -37,6 +37,7 @@ const clearReleaseButton = document.querySelector("[data-clear-release]");
 const releaseTypeGate = document.querySelector("#releaseTypeGate");
 const songUploadSection = document.querySelector("#songUpload");
 const releaseTypeOptions = document.querySelectorAll("[data-start-release]");
+const releaseFlowEyebrow = document.querySelector("#releaseFlowEyebrow");
 const workspaceTitle = document.querySelector("#artistWorkspaceTitle");
 const dashboardSections = [...document.querySelectorAll(".artist-dashboard-section")];
 const dashboardNavLinks = [...document.querySelectorAll("[data-dashboard-section]")];
@@ -292,9 +293,11 @@ function showReleaseTypeChoice() {
 }
 
 function showReleaseForm(releaseType = "Single") {
+  const selectedType = releaseType === "Album" ? "Album" : "Single";
   releaseTypeGate?.classList.add("is-hidden");
   songUploadSection?.classList.remove("is-hidden");
-  if (!releaseForm.editingId.value) setSelectValue(releaseForm.releaseType, releaseType);
+  if (!releaseForm.editingId.value) setSelectValue(releaseForm.releaseType, selectedType);
+  if (releaseFlowEyebrow) releaseFlowEyebrow.textContent = selectedType === "Album" ? "Album" : "Single Song";
   updateHomePreview();
 }
 
@@ -458,10 +461,11 @@ function populateCountrySelect(selectedValue = "") {
 
 function fillReleaseForm(release) {
   releaseForm.editingId.value = release.id;
-  showReleaseForm(release.releaseType || "Single");
+  const releaseType = release.releaseType === "Album" ? "Album" : "Single";
+  showReleaseForm(releaseType);
   releaseForm.title.value = release.title || "";
   releaseForm.artistName.value = release.artistName || primaryArtist().name || "";
-  setSelectValue(releaseForm.releaseType, release.releaseType || "Single");
+  setSelectValue(releaseForm.releaseType, releaseType);
   setSelectValue(releaseForm.genre, release.genre || "");
   setSelectValue(releaseForm.secondaryGenre, release.secondaryGenre || "");
   const moods = Array.isArray(release.mood) ? release.mood : String(release.mood || "").split(",").map((item) => item.trim());
@@ -1011,7 +1015,7 @@ releaseTypeOptions.forEach((button) => {
   button.addEventListener("click", () => {
     const releaseType = button.dataset.startRelease || "Single";
     showReleaseForm(releaseType);
-    message(releaseMessage, `${releaseType} upload started.`, "pending");
+    message(releaseMessage, `${releaseType === "Album" ? "Album" : "Single song"} upload started.`, "pending");
     songUploadSection?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 });
