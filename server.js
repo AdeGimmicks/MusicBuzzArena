@@ -1,5 +1,6 @@
 const http = require("http");
 const crypto = require("crypto");
+const fsSync = require("fs");
 const fs = require("fs/promises");
 const path = require("path");
 let MongoClient;
@@ -706,7 +707,7 @@ async function createCheckoutSession(request, response) {
     ],
     metadata,
     payment_intent_data: { metadata },
-    success_url: `${origin}/download?release=${encodeURIComponent(release.id)}&checkout=success&type=${checkoutType}`,
+    success_url: `${origin}/download?release=${encodeURIComponent(release.id)}&checkout=success&type=${checkoutType}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/download?release=${encodeURIComponent(release.id)}&checkout=cancelled`,
   };
 
@@ -717,6 +718,140 @@ async function createCheckoutSession(request, response) {
 
   const session = await stripe.checkout.sessions.create(sessionParams);
   sendJson(response, 200, { url: session.url });
+}
+
+async function paidDownloadPurchase(sessionId, releaseId) {
+  if (!stripe || !hasValidStripeSecretKey) {
+    return { status: 503, error: "Stripe is not configured." };
+  }
+
+  if (!sessionId) return { status: 400, error: "Stripe checkout session is required." };
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] });
+  } catch {
+    return { status: 404, error: "Stripe checkout session was not found." };
+  }
+
+  if (session.payment_status !== "paid" || session.metadata?.checkoutType !== "download") {
+    return { status: 403, error: "This purchase has not been paid." };
+  }
+
+  if (releaseId && session.metadata?.releaseId !== releaseId) {
+    return { status: 403, error: "This purchase does not match this song." };
+  }
+
+  const store = await readStore();
+  const release = (store.releases || []).find((item) => item.id === session.metadata?.releaseId && item.status === "approved");
+  if (!release) return { status: 404, error: "Release not found." };
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id || "";
+  let transaction = (store.transactions || []).find(
+    (item) => item.checkoutSessionId === session.id || (paymentIntentId && item.paymentIntentId === paymentIntentId)
+  );
+
+  if (!transaction) {
+    const amount = Number(session.amount_total || 0) / 100;
+    const platformFeePercent = Number(session.metadata?.platformFeePercent || store.site?.commissionRate || 10);
+    transaction = {
+      id: `txn-${session.id}`,
+      releaseId: release.id,
+      artistId: release.artistId || "",
+      type: "download",
+      amount,
+      platformFee: amount * (platformFeePercent / 100),
+      artistPayout: amount * (1 - platformFeePercent / 100),
+      currency: session.currency || release.currency || "usd",
+      checkoutSessionId: session.id,
+      paymentIntentId,
+      downloaded: false,
+      downloadedAt: "",
+      createdAt: new Date((session.created || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+    };
+    store.transactions.push(transaction);
+    await writeStore(store);
+  }
+
+  return { status: 200, store, release, transaction, session };
+}
+
+async function sendDownloadStatus(request, response, url) {
+  const result = await paidDownloadPurchase(url.searchParams.get("session_id"), url.searchParams.get("release"));
+  if (result.status !== 200) {
+    sendJson(response, result.status, { error: result.error });
+    return;
+  }
+
+  sendJson(response, 200, {
+    ok: true,
+    releaseId: result.release.id,
+    downloaded: Boolean(result.transaction.downloaded),
+    downloadedAt: result.transaction.downloadedAt || "",
+  });
+}
+
+function downloadFilename(release, filePath) {
+  const extension = path.extname(filePath || release.audioUrl || ".mp3") || ".mp3";
+  return `${slugify(release.title || "song")}${extension}`;
+}
+
+async function claimPaidDownload(request, response, url) {
+  const result = await paidDownloadPurchase(url.searchParams.get("session_id"), url.searchParams.get("release"));
+  if (result.status !== 200) {
+    sendJson(response, result.status, { error: result.error });
+    return;
+  }
+
+  const { store, release, transaction } = result;
+  if (transaction.downloaded) {
+    sendJson(response, 409, {
+      error: "This song has already been downloaded for this purchase.",
+      downloaded: true,
+      downloadedAt: transaction.downloadedAt || "",
+    });
+    return;
+  }
+
+  if (/^https?:\/\//i.test(release.audioUrl || "")) {
+    transaction.downloaded = true;
+    transaction.downloadedAt = new Date().toISOString();
+    release.downloads = Number(release.downloads || 0) + 1;
+    await writeStore(store);
+    response.writeHead(303, { Location: release.audioUrl });
+    response.end();
+    return;
+  }
+
+  const audioPath = String(release.audioUrl || "");
+  const isUpload = audioPath.startsWith("uploads/");
+  const filePath = isUpload ? path.join(ROOT, audioPath) : path.join(ROOT, audioPath.replace(/^\/+/, ""));
+  const isAllowedPath = isUpload ? isPathInsideUploadRoot(filePath) : isPathInsideRoot(filePath);
+
+  if (!audioPath || !isAllowedPath) {
+    sendJson(response, 404, { error: "Song file is not available." });
+    return;
+  }
+
+  try {
+    const file = fsSync.readFileSync(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    transaction.downloaded = true;
+    transaction.downloadedAt = new Date().toISOString();
+    release.downloads = Number(release.downloads || 0) + 1;
+    await writeStore(store);
+    response.writeHead(200, {
+      "Cache-Control": "no-store",
+      "Content-Disposition": `attachment; filename="${downloadFilename(release, filePath)}"`,
+      "Content-Type": MIME_TYPES[ext] || "application/octet-stream",
+    });
+    response.end(file);
+  } catch {
+    sendJson(response, 404, { error: "Song file is not available." });
+  }
 }
 
 function isPathInsideRoot(filePath) {
@@ -819,6 +954,16 @@ async function handleRequest(request, response) {
 
     if (url.pathname === "/api/store" && request.method === "GET") {
       sendJson(response, 200, await readStore());
+      return;
+    }
+
+    if (url.pathname === "/api/download-status" && request.method === "GET") {
+      await sendDownloadStatus(request, response, url);
+      return;
+    }
+
+    if (url.pathname === "/api/claim-download" && request.method === "GET") {
+      await claimPaidDownload(request, response, url);
       return;
     }
 

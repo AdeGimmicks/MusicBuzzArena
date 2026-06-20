@@ -3,6 +3,7 @@
   const params = new URLSearchParams(window.location.search);
   const releaseId = params.get("release");
   const checkoutState = params.get("checkout");
+  const checkoutSessionId = params.get("session_id");
   let previewAudio = null;
 
   function escapeHtml(value) {
@@ -51,7 +52,52 @@
     `;
   }
 
-  function renderPage(store) {
+  function downloadStatusUrl() {
+    const query = new URLSearchParams({
+      release: releaseId || "",
+      session_id: checkoutSessionId || "",
+    });
+    return `/api/download-status?${query.toString()}`;
+  }
+
+  function claimDownloadUrl() {
+    const query = new URLSearchParams({
+      release: releaseId || "",
+      session_id: checkoutSessionId || "",
+    });
+    return `/api/claim-download?${query.toString()}`;
+  }
+
+  function filenameFromResponse(response, release) {
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="([^"]+)"/);
+    return match?.[1] || `${String(release.title || "song").replace(/[^a-z0-9._-]+/gi, "-")}.mp3`;
+  }
+
+  async function loadDownloadState() {
+    if (checkoutState !== "success" || !checkoutSessionId) return null;
+    const response = await fetch(downloadStatusUrl());
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Unable to verify this purchase.");
+    return data;
+  }
+
+  function renderDownloadAction(release, isSuccess, downloadState) {
+    if (!isSuccess) return `<button class="pay-now-button" id="payNowButton" type="button">Pay Now</button>`;
+    if (!checkoutSessionId) return `<button class="download-file-button" type="button" disabled>Download unavailable</button>`;
+    if (downloadState?.downloaded) return `<button class="download-file-button" type="button" disabled>Downloaded ✓</button>`;
+    return `<button class="download-file-button" id="downloadFileButton" type="button">Download Song File</button>`;
+  }
+
+  function downloadStatusText(isSuccess, isCancelled, downloadState) {
+    if (downloadState?.downloaded) return "This song has already been downloaded for this purchase.";
+    if (isSuccess && !checkoutSessionId) return "Unable to verify this purchase. Please use the Stripe success link.";
+    if (isSuccess) return "Payment complete. Your song file is ready.";
+    if (isCancelled) return "Payment was cancelled. You can try again.";
+    return "Preview the sample, then pay to unlock the download.";
+  }
+
+  function renderPage(store, downloadState = null) {
     const release = selectedRelease(store);
     if (!release) {
       renderEmpty();
@@ -77,51 +123,19 @@
           <p class="download-price">${price}</p>
           ${renderPreview(release)}
           <div class="download-actions">
-            ${
-              isSuccess
-                ? `<a class="download-file-button" href="${escapeHtml(release.audioUrl || "#")}" download>Download Song File</a>`
-                : `<button class="pay-now-button" id="payNowButton" type="button">Pay Now</button>`
-            }
+            ${renderDownloadAction(release, isSuccess, downloadState)}
             <a class="download-secondary-link" href="/listen?release=${encodeURIComponent(release.id)}">Streaming Links</a>
           </div>
           <p class="download-status ${isSuccess ? "is-success" : isCancelled ? "is-error" : ""}" id="downloadStatus">
-            ${
-              isSuccess
-                ? "Payment complete. Your song file is ready."
-                : isCancelled
-                  ? "Payment was cancelled. You can try again."
-                  : "Preview the sample, then pay to unlock the download."
-            }
+            ${downloadStatusText(isSuccess, isCancelled, downloadState)}
           </p>
         </div>
       </article>
     `;
 
-  setupPreview(release);
-  setupCheckout(release);
-
-  const downloadButton = page.querySelector(".download-file-button");
-
-downloadButton?.addEventListener("click", async (event) => {
-  event.preventDefault();
-
-  const store = await window.MBA.loadStore({ force: true });
-
-  const saved = store.releases.find((item) => item.id === release.id);
-
-  if (saved) {
-    saved.downloads = Number(saved.downloads || 0) + 1;
-    await window.MBA.saveStore(store);
-  }
-
-  const fileLink = document.createElement("a");
-  fileLink.href = downloadButton.href;
-  fileLink.download = "";
-  document.body.appendChild(fileLink);
-  fileLink.click();
-  fileLink.remove();
-});
-    
+    setupPreview(release);
+    setupCheckout(release);
+    setupPaidDownload(release);
   }
 
   function renderPreview(release) {
@@ -227,6 +241,68 @@ downloadButton?.addEventListener("click", async (event) => {
     });
   }
 
+  function markDownloaded(message = "This song has already been downloaded for this purchase.") {
+    const button = document.getElementById("downloadFileButton");
+    const status = document.getElementById("downloadStatus");
+    if (button) {
+      button.textContent = "Downloaded ✓";
+      button.disabled = true;
+      button.removeAttribute("id");
+    }
+    if (status) {
+      status.textContent = message;
+      status.className = "download-status is-success";
+    }
+  }
+
+  function setupPaidDownload(release) {
+    const button = document.getElementById("downloadFileButton");
+    const status = document.getElementById("downloadStatus");
+    if (!button) return;
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      button.textContent = "Preparing download...";
+      if (status) {
+        status.textContent = "Preparing your one-time download.";
+        status.className = "download-status";
+      }
+
+      try {
+        const response = await fetch(claimDownloadUrl());
+        if (response.status === 409) {
+          const data = await response.json().catch(() => ({}));
+          markDownloaded(data.error || "This song has already been downloaded for this purchase.");
+          return;
+        }
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "Unable to download this song.");
+        }
+
+        const blob = await response.blob();
+        const fileLink = document.createElement("a");
+        const objectUrl = URL.createObjectURL(blob);
+        fileLink.href = objectUrl;
+        fileLink.download = filenameFromResponse(response, release);
+        document.body.appendChild(fileLink);
+        fileLink.click();
+        fileLink.remove();
+        URL.revokeObjectURL(objectUrl);
+        markDownloaded();
+        await window.MBA.loadStore({ force: true });
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = "Download Song File";
+        if (status) {
+          status.textContent = error.message || "Unable to download this song.";
+          status.className = "download-status is-error";
+        }
+      }
+    });
+  }
+
 async function init() {
   try {
     const store = await window.MBA.loadStore({ force: true });
@@ -241,7 +317,8 @@ async function init() {
       await window.MBA.saveStore(store);
     }
 
-    renderPage(store);
+    const downloadState = await loadDownloadState();
+    renderPage(store, downloadState);
   } catch (error) {
       page.innerHTML = `
         <div class="download-empty">
