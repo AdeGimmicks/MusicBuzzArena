@@ -594,14 +594,15 @@ h3 {
 }
 
 .download-action {
-  background: var(--gold);
-  border: 2px solid var(--gold);
-  color: #10131a;
+  background: #10131a;
+  border: 2px solid #10131a;
+  color: var(--gold);
 }
 
-.download-action:hover {
+.download-action:hover,
+.download-action:focus-visible {
   background: #10131a;
-  border-color: #10131a;
+  border-color: var(--gold);
   color: var(--gold);
 }
 
