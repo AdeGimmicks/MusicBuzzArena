@@ -578,7 +578,8 @@ h3 {
   text-transform: uppercase;
 }
 
-.listen-action {
+.listen-action,
+.download-action {
   background: rgba(255, 255, 255, 0.56);
   border: 2px solid rgba(17, 20, 27, 0.78);
   box-shadow:
@@ -587,32 +588,12 @@ h3 {
   color: #10131a;
 }
 
-.listen-action:hover {
-  background: #10131a;
-  border-color: var(--gold);
-  color: var(--gold);
-}
-
-.download-action {
-  background: #0b0e14;
-  border: 2px solid var(--gold-dark);
-  box-shadow:
-    inset 0 0 0 1px rgba(244, 196, 48, 0.12),
-    0 10px 24px rgba(17, 20, 27, 0.16);
-  color: var(--gold);
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
+.listen-action:hover,
+.listen-action:focus-visible,
 .download-action:hover,
 .download-action:focus-visible {
-  background: #11151d;
+  background: #10131a;
   border-color: var(--gold);
-  box-shadow:
-    inset 0 0 0 1px rgba(244, 196, 48, 0.22),
-    0 12px 28px rgba(17, 20, 27, 0.2);
   color: var(--gold);
 }
 
