@@ -194,17 +194,44 @@
     const defaultEnd = start + duration;
     const configuredEnd = parsePreviewTime(release.previewEnd, defaultEnd);
     const end = configuredEnd > start ? configuredEnd : defaultEnd;
+    const isMobilePreview =
+      window.matchMedia?.("(pointer: coarse)").matches ||
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
 
     previewAudio = new Audio(release.audioUrl);
     previewAudio.preload = "metadata";
+    if (isMobilePreview) {
+      previewAudio.playsInline = true;
+      previewAudio.setAttribute("playsinline", "");
+    }
+
+    let mobileSeekPending = isMobilePreview;
 
     const previewEnd = () =>
       Number.isFinite(previewAudio.duration) ? Math.min(end, previewAudio.duration) : end;
     const previewStart = () =>
       Number.isFinite(previewAudio.duration) ? Math.min(start, Math.max(0, previewAudio.duration - 0.25)) : start;
     const seekToPreviewStart = () => {
-      previewAudio.currentTime = previewStart();
+      if (isMobilePreview) mobileSeekPending = true;
+      try {
+        previewAudio.currentTime = previewStart();
+      } catch {
+        return;
+      }
       fill.style.width = "0%";
+    };
+    const confirmMobilePreviewStart = () => {
+      if (!mobileSeekPending || previewAudio.readyState < 1) return;
+      const target = previewStart();
+      try {
+        if (Math.abs(previewAudio.currentTime - target) > 0.2) {
+          previewAudio.currentTime = target;
+          return;
+        }
+        mobileSeekPending = false;
+      } catch {
+        // Mobile browsers retry when the next media readiness event fires.
+      }
     };
     const waitForMetadata = () => {
       if (previewAudio.readyState >= 1) return Promise.resolve();
@@ -241,9 +268,18 @@
       }
     });
 
-    previewAudio.addEventListener("loadedmetadata", seekToPreviewStart);
+    previewAudio.addEventListener("loadedmetadata", () => {
+      seekToPreviewStart();
+      confirmMobilePreviewStart();
+    });
+    if (isMobilePreview) {
+      previewAudio.addEventListener("loadeddata", confirmMobilePreviewStart);
+      previewAudio.addEventListener("canplay", confirmMobilePreviewStart);
+      previewAudio.addEventListener("seeked", confirmMobilePreviewStart);
+    }
     previewAudio.addEventListener("playing", () => {
       if (previewAudio.currentTime < previewStart()) seekToPreviewStart();
+      confirmMobilePreviewStart();
     });
 
     previewAudio.addEventListener("ended", () => {

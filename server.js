@@ -96,6 +96,8 @@ const MIME_TYPES = {
   ".ogg": "audio/ogg",
 };
 
+const MEDIA_EXTENSIONS = new Set([".mp3", ".wav", ".m4a", ".aac", ".ogg", ".mp4", ".webm"]);
+
 function defaultStore() {
   return {
     site: {
@@ -1207,14 +1209,60 @@ async function serveStatic(request, response) {
   }
 
   try {
-    const file = await fs.readFile(filePath);
     const ext = path.extname(filePath).toLowerCase();
-    response.writeHead(200, {
+    const stat = await fs.stat(filePath);
+    if (!stat.isFile()) throw new Error("Not a file");
+    const headers = {
       "Access-Control-Allow-Origin": "*",
       "Cache-Control": cacheControlFor(ext, pathname),
       "Content-Type": MIME_TYPES[ext] || "application/octet-stream",
-    });
-    response.end(file);
+    };
+
+    if (MEDIA_EXTENSIONS.has(ext)) {
+      headers["Accept-Ranges"] = "bytes";
+      const range = String(request.headers.range || "");
+      const match = range.match(/^bytes=(\d*)-(\d*)$/);
+      if (range && !match) {
+        response.writeHead(416, { ...headers, "Content-Range": `bytes */${stat.size}` });
+        response.end();
+        return;
+      }
+
+      if (match) {
+        const suffixLength = !match[1] && match[2] ? Number(match[2]) : 0;
+        const start = suffixLength
+          ? Math.max(0, stat.size - suffixLength)
+          : Number(match[1] || 0);
+        const end = suffixLength
+          ? stat.size - 1
+          : Math.min(Number(match[2] || stat.size - 1), stat.size - 1);
+
+        if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || start > end || start >= stat.size) {
+          response.writeHead(416, { ...headers, "Content-Range": `bytes */${stat.size}` });
+          response.end();
+          return;
+        }
+
+        response.writeHead(206, {
+          ...headers,
+          "Content-Length": end - start + 1,
+          "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+        });
+        if (request.method === "HEAD") response.end();
+        else fsSync.createReadStream(filePath, { start, end }).pipe(response);
+        return;
+      }
+
+      response.writeHead(200, { ...headers, "Content-Length": stat.size });
+      if (request.method === "HEAD") response.end();
+      else fsSync.createReadStream(filePath).pipe(response);
+      return;
+    }
+
+    const file = await fs.readFile(filePath);
+    response.writeHead(200, { ...headers, "Content-Length": file.length });
+    if (request.method === "HEAD") response.end();
+    else response.end(file);
   } catch {
     response.writeHead(404);
     response.end("Not found");
