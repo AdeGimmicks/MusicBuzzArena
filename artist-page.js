@@ -22,7 +22,7 @@ function streamingLinks(release) {
     const link = document.createElement("a");
     link.href = href;
     link.target = "_blank";
-    link.rel = "noreferrer";
+    link.rel = "noopener noreferrer";
     link.innerHTML = `<img src="${icon}" alt=""> <span>${label}</span>`;
     wrap.append(link);
   });
@@ -265,7 +265,7 @@ function linkHubPage(release, artist) {
    data-platform-key="${key}"
    href="${href}"
    target="_blank"
-   rel="noreferrer">
+   rel="noopener noreferrer">
         <span class="service-brand">
           <img src="${icon}" alt="">
           <strong>${label}</strong>
@@ -543,55 +543,25 @@ function linkHubPage(release, artist) {
   });
 
   wrap.querySelectorAll(".streaming-link").forEach((link) => {
-    link.addEventListener("click", async (event) => {
-      event.preventDefault();
+    link.addEventListener("click", () => {
       const releaseId = link.dataset.releaseId;
       const platformKey = link.dataset.platformKey;
-      const destination = link.href;
-      const platformTab = window.open("about:blank", "_blank", "noopener,noreferrer");
+      if (!releaseId || !platformKey) return;
 
-      if (!releaseId || !platformKey) {
-        if (platformTab) platformTab.location.href = destination;
-        else window.location.href = destination;
-        return;
-      }
-
-      try {
-        const response = await fetch("/api/streaming-click", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ releaseId, platformKey }),
-          keepalive: true,
-        });
-
-        if (response.ok) {
-          await window.MBA.loadStore({ force: true });
-          if (platformTab) platformTab.location.href = destination;
-          else window.location.href = destination;
-          return;
-        }
-      } catch {
-        // Fall back to the full-store save path for static/local file use.
-      }
-
-      const store = await window.MBA.loadStore({ force: true });
-      const saved = store.releases.find((item) => item.id === releaseId);
-
-      if (!saved) return;
-
-      saved.streamingClicks = Number(saved.streamingClicks || 0) + 1;
-      saved.platformClicks = {
-        ...(saved.platformClicks || {}),
-        [platformKey]: Number(saved.platformClicks?.[platformKey] || 0) + 1,
-      };
-
-      await window.MBA.saveStore(store);
-      if (platformTab) platformTab.location.href = destination;
-      else window.location.href = destination;
+      fetch("/api/streaming-click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ releaseId, platformKey }),
+        keepalive: true,
+      })
+        .then((response) => {
+          if (response.ok) window.MBA.loadStore({ force: true });
+        })
+        .catch(() => {});
     });
   });
 
-return wrap;
+  return wrap;
 }
 let lastArtistSnapshot = "";
 

@@ -560,19 +560,21 @@ h3 {
   gap: 8px;
   justify-content: center;
   margin-top: 6px;
+  width: 100%;
 }
 
 .mini-actions a {
   align-items: center;
   border-radius: 7px;
   display: inline-flex;
+  flex: 1 1 0;
   font-size: 0.78rem;
   font-weight: 900;
   justify-content: center;
-  letter-spacing: 0.28em;
+  letter-spacing: 0;
   min-height: 40px;
-  min-width: 118px;
-  padding: 9px 16px 9px 20px;
+  min-width: 0;
+  padding: 9px 10px;
   text-transform: uppercase;
 }
 
@@ -589,6 +591,18 @@ h3 {
   background: #10131a;
   border-color: var(--gold);
   color: var(--gold);
+}
+
+.download-action {
+  background: #10131a;
+  border: 2px solid #10131a;
+  color: #fff;
+}
+
+.download-action:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #10131a;
 }
 
 .dashboard-body,
