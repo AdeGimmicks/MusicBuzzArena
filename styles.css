@@ -594,15 +594,15 @@ h3 {
 }
 
 .download-action {
-  background: #10131a;
-  border: 2px solid #10131a;
-  color: #fff;
+  background: var(--gold);
+  border: 2px solid var(--gold);
+  color: #10131a;
 }
 
 .download-action:hover {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: #10131a;
+  background: #10131a;
+  border-color: #10131a;
+  color: var(--gold);
 }
 
 .dashboard-body,
