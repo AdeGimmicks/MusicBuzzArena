@@ -589,9 +589,7 @@ h3 {
 }
 
 .listen-action:hover,
-.listen-action:focus-visible,
-.download-action:hover,
-.download-action:focus-visible {
+.listen-action:focus-visible {
   background: #10131a;
   border-color: var(--gold);
   color: var(--gold);
