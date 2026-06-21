@@ -175,6 +175,7 @@ const MBA_DEFAULT_STORE = {
   ],
   donations: [],
   transactions: [],
+  analyticsArchive: [],
 };
 
 const MBA_STORAGE_KEY = "musicbusiness-arena-store";

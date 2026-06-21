@@ -131,6 +131,12 @@ function releaseRevenue(release) {
   return Number(release.earnings || 0) || Number(release.downloads || 0) * Number(release.price || 0);
 }
 
+function archivedReleaseAnalytics(artistId) {
+  return (currentStore.analyticsArchive || []).filter(
+    (record) => record.entityType === "release" && record.artistId === artistId
+  );
+}
+
 function message(node, text, type = "success") {
   node.textContent = text;
   node.dataset.type = type;
@@ -821,10 +827,11 @@ function renderDownloadsPanel() {
 function renderArtistConsole() {
   const artist = primaryArtist();
   const releases = artistReleases();
+  const historicalReleases = [...releases, ...archivedReleaseAnalytics(artist.id)];
   const videos = videoEntries(artist);
-  const totalDownloads = releases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
-  const totalRevenue = releases.reduce((sum, release) => sum + releaseRevenue(release), 0);
-  const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
+  const totalDownloads = historicalReleases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
+  const totalRevenue = historicalReleases.reduce((sum, release) => sum + releaseRevenue(release), 0);
+  const streamingClicks = historicalReleases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
   const platformFee = totalRevenue * Number(currentStore.site?.commissionRate || 10) / 100;
 
   setText("#artistTotalSongs", String(releases.length));

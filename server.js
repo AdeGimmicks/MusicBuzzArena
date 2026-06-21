@@ -274,6 +274,7 @@ function defaultStore() {
     ],
     donations: [],
     transactions: [],
+    analyticsArchive: [],
   };
 }
 
@@ -306,6 +307,7 @@ function mergeStore(store) {
     releases: Array.isArray(store?.releases) ? store.releases : [],
     donations: Array.isArray(store?.donations) ? store.donations : [],
     transactions: Array.isArray(store?.transactions) ? store.transactions : [],
+    analyticsArchive: Array.isArray(store?.analyticsArchive) ? store.analyticsArchive : [],
   };
 }
 
@@ -396,6 +398,70 @@ function applyExplicitClears(store, clears = []) {
   }
 }
 
+function archivedAnalyticsRecord(entity, entityType) {
+  const isArtist = entityType === "artist";
+  const analytics = {};
+  PROTECTED_ANALYTICS_FIELDS.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(entity, field)) {
+      analytics[field] = Number(entity[field] || 0);
+    }
+  });
+  PROTECTED_ANALYTICS_OBJECTS.forEach((field) => {
+    if (isPlainObject(entity[field])) analytics[field] = cloneValue(entity[field]);
+  });
+  return {
+    id: `${entityType}-analytics-${entity.id}`,
+    entityType,
+    artistId: isArtist ? entity.id : entity.artistId,
+    releaseId: isArtist ? "" : entity.id,
+    title: isArtist ? entity.name || "Artist" : entity.title || "Untitled song",
+    price: Number(entity.price || 0),
+    ...analytics,
+    archivedAt: new Date().toISOString(),
+  };
+}
+
+function archiveDeletedAnalytics(existing, deletedArtistIds, deletedReleaseIds) {
+  const archive = cloneValue(existing.analyticsArchive || []);
+  const saveRecord = (entity, entityType) => {
+    const snapshot = archivedAnalyticsRecord(entity, entityType);
+    const index = archive.findIndex((item) => item.id === snapshot.id);
+    if (index >= 0) archive[index] = mergeSavedValue(archive[index], snapshot);
+    else archive.push(snapshot);
+  };
+
+  (existing.artists || []).forEach((artist) => {
+    if (deletedArtistIds.has(String(artist.id))) saveRecord(artist, "artist");
+  });
+  (existing.releases || []).forEach((release) => {
+    if (deletedReleaseIds.has(String(release.id))) saveRecord(release, "release");
+  });
+  return archive;
+}
+
+function withoutClientAnalytics(store) {
+  const sanitized = cloneValue(store || {});
+  for (const collectionName of ["artists", "releases"]) {
+    for (const entity of sanitized[collectionName] || []) {
+      PROTECTED_ANALYTICS_FIELDS.forEach((field) => delete entity[field]);
+      PROTECTED_ANALYTICS_OBJECTS.forEach((field) => delete entity[field]);
+    }
+  }
+  sanitized.donations = [];
+  sanitized.transactions = [];
+  sanitized.analyticsArchive = [];
+  return sanitized;
+}
+
+function withoutAnalyticsClears(clears) {
+  return (Array.isArray(clears) ? clears : []).map((clear) => ({
+    ...clear,
+    fields: (Array.isArray(clear?.fields) ? clear.fields : []).filter(
+      (field) => !PROTECTED_ANALYTICS_FIELDS.has(field) && !PROTECTED_ANALYTICS_OBJECTS.has(field)
+    ),
+  }));
+}
+
 function mergePersistentStore(existingStore, incomingStore, options = {}) {
   const existing = mergeStore(existingStore);
   const incoming = incomingStore && typeof incomingStore === "object" ? incomingStore : {};
@@ -406,6 +472,12 @@ function mergePersistentStore(existingStore, incomingStore, options = {}) {
   for (const release of existing.releases || []) {
     if (deletedArtistIds.has(String(release.artistId || ""))) deletedReleaseIds.add(String(release.id || ""));
   }
+
+  const analyticsArchive = options.archiveDeletedAnalytics
+    ? archiveDeletedAnalytics(existing, deletedArtistIds, deletedReleaseIds)
+    : options.allowAnalyticsReset && Array.isArray(incoming.analyticsArchive)
+      ? cloneValue(incoming.analyticsArchive)
+      : cloneValue(existing.analyticsArchive || []);
 
   const merged = {
     ...mergeSavedValue(existing, incoming, "", options),
@@ -420,6 +492,7 @@ function mergePersistentStore(existingStore, incomingStore, options = {}) {
     }),
     donations: mergeEntityLists(existing.donations, incoming.donations || [], options),
     transactions: mergeEntityLists(existing.transactions, incoming.transactions || [], options),
+    analyticsArchive,
   };
 
   applyExplicitClears(merged, options.clears);
@@ -600,6 +673,7 @@ async function normalizeUploads(store) {
     releases: Array.isArray(store.releases) ? store.releases.map((release) => ({ ...release })) : [],
     donations: Array.isArray(store.donations) ? store.donations : [],
     transactions: Array.isArray(store.transactions) ? store.transactions : [],
+    analyticsArchive: Array.isArray(store.analyticsArchive) ? store.analyticsArchive : [],
   };
 
   normalized.site.logo = await saveDataUrl(normalized.site.logo, "images", "musicbusiness-logo.png");
@@ -1255,11 +1329,12 @@ async function handleRequest(request, response) {
     if (url.pathname === "/api/store" && request.method === "POST") {
       const body = await readRequestBody(request);
       const payload = JSON.parse(body);
-      const incoming = await normalizeUploads(payload.store || payload);
+      const incoming = withoutClientAnalytics(await normalizeUploads(payload.store || payload));
       const store = await mergeAndWriteStore(incoming, {
         deletions: payload.deletions || {},
-        clears: payload.clears || [],
+        clears: withoutAnalyticsClears(payload.clears),
         allowAnalyticsReset: false,
+        archiveDeletedAnalytics: true,
       });
       sendJson(response, 200, store);
       return;
