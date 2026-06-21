@@ -564,6 +564,7 @@ function linkHubPage(release, artist) {
   return wrap;
 }
 let lastArtistSnapshot = "";
+let musicPageVisitRecorded = false;
 
 async function renderArtistPage(force = false) {
   const previewSessionActive = activePreviewAudio && !activePreviewAudio.ended;
@@ -587,6 +588,16 @@ async function renderArtistPage(force = false) {
       "artistPageVisits"
     );
     if (result) artist.artistPageVisits = result.value;
+
+    if (window.location.pathname === "/music" && !musicPageVisitRecorded) {
+      musicPageVisitRecorded = true;
+      const musicResult = await window.MBA.incrementAnalytics(
+        "artist",
+        artist.id,
+        "musicPageVisits"
+      );
+      if (musicResult) artist.musicPageVisits = musicResult.value;
+    }
   }
 
   applySite(store);
