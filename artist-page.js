@@ -147,7 +147,7 @@ function trackRow(release, artist, artistReleases = []) {
         ${
           platformLinks
             ? `<div class="music-platforms">
-                <p>Streaming and downloading</p>
+                <p>Streaming Platforms</p>
                 <div class="music-platform-grid">${platformLinks}</div>
               </div>`
             : ""
