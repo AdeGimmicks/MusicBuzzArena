@@ -1107,6 +1107,7 @@ releaseForm.addEventListener("submit", async (event) => {
     clearReleaseForm();
     fillArtistForm();
     renderDashboardReleases();
+    showDashboardSection("profileSection");
     message(
       releaseMessage,
       existingIndex >= 0
