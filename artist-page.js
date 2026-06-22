@@ -93,10 +93,6 @@ function releaseYear(release) {
   return Number.isNaN(date.getFullYear()) ? new Date().getFullYear() : date.getFullYear();
 }
 
-function releaseDurationText(release) {
-  return release.duration || release.trackLength || release.length || "";
-}
-
 function releasePlatformLinks(release) {
   return STREAMING_LINKS.map(([label, key, icon]) => {
     const href = release.streaming?.[key];
@@ -117,8 +113,6 @@ function trackRow(release, artist, artistReleases = []) {
   const title = release.title || "Untitled track";
   const releaseType = release.releaseType || "Single";
   const releaseDate = formattedReleaseDate(release);
-  const year = releaseYear(release);
-  const duration = releaseDurationText(release);
   const primaryGenre = release.genre || "Music";
   const secondaryGenre = release.secondaryGenre || release.subGenre || "";
   const savedMoods = release.moods || release.mood || [];
@@ -160,10 +154,6 @@ function trackRow(release, artist, artistReleases = []) {
         }
       </div>
     </section>
-    <div class="music-release-note">
-      <p>1 song${duration ? `, ${duration}` : ""}</p>
-      <p>© ${year} ${artistName}</p>
-    </div>
     ${
       otherReleases.length
         ? `<section class="music-more-by" aria-label="More releases from ${artistName}">

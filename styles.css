@@ -2878,20 +2878,6 @@ select:focus {
   width: 22px;
 }
 
-.music-release-note {
-  color: #777d88;
-  font-size: 0.92rem;
-  font-weight: 700;
-  line-height: 1.35;
-  margin: 0 auto;
-  max-width: 920px;
-  width: 100%;
-}
-
-.music-release-note p {
-  margin: 2px 0;
-}
-
 .music-more-by {
   border-top: 1px solid rgba(17, 20, 27, 0.12);
   margin-top: 12px;
@@ -4609,10 +4595,6 @@ select:focus {
   .music-platform-link {
     min-width: 0;
     padding: 8px 10px;
-  }
-
-  .music-release-note {
-    font-size: 0.8rem;
   }
 
   .music-more-by {
