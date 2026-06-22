@@ -2728,7 +2728,7 @@ select:focus {
 }
 
 .music-release-hero {
-  align-items: center;
+  align-items: start;
   background:
     linear-gradient(110deg, rgba(244, 196, 48, 0.08), transparent 38%),
     #11141b;
@@ -2942,6 +2942,7 @@ select:focus {
 
   .music-page-loading,
   .music-release-hero {
+    align-items: stretch;
     gap: 34px;
     grid-template-columns: 1fr;
     justify-items: center;
@@ -4605,7 +4606,7 @@ select:focus {
   }
 
   .music-release-hero {
-    align-items: center;
+    align-items: stretch;
     gap: 28px;
     grid-template-columns: 1fr;
     justify-items: stretch;
