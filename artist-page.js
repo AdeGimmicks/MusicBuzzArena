@@ -160,6 +160,7 @@ function trackRow(release, artist, artistReleases = []) {
 
 function renderTopTracks(releases, artist) {
   if (!artistTrackList) return;
+  artistTrackList.setAttribute("aria-busy", "false");
   artistTrackList.replaceChildren();
 
   if (!releases.length) {

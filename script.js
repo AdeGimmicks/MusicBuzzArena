@@ -152,6 +152,7 @@ function emptyShelf(text) {
 }
 
 function renderShelf(container, releases, store, emptyText) {
+  container.setAttribute("aria-busy", "false");
   container.replaceChildren();
   const visibleReleases = releases.slice(0, 20);
 

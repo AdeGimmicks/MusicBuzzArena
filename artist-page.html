@@ -6,7 +6,7 @@
     <title>Artist Page | MusicBusiness Arena</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="artist-body">
+  <body class="artist-body site-page-body music-page-body">
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -21,7 +21,17 @@
 
     <main>
       <section class="artist-track-section music-showcase" aria-label="Artist music">
-        <div class="artist-track-list" id="artistTrackList"></div>
+        <div class="artist-track-list" id="artistTrackList" aria-busy="true">
+          <div class="music-page-loading" aria-hidden="true">
+            <div class="music-loading-cover"></div>
+            <div class="music-loading-details">
+              <span></span>
+              <span></span>
+              <span></span>
+              <div class="music-loading-actions"><i></i><i></i></div>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 

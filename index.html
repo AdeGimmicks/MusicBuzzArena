@@ -6,7 +6,7 @@
     <title>MusicBusiness Arena</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="site-page-body">
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -47,7 +47,12 @@
         </div>
 
         <section class="music-shelf" id="latest-songs">
-          <div class="release-grid" id="latestSongsGrid"></div>
+          <div class="release-grid" id="latestSongsGrid" aria-busy="true">
+            <div class="home-release-loading" aria-hidden="true"></div>
+            <div class="home-release-loading" aria-hidden="true"></div>
+            <div class="home-release-loading" aria-hidden="true"></div>
+            <div class="home-release-loading" aria-hidden="true"></div>
+          </div>
         </section>
       </section>
 
