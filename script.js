@@ -83,7 +83,6 @@ function releaseCard(release, artist) {
   const card = document.createElement("article");
   card.className = "release-card";
   const listenUrl = `/listen?release=${encodeURIComponent(release.id)}`;
-  const downloadUrl = `/download?release=${encodeURIComponent(release.id)}`;
   card.dataset.search = [
     release.title,
     artist?.name || release.artistName,
@@ -108,7 +107,6 @@ function releaseCard(release, artist) {
       <span>${artist?.name || release.artistName || "Independent Artist"}</span>
       <div class="mini-actions">
         <a class="listen-action" href="${listenUrl}">Listen</a>
-        <a class="download-action" href="${downloadUrl}">Download</a>
       </div>
     </div>
   `;
