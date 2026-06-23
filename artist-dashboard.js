@@ -413,8 +413,8 @@ async function autoSaveVideoLinks() {
   };
   artist.videos = { ...(artist.videos || {}) };
   Object.entries(nextVideos).forEach(([key, value]) => {
-    if (value) artist.videos[key] = value;
-  });
+  artist.videos[key] = value || "";
+});
   currentStore.site = currentStore.site || {};
   currentStore.site.videos = { ...artist.videos };
   currentStore = await window.MBA.saveStore(currentStore);
