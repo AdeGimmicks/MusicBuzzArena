@@ -373,8 +373,12 @@ h3 {
 }
 
 .feature-copy p.is-expanded {
-  display: block;
-  overflow: visible;
+  display: block !important;
+  overflow: visible !important;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: unset;
+  max-height: none;
 }
 
 .feature-bio-block {
