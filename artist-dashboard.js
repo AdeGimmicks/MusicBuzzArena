@@ -345,9 +345,9 @@ async function autoSaveReleaseDraft() {
     country: releaseForm.country.value,
     cityState: releaseForm.cityState.value.trim(),
   };
-  Object.entries(textValues).forEach(([key, value]) => {
-    if (value) release[key] = value;
-  });
+    Object.entries(textValues).forEach(([key, value]) => {
+      release[key] = value || "";
+    });
   const moods = [releaseForm.moodPrimary.value, releaseForm.moodSecondary.value].filter(Boolean);
   if (moods.length) release.mood = moods;
   const price = Number(releaseForm.price.value);
@@ -390,8 +390,8 @@ async function autoSaveArtistProfile() {
     email: artistForm.email?.value.trim() || "",
   };
   Object.entries(fields).forEach(([key, value]) => {
-    if (value) artist[key] = value;
-  });
+  artist[key] = value || "";
+});
   artist.socials = mergeNonEmptyLinks(artist.socials, formLinks(artistForm, SOCIAL_LINKS));
   if (artist.email && !artist.socials.email) artist.socials.email = `mailto:${artist.email}`;
   if (photo) artist.photo = photo;
