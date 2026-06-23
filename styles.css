@@ -4555,22 +4555,18 @@ select:focus {
   .feature-banner {
     grid-template-columns: minmax(112px, 0.38fr) minmax(0, 0.62fr);
     margin-bottom: 18px;
-    min-height: 154px;
+    min-height: 220px;
   }
 
-  .feature-visual img {
-  width: 170px;
-  height: 170px;
-}
 
   .feature-visual {
-    min-height: 154px;
+    min-height: 220px;
   }
 
-  .feature-visual img {
-    height: 110px;
-    width: 110px;
-  }
+.feature-visual img {
+  height: 170px;
+  width: 170px;
+}
 
   .feature-copy {
     padding: 14px;
