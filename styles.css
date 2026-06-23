@@ -322,13 +322,13 @@ h3 {
   box-shadow:
     0 22px 50px rgba(0, 0, 0, 0.4),
     0 0 0 9px rgba(255, 255, 255, 0.05);
-  height: clamp(112px, 12vw, 148px);
+  height: clamp(180px, 18vw, 260px);
   left: 50%;
   object-fit: cover;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: clamp(112px, 12vw, 148px);
+  width: clamp(180px, 18vw, 260px);
   z-index: 2;
 }
 
