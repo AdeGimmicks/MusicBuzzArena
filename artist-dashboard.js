@@ -305,10 +305,14 @@ function validateUploadWizardStep(step) {
 }
 
 function mergeNonEmptyLinks(existing = {}, next = {}) {
-  const merged = { ...existing };
+  const merged = {};
+
   Object.entries(next).forEach(([key, value]) => {
-    if (value) merged[key] = value;
+    if (value && value.trim()) {
+      merged[key] = value.trim();
+    }
   });
+
   return merged;
 }
 
