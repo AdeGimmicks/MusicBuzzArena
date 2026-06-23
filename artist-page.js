@@ -134,7 +134,7 @@ function trackRow(release, artist, artistReleases = []) {
         <dl class="music-release-facts">
           <div><dt>Released</dt><dd>${releaseDate}</dd></div>
           <div><dt>Type</dt><dd>${releaseType}</dd></div>
-          <div><dt>Artist</dt><dd>${artistName}</dd></div>
+          <div class="music-release-artist-fact"><dt>Artist</dt><dd>${artistName}</dd></div>
           <div><dt>Genre 1</dt><dd>${primaryGenre}</dd></div>
           ${secondaryGenre ? `<div><dt>Genre 2</dt><dd>${secondaryGenre}</dd></div>` : ""}
           ${moods[0] ? `<div><dt>Mood 1</dt><dd>${moods[0]}</dd></div>` : ""}

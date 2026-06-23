@@ -419,16 +419,21 @@ async function autoSaveVideoLinks() {
 
 async function advanceUploadWizard() {
   if (!validateUploadWizardStep(uploadWizardStep)) return;
+  const currentStep = uploadWizardStep;
+  const nextLabel = uploadWizardNext.textContent;
   uploadWizardNext.disabled = true;
+  uploadWizardNext.textContent = currentStep === 6 ? "Preparing..." : "Saving...";
+  message(releaseMessage, currentStep >= 2 && currentStep <= 6 ? "Saving this step..." : "Moving to next step...", "pending");
   try {
-    if (uploadWizardStep >= 2 && uploadWizardStep <= 4) await autoSaveReleaseDraft();
-    if (uploadWizardStep === 5) await autoSaveArtistProfile();
-    if (uploadWizardStep === 6) await autoSaveVideoLinks();
-    setUploadWizardStep(uploadWizardStep + 1);
+    if (currentStep >= 2 && currentStep <= 4) await autoSaveReleaseDraft();
+    if (currentStep === 5) await autoSaveArtistProfile();
+    if (currentStep === 6) await autoSaveVideoLinks();
+    setUploadWizardStep(currentStep + 1);
   } catch (error) {
     message(releaseMessage, error.message || "This step could not be saved.", "error");
   } finally {
     uploadWizardNext.disabled = false;
+    if (uploadWizardStep === currentStep) uploadWizardNext.textContent = nextLabel;
   }
 }
 
