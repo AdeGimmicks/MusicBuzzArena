@@ -28,6 +28,8 @@
         <nav class="artist-console-nav">          
           <a href="#songEditorSection" data-dashboard-section="songEditorSection">Upload Song</a>
           <a href="#songsSection" data-dashboard-section="songsSection">Songs</a>
+                    <a href="#videosSection" data-dashboard-section="videosSection">Upload Videos</a>
+          <a href="#profileSection" data-dashboard-section="profileSection">Profile</a>
           <a href="#downloadsSection" data-dashboard-section="downloadsSection">Workspace</a>
           <a href="#analyticsSection" data-dashboard-section="analyticsSection">Analytics</a>
           <a class="is-active" href="#dashboardOverview" data-dashboard-section="dashboardOverview">Overview</a>
@@ -180,19 +182,7 @@
             </div>
           </div>
 
-          <nav class="upload-wizard-progress" id="uploadWizardProgress" aria-label="Upload progress">
-            <ol>
-              <li data-wizard-progress="1"><span>1</span><strong>Release Type</strong></li>
-              <li data-wizard-progress="2"><span>2</span><strong>Files</strong></li>
-              <li data-wizard-progress="3"><span>3</span><strong>Song Info</strong></li>
-              <li data-wizard-progress="4"><span>4</span><strong>Streaming</strong></li>
-              <li data-wizard-progress="5"><span>5</span><strong>Profile</strong></li>
-              <li data-wizard-progress="6"><span>6</span><strong>Video</strong></li>
-              <li data-wizard-progress="7"><span>7</span><strong>Review</strong></li>
-            </ol>
-          </nav>
-
-          <section class="artist-console-card release-type-gate upload-wizard-panel is-active" id="releaseTypeGate" data-upload-step="1" aria-labelledby="releaseTypeGateTitle">
+          <section class="artist-console-card release-type-gate" id="releaseTypeGate" aria-labelledby="releaseTypeGateTitle">
             <div class="release-type-gate-heading">
               <p class="eyebrow">Start a release</p>
               <h3 id="releaseTypeGateTitle">Choose your release type</h3>
@@ -211,17 +201,42 @@
             </div>
           </section>
 
-          <section class="artist-console-card upload-song-card" id="songUpload">
+          <section class="artist-console-card upload-song-card is-hidden" id="songUpload">
             <form id="releaseForm" class="creator-form">
               <input name="editingId" type="hidden" />
               <div class="upload-workflow-shell">
+                <aside class="upload-release-rail" aria-label="Upload release steps">
+                  <ol>
+                    <li class="is-active">
+                      <span>1</span>
+                      <div>
+                        <strong>Track information</strong>
+                        <small>Audio file, details, artwork</small>
+                      </div>
+                    </li>
+                    <li>
+                      <span>2</span>
+                      <div>
+                        <strong>Release settings</strong>
+                        <small>Price, preview, links</small>
+                      </div>
+                    </li>
+                    <li>
+                      <span>3</span>
+                      <div>
+                        <strong>Review</strong>
+                        <small>Save and publish update</small>
+                      </div>
+                    </li>
+                  </ol>
+                </aside>
                 <div class="upload-workflow-main">
                   <div class="upload-workflow-title">
                     <p class="eyebrow" id="releaseFlowEyebrow">Single Song</p>
                     <h3 id="releaseFlowTitle">Track information</h3>
                   </div>
                   <div class="creator-form-grid">
-                    <section class="upload-form-group artwork-uploader upload-wizard-panel" data-upload-step="2" aria-labelledby="songFilesHeading">
+                    <section class="upload-form-group artwork-uploader" aria-labelledby="songFilesHeading">
                       <div class="artist-card-heading">
                         <p class="eyebrow">Audio file and artwork</p>
                         <h3 id="songFilesHeading">Upload files</h3>
@@ -239,7 +254,7 @@
                     </section>
 
                     <section class="creator-fields">
-                      <section class="upload-form-group upload-wizard-panel" data-upload-step="3">
+                      <section class="upload-form-group">
                     <div class="artist-card-heading">
                       <p class="eyebrow">Track details</p>
                       <h3>Basic song details</h3>
@@ -381,7 +396,7 @@
                     </div>
                   </section>
 
-                  <section class="upload-form-group upload-wizard-panel" data-upload-step="3">
+                  <section class="upload-form-group">
                     <div class="artist-card-heading">
                       <p class="eyebrow">Release settings</p>
                       <h3>Price and preview settings</h3>
@@ -402,7 +417,7 @@
                     </div>
                   </section>
 
-                  <section class="upload-form-group upload-wizard-panel" data-upload-step="4">
+                  <section class="upload-form-group">
                     <div class="artist-card-heading">
                       <p class="eyebrow">Track distribution</p>
                       <h3>Streaming links</h3>
@@ -411,7 +426,7 @@
                   </section>
                     </section>
                   </div>
-                  <div class="upload-form-footer upload-form-group upload-wizard-panel" data-upload-step="7">
+                  <div class="upload-form-footer upload-form-group">
                     <div>
                       <p class="eyebrow">Review</p>
                       <h3>Save song</h3>
@@ -421,21 +436,17 @@
                     </div>
                     <div class="file-editor-actions">
                       <button class="secondary-button" id="deleteEditingSong" type="button">Delete Song</button>
-                      <button class="primary-button" id="uploadWizardPublish" type="button">Publish Release</button>
+                      <button class="primary-button" type="submit">Save Song</button>
                     </div>
                   </div>
                 </div>
               </div>
             </form>
           </section>
-            <p class="form-message" id="releaseMessage" role="status"></p>
-            <div class="upload-wizard-actions" id="uploadWizardActions">
-              <button class="secondary-button" id="uploadWizardBack" type="button">Back</button>
-              <button class="primary-button" id="uploadWizardNext" type="button">Next</button>
-            </div>
-          </section>
+          <p class="form-message" id="releaseMessage" role="status"></p>
+        </section>
 
-        <section class="artist-dashboard-section upload-wizard-panel" id="profileSection" data-upload-step="5" data-section-title="Profile">
+        <section class="artist-dashboard-section" id="profileSection" data-section-title="Profile">
           <div class="artist-section-heading">
             <div>
               <p class="eyebrow">Profile page</p>
@@ -489,13 +500,13 @@
                 </label>
               </div>
               <div class="link-fields compact-link-fields" id="socialFields"></div>
-              <button class="primary-button wizard-embedded-save" id="saveSongNext" type="submit">Save Profile</button>
+              <button class="primary-button" type="submit">Save Changes</button>
               <p class="form-message" id="artistMessage" role="status"></p>
             </form>
           </section>
         </section>
 
-        <section class="artist-dashboard-section upload-wizard-panel" id="videosSection" data-upload-step="6" data-section-title="Videos">
+        <section class="artist-dashboard-section" id="videosSection" data-section-title="Videos">
           <div class="artist-section-heading">
             <div>
               <p class="eyebrow">Video links</p>
@@ -543,7 +554,7 @@
                 Featured Video
               </label>
               <div class="file-editor-actions">
-                <button class="primary-button wizard-embedded-save" type="submit">Save</button>
+                <button class="primary-button" type="submit">Save</button>
                 <button class="secondary-button" id="deleteVideoLinks" type="button">Delete</button>
               </div>
               <p class="form-message" id="videoMessage" role="status"></p>
