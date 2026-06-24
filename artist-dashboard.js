@@ -392,7 +392,7 @@ async function autoSaveArtistProfile() {
   Object.entries(fields).forEach(([key, value]) => {
   artist[key] = value || "";
 });
-  artist.socials = mergeNonEmptyLinks(artist.socials, formLinks(artistForm, SOCIAL_LINKS));
+  artist.socials = formLinks(artistForm, SOCIAL_LINKS);
   if (artist.email && !artist.socials.email) artist.socials.email = `mailto:${artist.email}`;
   if (photo) artist.photo = photo;
   if (banner) artist.banner = banner;
