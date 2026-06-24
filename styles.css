@@ -3017,7 +3017,7 @@ select:focus {
 .music-showcase {
   max-width: 100%;
   min-width: 0;
-  padding: clamp(24px, 4vw, 46px) clamp(18px, 4vw, 64px) clamp(54px, 7vw, 88px);
+  padding: clamp(16px, 2.8vw, 34px) clamp(18px, 4vw, 64px) clamp(38px, 5vw, 64px);
 }
 
 .music-showcase .artist-track-list {
@@ -3113,11 +3113,11 @@ select:focus {
   border-radius: 8px;
   box-shadow: 0 24px 70px rgba(17, 20, 27, 0.18);
   display: grid;
-  gap: clamp(26px, 3.6vw, 58px);
+  gap: clamp(22px, 3vw, 48px);
   grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.05fr);
-  min-height: clamp(480px, 58vh, 560px);
+  min-height: clamp(420px, 50vh, 500px);
   overflow: hidden;
-  padding: clamp(26px, 3.6vw, 50px);
+  padding: clamp(22px, 3vw, 38px);
 }
 
 .music-release-artwork {
@@ -3134,7 +3134,7 @@ select:focus {
   box-shadow: 0 24px 58px rgba(0, 0, 0, 0.42);
   display: block;
   object-fit: cover;
-  width: min(100%, 460px);
+  width: min(100%, 400px);
 }
 
 .music-release-info {
@@ -3155,8 +3155,10 @@ select:focus {
 
 .music-release-info h1 {
   color: #fff;
-  font-size: clamp(2.5rem, 5vw, 5rem);
-  line-height: 0.98;
+  font-family: "Avenir Next", Montserrat, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(2.2rem, 4.2vw, 4.25rem);
+  font-weight: 900;
+  line-height: 1.02;
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -3165,7 +3167,7 @@ select:focus {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 22px 0 0;
+  margin: 18px 0 0;
 }
 
 .music-release-facts div {
@@ -3193,7 +3195,7 @@ select:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 20px;
 }
 
 .music-capsule {
@@ -3225,8 +3227,8 @@ select:focus {
 
 .music-platforms {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  margin-top: 24px;
-  padding-top: 18px;
+  margin-top: 18px;
+  padding-top: 14px;
 }
 
 .music-track-list {
@@ -3315,8 +3317,8 @@ select:focus {
 
 .music-more-by {
   border-top: 1px solid rgba(17, 20, 27, 0.12);
-  margin-top: 6px;
-  padding: 26px 0 10px;
+  margin-top: 0;
+  padding: 18px 0 10px;
 }
 
 .music-more-by h2 {
@@ -3368,14 +3370,14 @@ select:focus {
   .music-page-loading,
   .music-release-hero {
     align-items: stretch;
-    gap: 34px;
+    gap: 24px;
     grid-template-columns: 1fr;
     justify-items: center;
-    padding: clamp(30px, 5vw, 54px);
+    padding: clamp(22px, 4vw, 38px);
   }
 
   .music-release-artwork {
-    width: min(100%, 560px);
+    width: min(100%, 440px);
   }
 
   .music-release-info,
@@ -5050,8 +5052,8 @@ select:focus {
   }
 
   .music-release-info h1 {
-    font-size: clamp(2.2rem, 12vw, 3.5rem);
-    line-height: 1;
+    font-size: clamp(1.9rem, 10vw, 3rem);
+    line-height: 1.04;
   }
 
   .music-release-facts {
