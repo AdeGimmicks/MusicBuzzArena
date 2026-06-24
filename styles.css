@@ -5314,6 +5314,158 @@ select:focus {
   margin: 0 0 12px;
 }
 
+.artist-auth-body {
+  background:
+    radial-gradient(circle at top left, rgba(245, 201, 62, 0.16), transparent 32%),
+    linear-gradient(180deg, #f7f4ea 0%, #eef2f6 100%);
+  min-height: 100vh;
+}
+
+.artist-auth-main {
+  display: grid;
+  min-height: calc(100vh - 92px);
+  padding: clamp(28px, 5vw, 70px) 18px;
+  place-items: center;
+}
+
+.artist-auth-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(17, 24, 32, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(17, 24, 32, 0.14);
+  color: var(--text);
+  display: grid;
+  gap: 18px;
+  max-width: 640px;
+  padding: clamp(24px, 4vw, 42px);
+  width: min(100%, 640px);
+}
+
+.artist-auth-card h1 {
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 0.95;
+  margin: 0;
+}
+
+.auth-support {
+  color: #606975;
+  font-weight: 800;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.artist-auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.artist-auth-form label {
+  color: #3f4652;
+  display: grid;
+  font-weight: 900;
+  gap: 8px;
+}
+
+.artist-auth-form input {
+  background: #f8fafc;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-weight: 850;
+  min-height: 54px;
+  padding: 0 16px;
+}
+
+.artist-auth-form input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(245, 201, 62, 0.18);
+  outline: none;
+}
+
+.artist-auth-form .primary-button,
+.artist-auth-card .primary-button,
+.artist-auth-card .secondary-button {
+  min-height: 52px;
+}
+
+.auth-footnote {
+  color: #657080;
+  font-weight: 850;
+  margin: 0;
+}
+
+.auth-footnote a,
+.auth-inline-link {
+  color: #b98b00;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.auth-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.artist-auth-choice {
+  background: #f8fafc;
+  border: 1px solid #dfe5ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.artist-auth-choice[hidden] {
+  display: none;
+}
+
+.artist-auth-choice p {
+  color: #4c5664;
+  font-weight: 900;
+  margin: 0;
+}
+
+.upload-entry-card {
+  max-width: 980px;
+  width: min(100%, 980px);
+}
+
+.upload-entry-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.upload-entry-options .release-type-option {
+  min-height: 230px;
+}
+
+@media (max-width: 760px) {
+  .artist-auth-main {
+    min-height: auto;
+    padding: 22px 14px 44px;
+    place-items: start center;
+  }
+
+  .artist-auth-card {
+    padding: 22px;
+  }
+
+  .auth-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .upload-entry-options {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-entry-options .release-type-option {
+    min-height: 150px;
+  }
+}
+
 @media (max-width: 760px) {
   .download-page-shell {
     padding: 28px 16px 56px;

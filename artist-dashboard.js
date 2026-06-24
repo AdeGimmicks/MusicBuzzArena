@@ -71,9 +71,12 @@ const uploadWizardActions = document.querySelector("#uploadWizardActions");
 const uploadWizardBack = document.querySelector("#uploadWizardBack");
 const uploadWizardNext = document.querySelector("#uploadWizardNext");
 const uploadWizardPublish = document.querySelector("#uploadWizardPublish");
+const artistAccountSettingsForm = document.querySelector("#artistAccountSettingsForm");
+const artistAccountSettingsMessage = document.querySelector("#artistAccountSettingsMessage");
 
 let currentStore = window.MBA.defaults();
-let activeArtistId = localStorage.getItem("mba-active-artist-id") || "";
+let activeArtistId = "";
+let artistSession = null;
 let uploadWizardStep = 1;
 let uploadWizardReady = false;
 let uploadTracks = [];
@@ -433,6 +436,7 @@ function setUploadWizardStep(step) {
   if (uploadWizardNext) {
     uploadWizardNext.hidden = false;
     uploadWizardNext.textContent = uploadWizardStep === 6 ? "Publish" : uploadWizardStep === 5 ? "Review" : "Next";
+    uploadWizardNext.setAttribute("aria-label", uploadWizardStep === 6 ? "Publish release" : "Continue to the next upload step");
   }
 
   if (uploadWizardPublish) {
@@ -670,7 +674,6 @@ function primaryArtist() {
   if (!artist) {
     artist = currentStore.artists[0];
     activeArtistId = artist.id;
-    localStorage.setItem("mba-active-artist-id", activeArtistId);
   }
 
   return artist;
@@ -684,10 +687,14 @@ function renderArtistAccountPicker() {
   if (!artistAccountSelect) return;
   const artist = primaryArtist();
   artistAccountSelect.replaceChildren();
-  currentStore.artists.forEach((item) => {
-    artistAccountSelect.append(new Option(artistLabel(item), item.id));
-  });
+  artistAccountSelect.append(new Option(artistLabel(artist), artist.id));
   artistAccountSelect.value = artist.id;
+  artistAccountSelect.disabled = true;
+  createArtistProfile?.setAttribute("hidden", "");
+  if (artistAccountMessage) artistAccountMessage.textContent = "Logged in artist workspace";
+  if (artistAccountSettingsForm && artistSession?.account?.email) {
+    artistAccountSettingsForm.email.value = artistSession.account.email;
+  }
 }
 
 function fillArtistForm() {
@@ -1740,10 +1747,38 @@ openSongEditorButtons.forEach((button) => {
 });
 
 artistLogoutButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    localStorage.removeItem("mba-active-artist-id");
-    window.location.assign("/home");
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      await fetch("/api/artist/logout", { method: "POST", credentials: "same-origin" });
+    } catch {
+      // Logout is best-effort; redirect either way.
+    }
+    window.location.assign("/artist-login");
   });
+});
+
+artistAccountSettingsForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  message(artistAccountSettingsMessage, "Saving account settings...", "pending");
+  const payload = Object.fromEntries(new FormData(artistAccountSettingsForm).entries());
+  try {
+    const response = await fetch("/api/artist/account", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Account settings could not be saved.");
+    artistSession.account = data.account || artistSession.account;
+    artistAccountSettingsForm.currentPassword.value = "";
+    artistAccountSettingsForm.newPassword.value = "";
+    artistAccountSettingsForm.confirmPassword.value = "";
+    message(artistAccountSettingsMessage, "Account settings saved.");
+  } catch (error) {
+    message(artistAccountSettingsMessage, error.message || "Account settings could not be saved.", "error");
+  }
 });
 
 deleteEditingSong?.addEventListener("click", async () => {
@@ -1805,33 +1840,12 @@ videoForm.addEventListener("submit", async (event) => {
 });
 
 artistAccountSelect?.addEventListener("change", () => {
-  activeArtistId = artistAccountSelect.value;
-  localStorage.setItem("mba-active-artist-id", activeArtistId);
-  releaseForm.reset();
-  fillArtistForm();
-  fillVideoForm();
-  clearReleaseForm();
-  renderDashboardReleases();
-  updateFeaturedReleasePreview();
-  renderArtistConsole();
-  message(artistAccountMessage, `${artistLabel(primaryArtist())} is selected. Upload now edits this artist.`);
+  artistAccountSelect.value = activeArtistId;
+  message(artistAccountMessage, "Artists can only manage their own account. Store Manager will manage all artists.", "pending");
 });
 
 createArtistProfile?.addEventListener("click", async () => {
-  const artist = blankArtist();
-  artist.name = `Artist ${currentStore.artists.length + 1}`;
-  artist.handle = `@artist${currentStore.artists.length + 1}`;
-  currentStore.artists.push(artist);
-  activeArtistId = artist.id;
-  localStorage.setItem("mba-active-artist-id", activeArtistId);
-  currentStore = await window.MBA.saveStore(currentStore);
-  renderArtistAccountPicker();
-  fillArtistForm();
-  fillVideoForm();
-  clearReleaseForm();
-  renderDashboardReleases();
-  renderArtistConsole();
-  message(artistAccountMessage, "New artist profile created. Edit the name, biography, social links, songs, and videos below.");
+  message(artistAccountMessage, "Create another artist from the Store Manager. This dashboard is locked to the logged-in artist.", "pending");
 });
 
 document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () => {
@@ -1857,8 +1871,39 @@ document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () 
   message(videoMessage, "Video links removed.", "pending");
 });
 
+async function getArtistSessionOrRedirect() {
+  try {
+    const response = await fetch("/api/artist/session", { cache: "no-store", credentials: "same-origin" });
+    if (!response.ok) throw new Error("Not logged in");
+    const data = await response.json();
+    if (!data?.authenticated || !data.artistId) throw new Error("Not logged in");
+    return data;
+  } catch {
+    const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+    window.location.assign(`/artist-login?next=${next}`);
+    return null;
+  }
+}
+
+function applyRequestedUploadType() {
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get("start") || localStorage.getItem("mba-pending-upload-type") || "";
+  const matched = [...releaseTypeOptions].find((button) => button.dataset.startRelease?.toLowerCase() === requested.toLowerCase());
+  if (!matched) return false;
+  const releaseType = matched.dataset.startRelease || "Single";
+  setSelectValue(releaseForm.releaseType, releaseType);
+  releaseTypeOptions.forEach((option) => option.classList.toggle("is-selected", option === matched));
+  applyReleaseTypeMode();
+  localStorage.removeItem("mba-pending-upload-type");
+  setUploadWizardStep(2);
+  return true;
+}
+
 async function initDashboard() {
-  currentStore = await window.MBA.loadStore();
+  artistSession = await getArtistSessionOrRedirect();
+  if (!artistSession) return;
+  activeArtistId = artistSession.artistId;
+  currentStore = await window.MBA.loadStore({ artist: true, force: true });
   setupUploadWizard();
   populateCountrySelect();
   renderArtistAccountPicker();
@@ -1871,6 +1916,8 @@ async function initDashboard() {
   const editRelease = currentStore.releases.find((release) => release.id === editId);
   if (editRelease) {
     fillReleaseForm(editRelease);
+    showDashboardSection("songEditorSection");
+  } else if (applyRequestedUploadType()) {
     showDashboardSection("songEditorSection");
   } else {
     showDashboardSection("songEditorSection");

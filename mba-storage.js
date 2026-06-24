@@ -183,7 +183,9 @@ const MBA_API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:80
 const MBA_CACHE_TTL = 30000;
 let storeCache = null;
 let storeCacheAt = 0;
+let storeCacheEndpoint = "";
 let storeRequest = null;
+let storeRequestEndpoint = "";
 
 function apiUrl(path) {
   return `${MBA_API_BASE}${path}`;
@@ -199,24 +201,40 @@ function cacheStore(store) {
   return store;
 }
 
+function isArtistDashboardStore() {
+  return document.body?.classList.contains("artist-console-body") || /^\/artist-dashboard(?:\.html)?$/.test(window.location.pathname);
+}
+
+function storeEndpoint(options = {}) {
+  if (options.artist === true || isArtistDashboardStore()) return "/api/artist/store";
+  return "/api/store";
+}
+
 function notifyStoreSaved(store) {
   window.dispatchEvent(new CustomEvent("mba:store-saved", { detail: { store } }));
 }
 
 async function loadStore(options = {}) {
   const force = options === true || options.force === true;
-  if (!force && storeCache && Date.now() - storeCacheAt < MBA_CACHE_TTL) {
+  const endpoint = storeEndpoint(options);
+  if (!force && storeCache && storeCacheEndpoint === endpoint && Date.now() - storeCacheAt < MBA_CACHE_TTL) {
     return storeCache;
   }
 
-  if (!force && storeRequest) return storeRequest;
+  if (!force && storeRequest && storeRequestEndpoint === endpoint) return storeRequest;
 
   try {
-    storeRequest = fetch(apiUrl("/api/store"))
+    storeRequestEndpoint = endpoint;
+    storeRequest = fetch(apiUrl(endpoint), { credentials: "same-origin" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((store) => (store ? cacheStore(store) : null))
+      .then((store) => {
+        if (!store) return null;
+        storeCacheEndpoint = endpoint;
+        return cacheStore(store);
+      })
       .finally(() => {
         storeRequest = null;
+        storeRequestEndpoint = "";
       });
     const store = await storeRequest;
     if (store) return store;
@@ -232,12 +250,14 @@ async function loadStore(options = {}) {
 }
 
 async function saveStore(store, options = {}) {
+  const endpoint = storeEndpoint(options);
   try {
-    const response = await fetch(apiUrl("/api/store"), {
+    const response = await fetch(apiUrl(endpoint), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "same-origin",
       body: JSON.stringify({
         store,
         deletions: options.deletions || {},
@@ -247,6 +267,7 @@ async function saveStore(store, options = {}) {
 
     if (response.ok) {
       const saved = await response.json();
+      storeCacheEndpoint = endpoint;
       cacheStore(saved);
       try {
         localStorage.setItem(MBA_STORAGE_KEY, JSON.stringify(saved));
@@ -256,7 +277,12 @@ async function saveStore(store, options = {}) {
       notifyStoreSaved(saved);
       return saved;
     }
+    if (endpoint === "/api/artist/store") {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(errorText || "Please log in again to save your artist dashboard.");
+    }
   } catch (error) {
+    if (endpoint === "/api/artist/store") throw error;
     if (window.location.protocol === "file:") {
       throw new Error("Open http://127.0.0.1:8010/upload so uploads save to your computer.");
     }

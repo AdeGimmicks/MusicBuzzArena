@@ -654,12 +654,28 @@
             <article class="artist-console-card">
               <div class="artist-card-heading">
                 <p class="eyebrow">Security</p>
-                <h3>Change Password</h3>
+                <h3>Account Login</h3>
               </div>
-              <div class="settings-action-list">
-                <button class="secondary-button" type="button">Change Password</button>
-                <button class="secondary-button" type="button">Security Settings</button>
-              </div>
+              <form class="compact-settings-form" id="artistAccountSettingsForm">
+                <label>
+                  Email Address
+                  <input name="email" type="email" autocomplete="email" />
+                </label>
+                <label>
+                  Current Password
+                  <input name="currentPassword" type="password" autocomplete="current-password" required />
+                </label>
+                <label>
+                  New Password
+                  <input name="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Leave blank to keep current password" />
+                </label>
+                <label>
+                  Confirm New Password
+                  <input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" />
+                </label>
+                <button class="secondary-button" type="submit">Save Account Settings</button>
+                <p class="form-message" id="artistAccountSettingsMessage" role="status"></p>
+              </form>
             </article>
             <article class="artist-console-card">
               <div class="artist-card-heading">

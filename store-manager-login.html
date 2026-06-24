@@ -18,6 +18,10 @@
 
         <form id="storeManagerLoginForm" class="manager-login-form">
           <label>
+            Email Address
+            <input name="email" type="email" autocomplete="email" required />
+          </label>
+          <label>
             Password
             <input name="password" type="password" autocomplete="current-password" required />
           </label>
@@ -25,6 +29,7 @@
           <p class="form-message" id="storeManagerLoginMessage" role="status"></p>
         </form>
 
+        <a class="manager-login-home" href="/store-manager-forgot-password">Forgot password?</a>
         <a class="manager-login-home" href="/home">Return to website</a>
       </section>
     </main>

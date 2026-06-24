@@ -28,8 +28,11 @@ const managerArtistForm = document.querySelector("#managerArtistForm");
 const managerSongForm = document.querySelector("#managerSongForm");
 const managerArtistMessage = document.querySelector("#managerArtistMessage");
 const managerSongMessage = document.querySelector("#managerSongMessage");
+const managerAccountSettingsForm = document.querySelector("#managerAccountSettingsForm");
+const managerAccountSettingsMessage = document.querySelector("#managerAccountSettingsMessage");
 
 let currentStore = window.MBA.defaults();
+let managerSession = null;
 
 async function requireStoreManagerSession() {
   const response = await fetch("/api/admin/session", { credentials: "same-origin" });
@@ -38,6 +41,8 @@ async function requireStoreManagerSession() {
     window.location.assign("/store-manager-login");
     return false;
   }
+  managerSession = session;
+  if (managerAccountSettingsForm && session.account?.email) managerAccountSettingsForm.email.value = session.account.email;
   return true;
 }
 
@@ -87,6 +92,29 @@ function message(node, text, type = "success") {
   node.textContent = text;
   node.dataset.type = type;
 }
+
+managerAccountSettingsForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  message(managerAccountSettingsMessage, "Saving admin account...", "pending");
+  const payload = Object.fromEntries(new FormData(managerAccountSettingsForm).entries());
+  try {
+    const response = await fetch("/api/admin/account", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Admin account could not be saved.");
+    managerSession.account = data.account || managerSession.account;
+    managerAccountSettingsForm.currentPassword.value = "";
+    managerAccountSettingsForm.newPassword.value = "";
+    managerAccountSettingsForm.confirmPassword.value = "";
+    message(managerAccountSettingsMessage, "Admin account saved.");
+  } catch (error) {
+    message(managerAccountSettingsMessage, error.message || "Admin account could not be saved.", "error");
+  }
+});
 
 function normalizeLink(value) {
   const trimmed = String(value || "").trim();

@@ -47,8 +47,18 @@ const STRIPE_DEFAULT_CURRENCY = (process.env.STRIPE_DEFAULT_CURRENCY || "usd").t
 const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
 const STORE_MANAGER_PASSWORD = envValue("STORE_MANAGER_PASSWORD", "ADMIN_PASSWORD");
 const STORE_MANAGER_PASSWORD_HASH = envValue("STORE_MANAGER_PASSWORD_HASH", "ADMIN_PASSWORD_HASH");
+const RESEND_API_KEY = envValue("RESEND_API_KEY");
+const ARTIST_EMAIL_FROM = envValue("ARTIST_EMAIL_FROM", "EMAIL_FROM") || "MusicBusiness Arena <noreply@musicbusinessarena.com>";
+const OWNER_ARTIST_NAME = envValue("OWNER_ARTIST_NAME") || "Focuzman";
+const OWNER_ARTIST_EMAIL = normalizeEmail(envValue("OWNER_ARTIST_EMAIL") || "focuzmanmusic@gmail.com");
+const OWNER_ARTIST_INITIAL_PASSWORD = envValue("OWNER_ARTIST_INITIAL_PASSWORD") || "Focuzmanmbaacct@123";
+const OWNER_MANAGER_EMAIL = normalizeEmail(envValue("OWNER_MANAGER_EMAIL", "STORE_MANAGER_EMAIL") || "kingsncrown@gmail.com");
+const OWNER_MANAGER_INITIAL_PASSWORD = envValue("OWNER_MANAGER_INITIAL_PASSWORD", "STORE_MANAGER_INITIAL_PASSWORD") || "Mbamanagersacct@123";
 const SESSION_COOKIE_NAME = "mba_store_manager";
+const ARTIST_SESSION_COOKIE_NAME = "mba_artist_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
+const ARTIST_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
+const TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const isProduction = process.env.NODE_ENV === "production";
 
 let mongoClient;
@@ -56,6 +66,7 @@ let storeCollection;
 let cachedStore = null;
 let storeWriteQueue = Promise.resolve();
 const adminSessions = new Map();
+const artistSessions = new Map();
 const stripe = STRIPE_SECRET_KEY && Stripe ? Stripe(STRIPE_SECRET_KEY) : null;
 const hasValidStripeSecretKey = /^sk_(test|live)_/.test(STRIPE_SECRET_KEY);
 
@@ -277,6 +288,8 @@ function defaultStore() {
     donations: [],
     transactions: [],
     analyticsArchive: [],
+    artistAccounts: [],
+    storeManagerAccounts: [],
   };
 }
 
@@ -310,6 +323,8 @@ function mergeStore(store) {
     donations: Array.isArray(store?.donations) ? store.donations : [],
     transactions: Array.isArray(store?.transactions) ? store.transactions : [],
     analyticsArchive: Array.isArray(store?.analyticsArchive) ? store.analyticsArchive : [],
+    artistAccounts: Array.isArray(store?.artistAccounts) ? store.artistAccounts : [],
+    storeManagerAccounts: Array.isArray(store?.storeManagerAccounts) ? store.storeManagerAccounts : [],
   };
 }
 
@@ -493,6 +508,8 @@ function mergePersistentStore(existingStore, incomingStore, options = {}) {
     }),
     donations: mergeEntityLists(existing.donations, incoming.donations || [], options),
     transactions: mergeEntityLists(existing.transactions, incoming.transactions || [], options),
+    artistAccounts: mergeEntityLists(existing.artistAccounts, incoming.artistAccounts || [], options),
+    storeManagerAccounts: mergeEntityLists(existing.storeManagerAccounts, incoming.storeManagerAccounts || [], options),
     analyticsArchive,
   };
 
@@ -510,6 +527,7 @@ async function readStore() {
     const store = mergeStore(document?.store);
     if (!store.artists.length && !store.releases.length) {
       const seededStore = defaultStore();
+      await bootstrapOwnerAccounts(seededStore);
       await collection.updateOne(
         { _id: STORE_DOCUMENT_ID },
         {
@@ -526,16 +544,41 @@ async function readStore() {
       cachedStore = mergeStore(seededStore);
       return cloneValue(cachedStore);
     }
+    const beforeBootstrap = JSON.stringify(store.artistAccounts || []) + JSON.stringify(store.storeManagerAccounts || []);
+    await bootstrapOwnerAccounts(store);
+    const afterBootstrap = JSON.stringify(store.artistAccounts || []) + JSON.stringify(store.storeManagerAccounts || []);
+    if (beforeBootstrap !== afterBootstrap) {
+      await collection.updateOne(
+        { _id: STORE_DOCUMENT_ID },
+        {
+          $set: {
+            store,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            createdAt: new Date(),
+          },
+        },
+        { upsert: true }
+      );
+    }
     cachedStore = store;
     return cloneValue(store);
   }
 
   try {
     const content = await fs.readFile(DB_FILE, "utf8");
-    cachedStore = mergeStore(JSON.parse(content));
+    const store = mergeStore(JSON.parse(content));
+    const beforeBootstrap = JSON.stringify(store.artistAccounts || []) + JSON.stringify(store.storeManagerAccounts || []);
+    await bootstrapOwnerAccounts(store);
+    const afterBootstrap = JSON.stringify(store.artistAccounts || []) + JSON.stringify(store.storeManagerAccounts || []);
+    if (beforeBootstrap !== afterBootstrap) await fs.writeFile(DB_FILE, JSON.stringify(store, null, 2));
+    cachedStore = store;
     return cloneValue(cachedStore);
   } catch {
     cachedStore = defaultStore();
+    await bootstrapOwnerAccounts(cachedStore);
+    await fs.writeFile(DB_FILE, JSON.stringify(cachedStore, null, 2));
     return cloneValue(cachedStore);
   }
 }
@@ -675,6 +718,8 @@ async function normalizeUploads(store) {
     donations: Array.isArray(store.donations) ? store.donations : [],
     transactions: Array.isArray(store.transactions) ? store.transactions : [],
     analyticsArchive: Array.isArray(store.analyticsArchive) ? store.analyticsArchive : [],
+    artistAccounts: Array.isArray(store.artistAccounts) ? store.artistAccounts : [],
+    storeManagerAccounts: Array.isArray(store.storeManagerAccounts) ? store.storeManagerAccounts : [],
   };
 
   normalized.site.logo = await saveDataUrl(normalized.site.logo, "images", "musicbusiness-logo.png");
@@ -807,6 +852,169 @@ function parseCookies(cookieHeader = "") {
   }, {});
 }
 
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeArtistName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function publicAccount(account) {
+  if (!account) return null;
+  return {
+    id: account.id,
+    artistId: account.artistId,
+    artistName: account.artistName,
+    email: account.email,
+    emailVerified: Boolean(account.emailVerified),
+    role: account.role || "artist",
+    createdAt: account.createdAt || "",
+  };
+}
+
+function publicStore(store) {
+  const sanitized = cloneValue(store || {});
+  delete sanitized.artistAccounts;
+  delete sanitized.storeManagerAccounts;
+  return sanitized;
+}
+
+function artistScopedStore(store, artistId) {
+  const scoped = publicStore(store);
+  scoped.artists = (scoped.artists || []).filter((artist) => String(artist.id) === String(artistId));
+  scoped.releases = (scoped.releases || []).filter((release) => String(release.artistId) === String(artistId));
+  scoped.transactions = (scoped.transactions || []).filter((transaction) => String(transaction.artistId) === String(artistId));
+  scoped.analyticsArchive = (scoped.analyticsArchive || []).filter((item) => String(item.artistId) === String(artistId));
+  scoped.donations = (scoped.donations || []).filter((donation) => String(donation.artistId) === String(artistId));
+  return scoped;
+}
+
+function hashToken(value) {
+  return crypto.createHash("sha256").update(String(value || "")).digest("hex");
+}
+
+function randomToken() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
+function passwordHash(password) {
+  return new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16).toString("base64url");
+    crypto.scrypt(String(password || ""), salt, 64, (error, derivedKey) => {
+      if (error) reject(error);
+      else resolve(`scrypt:${salt}:${derivedKey.toString("base64url")}`);
+    });
+  });
+}
+
+function verifyPassword(password, storedHash) {
+  return new Promise((resolve) => {
+    const [method, salt, hash] = String(storedHash || "").split(":");
+    if (method !== "scrypt" || !salt || !hash) {
+      resolve(false);
+      return;
+    }
+    crypto.scrypt(String(password || ""), salt, 64, (error, derivedKey) => {
+      if (error) {
+        resolve(false);
+        return;
+      }
+      const submitted = Buffer.from(derivedKey.toString("base64url"));
+      const expected = Buffer.from(hash);
+      resolve(submitted.length === expected.length && crypto.timingSafeEqual(submitted, expected));
+    });
+  });
+}
+
+function artistSessionCookie(sessionId, options = {}) {
+  const maxAge = options.clear ? 0 : Math.floor(ARTIST_SESSION_TTL_MS / 1000);
+  const parts = [
+    `${ARTIST_SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId || "")}`,
+    "HttpOnly",
+    "Path=/",
+    "SameSite=Lax",
+    `Max-Age=${maxAge}`,
+  ];
+  if (isProduction) parts.push("Secure");
+  return parts.join("; ");
+}
+
+function cleanupArtistSessions() {
+  const now = Date.now();
+  for (const [sessionId, session] of artistSessions.entries()) {
+    if (!session || session.expiresAt <= now) artistSessions.delete(sessionId);
+  }
+}
+
+function createArtistSession(account) {
+  cleanupArtistSessions();
+  const sessionId = randomToken();
+  artistSessions.set(sessionId, {
+    accountId: account.id,
+    artistId: account.artistId,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + ARTIST_SESSION_TTL_MS,
+  });
+  return sessionId;
+}
+
+function getArtistSession(request) {
+  cleanupArtistSessions();
+  const cookies = parseCookies(request.headers.cookie || "");
+  const sessionId = cookies[ARTIST_SESSION_COOKIE_NAME];
+  if (!sessionId) return null;
+  const session = artistSessions.get(sessionId);
+  if (!session) return null;
+  session.expiresAt = Date.now() + ARTIST_SESSION_TTL_MS;
+  return { sessionId, session };
+}
+
+function responseHeaders(extra = {}) {
+  return {
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/json; charset=utf-8",
+    ...extra,
+  };
+}
+
+function sendJsonWithHeaders(response, status, payload, headers = {}) {
+  response.writeHead(status, responseHeaders(headers));
+  response.end(JSON.stringify(payload));
+}
+
+function tokenUrl(request, pathname, token) {
+  return `${requestOrigin(request)}${pathname}?token=${encodeURIComponent(token)}`;
+}
+
+async function sendArtistEmail(to, subject, body) {
+  if (RESEND_API_KEY) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: ARTIST_EMAIL_FROM,
+          to: [to],
+          subject,
+          text: body,
+        }),
+      });
+      if (response.ok) return;
+      console.warn(`[Artist email] Resend failed with ${response.status}: ${await response.text()}`);
+    } catch (error) {
+      console.warn(`[Artist email] Resend request failed: ${error.message}`);
+    }
+  }
+  // Development fallback: the link remains visible in server logs until email provider env vars are configured.
+  console.log(`[Artist email] To: ${to}\nSubject: ${subject}\n${body}`);
+}
+
 function timingSafeEqualText(left, right) {
   const leftBuffer = Buffer.from(String(left || ""));
   const rightBuffer = Buffer.from(String(right || ""));
@@ -815,6 +1023,7 @@ function timingSafeEqualText(left, right) {
 }
 
 function configuredAdminPassword() {
+  if (OWNER_MANAGER_EMAIL) return true;
   if (STORE_MANAGER_PASSWORD || STORE_MANAGER_PASSWORD_HASH) return true;
   return !isProduction;
 }
@@ -850,10 +1059,16 @@ function cleanupAdminSessions() {
   }
 }
 
-function createAdminSession() {
+function createAdminSession(account = null) {
   cleanupAdminSessions();
   const sessionId = crypto.randomBytes(32).toString("base64url");
-  adminSessions.set(sessionId, { createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS });
+  adminSessions.set(sessionId, {
+    accountId: account?.id || "legacy-admin",
+    email: account?.email || "",
+    role: account?.role || "store-manager",
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS,
+  });
   return sessionId;
 }
 
@@ -874,8 +1089,580 @@ function isStoreManagerRequest(request) {
   return pathname === "/store-manager" || pathname === "/store-manager.html";
 }
 
+function isArtistDashboardRequest(request) {
+  const url = new URL(request.url, `http://${request.headers.host}`);
+  const pathname = decodeURIComponent(url.pathname);
+  return pathname === "/artist-dashboard" || pathname === "/artist-dashboard.html";
+}
+
 function sendAdminUnauthorized(response) {
   sendJson(response, 401, { error: "Store Manager login required." });
+}
+
+function sendArtistUnauthorized(response) {
+  sendJson(response, 401, { error: "Artist login required." });
+}
+
+function accountByEmail(store, email) {
+  const normalized = normalizeEmail(email);
+  return (store.artistAccounts || []).find((account) => normalizeEmail(account.email) === normalized);
+}
+
+function accountByArtistId(store, artistId) {
+  return (store.artistAccounts || []).find((account) => String(account.artistId) === String(artistId));
+}
+
+function artistByName(store, artistName) {
+  const normalized = normalizeArtistName(artistName).toLowerCase();
+  return (store.artists || []).find((artist) => normalizeArtistName(artist.name).toLowerCase() === normalized);
+}
+
+function accountByVerificationToken(store, token) {
+  const tokenHash = hashToken(token);
+  return (store.artistAccounts || []).find(
+    (account) => account.emailVerificationTokenHash === tokenHash && Number(account.emailVerificationExpiresAt || 0) > Date.now()
+  );
+}
+
+function accountByResetToken(store, token) {
+  const tokenHash = hashToken(token);
+  return (store.artistAccounts || []).find(
+    (account) => account.passwordResetTokenHash === tokenHash && Number(account.passwordResetExpiresAt || 0) > Date.now()
+  );
+}
+
+function managerAccountByEmail(store, email) {
+  const normalized = normalizeEmail(email);
+  return (store.storeManagerAccounts || []).find((account) => normalizeEmail(account.email) === normalized);
+}
+
+function managerAccountByResetToken(store, token) {
+  const tokenHash = hashToken(token);
+  return (store.storeManagerAccounts || []).find(
+    (account) => account.passwordResetTokenHash === tokenHash && Number(account.passwordResetExpiresAt || 0) > Date.now()
+  );
+}
+
+function publicManagerAccount(account) {
+  if (!account) return null;
+  return {
+    id: account.id,
+    email: account.email,
+    role: account.role || "store-manager",
+    createdAt: account.createdAt || "",
+    updatedAt: account.updatedAt || "",
+  };
+}
+
+async function bootstrapOwnerAccounts(store) {
+  store.artistAccounts = Array.isArray(store.artistAccounts) ? store.artistAccounts : [];
+  store.storeManagerAccounts = Array.isArray(store.storeManagerAccounts) ? store.storeManagerAccounts : [];
+
+  if (OWNER_ARTIST_EMAIL && !accountByEmail(store, OWNER_ARTIST_EMAIL)) {
+    const { artist, error } = ensureArtistForAccount(store, OWNER_ARTIST_NAME, OWNER_ARTIST_EMAIL);
+    if (!error && artist) {
+      store.artistAccounts.push({
+        id: `artist-account-owner-${slugify(artist.name) || "artist"}`,
+        artistId: artist.id,
+        artistName: artist.name,
+        email: OWNER_ARTIST_EMAIL,
+        passwordHash: await passwordHash(OWNER_ARTIST_INITIAL_PASSWORD),
+        emailVerified: true,
+        emailVerificationTokenHash: "",
+        emailVerificationExpiresAt: 0,
+        passwordResetTokenHash: "",
+        passwordResetExpiresAt: 0,
+        role: "artist",
+        ownerAccount: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (OWNER_MANAGER_EMAIL && !managerAccountByEmail(store, OWNER_MANAGER_EMAIL)) {
+    store.storeManagerAccounts.push({
+      id: "store-manager-owner",
+      email: OWNER_MANAGER_EMAIL,
+      passwordHash: await passwordHash(OWNER_MANAGER_INITIAL_PASSWORD),
+      passwordResetTokenHash: "",
+      passwordResetExpiresAt: 0,
+      role: "store-manager",
+      ownerAccount: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+}
+
+function ensureArtistForAccount(store, artistName, email) {
+  const name = normalizeArtistName(artistName);
+  let artist = artistByName(store, name);
+  if (artist) {
+    if (accountByArtistId(store, artist.id)) {
+      return { error: "That artist name already has an account." };
+    }
+    artist.email = artist.email || email;
+    artist.status = artist.status || "approved";
+    return { artist };
+  }
+
+  artist = {
+    id: `artist-${slugify(name)}-${Date.now().toString(36)}`,
+    name,
+    handle: `@${slugify(name).replace(/-/g, "")}`,
+    bio: "",
+    photo: "",
+    banner: "",
+    socials: email ? { email: `mailto:${email}` } : {},
+    email,
+    status: "approved",
+    followers: 0,
+    createdAt: new Date().toISOString(),
+  };
+  store.artists.push(artist);
+  return { artist };
+}
+
+async function createArtistAccount(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const artistName = normalizeArtistName(body.artistName);
+  const email = normalizeEmail(body.email);
+  const password = String(body.password || "");
+  const confirmPassword = String(body.confirmPassword || "");
+
+  if (!artistName || !email || !password || !confirmPassword) {
+    sendJson(response, 400, { error: "Artist name, email, password, and confirmation are required." });
+    return;
+  }
+  if (password.length < 8) {
+    sendJson(response, 400, { error: "Password must be at least 8 characters." });
+    return;
+  }
+  if (password !== confirmPassword) {
+    sendJson(response, 400, { error: "Passwords do not match." });
+    return;
+  }
+
+  let responsePayload = null;
+  await mutateStore(async (store) => {
+    store.artistAccounts = Array.isArray(store.artistAccounts) ? store.artistAccounts : [];
+    if (accountByEmail(store, email)) {
+      responsePayload = { status: 409, payload: { error: "An artist account already exists for this email." } };
+      return;
+    }
+    const { artist, error } = ensureArtistForAccount(store, artistName, email);
+    if (error) {
+      responsePayload = { status: 409, payload: { error } };
+      return;
+    }
+
+    const verificationToken = randomToken();
+    const account = {
+      id: `artist-account-${Date.now().toString(36)}-${crypto.randomBytes(6).toString("hex")}`,
+      artistId: artist.id,
+      artistName: artist.name,
+      email,
+      passwordHash: await passwordHash(password),
+      emailVerified: false,
+      emailVerificationTokenHash: hashToken(verificationToken),
+      emailVerificationExpiresAt: Date.now() + TOKEN_TTL_MS,
+      passwordResetTokenHash: "",
+      passwordResetExpiresAt: 0,
+      role: "artist",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    store.artistAccounts.push(account);
+    responsePayload = {
+      status: 201,
+      payload: {
+        ok: true,
+        account: publicAccount(account),
+        verificationUrl: tokenUrl(request, "/artist-verify", verificationToken),
+      },
+    };
+  });
+
+  if (responsePayload?.payload?.verificationUrl) {
+    await sendArtistEmail(
+      email,
+      "Verify your MusicBusiness Arena artist account",
+      `Verify your artist account here: ${responsePayload.payload.verificationUrl}`
+    );
+  }
+  sendJson(response, responsePayload?.status || 500, responsePayload?.payload || { error: "Registration failed." });
+}
+
+async function verifyArtistEmail(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const token = String(body.token || "");
+  if (!token) {
+    sendJson(response, 400, { error: "Verification token is required." });
+    return;
+  }
+
+  let result = null;
+  await mutateStore((store) => {
+    const account = accountByVerificationToken(store, token);
+    if (!account) {
+      result = { status: 400, payload: { error: "Verification link is invalid or expired." } };
+      return;
+    }
+    account.emailVerified = true;
+    account.emailVerificationTokenHash = "";
+    account.emailVerificationExpiresAt = 0;
+    account.updatedAt = new Date().toISOString();
+    result = { status: 200, payload: { ok: true, account: publicAccount(account) } };
+  });
+  sendJson(response, result.status, result.payload);
+}
+
+async function loginArtist(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const email = normalizeEmail(body.email);
+  const password = String(body.password || "");
+  const store = await readStore();
+  const account = accountByEmail(store, email);
+  if (!account || !(await verifyPassword(password, account.passwordHash))) {
+    sendJson(response, 401, { error: "Incorrect email or password." });
+    return;
+  }
+  if (!account.emailVerified) {
+    sendJson(response, 403, { error: "Verify your email address before logging in." });
+    return;
+  }
+  const sessionId = createArtistSession(account);
+  sendJsonWithHeaders(response, 200, { ok: true, artistId: account.artistId, account: publicAccount(account) }, {
+    "Set-Cookie": artistSessionCookie(sessionId),
+  });
+}
+
+async function logoutArtist(request, response) {
+  const artistSession = getArtistSession(request);
+  if (artistSession) artistSessions.delete(artistSession.sessionId);
+  sendJsonWithHeaders(response, 200, { ok: true }, {
+    "Set-Cookie": artistSessionCookie("", { clear: true }),
+  });
+}
+
+async function sendArtistSession(request, response) {
+  const artistSession = getArtistSession(request);
+  if (!artistSession) {
+    sendJson(response, 200, { authenticated: false });
+    return;
+  }
+  const store = await readStore();
+  const account = (store.artistAccounts || []).find((item) => item.id === artistSession.session.accountId);
+  if (!account) {
+    artistSessions.delete(artistSession.sessionId);
+    sendJson(response, 200, { authenticated: false });
+    return;
+  }
+  sendJson(response, 200, {
+    authenticated: true,
+    artistId: account.artistId,
+    account: publicAccount(account),
+  });
+}
+
+async function forgotArtistPassword(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const email = normalizeEmail(body.email);
+  let resetUrl = "";
+  await mutateStore((store) => {
+    const account = accountByEmail(store, email);
+    if (!account) return;
+    const token = randomToken();
+    account.passwordResetTokenHash = hashToken(token);
+    account.passwordResetExpiresAt = Date.now() + TOKEN_TTL_MS;
+    account.updatedAt = new Date().toISOString();
+    resetUrl = tokenUrl(request, "/artist-reset-password", token);
+  });
+  if (resetUrl) {
+    await sendArtistEmail(email, "Reset your MusicBusiness Arena artist password", `Reset your password here: ${resetUrl}`);
+  }
+  sendJson(response, 200, { ok: true, message: "If that email exists, a password reset link has been sent." });
+}
+
+async function resetArtistPassword(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const token = String(body.token || "");
+  const password = String(body.password || "");
+  const confirmPassword = String(body.confirmPassword || "");
+  if (!token || !password || !confirmPassword) {
+    sendJson(response, 400, { error: "Token, password, and confirmation are required." });
+    return;
+  }
+  if (password.length < 8) {
+    sendJson(response, 400, { error: "Password must be at least 8 characters." });
+    return;
+  }
+  if (password !== confirmPassword) {
+    sendJson(response, 400, { error: "Passwords do not match." });
+    return;
+  }
+
+  let result = null;
+  await mutateStore(async (store) => {
+    const account = accountByResetToken(store, token);
+    if (!account) {
+      result = { status: 400, payload: { error: "Password reset link is invalid or expired." } };
+      return;
+    }
+    account.passwordHash = await passwordHash(password);
+    account.passwordResetTokenHash = "";
+    account.passwordResetExpiresAt = 0;
+    account.updatedAt = new Date().toISOString();
+    result = { status: 200, payload: { ok: true } };
+  });
+  sendJson(response, result.status, result.payload);
+}
+
+async function updateArtistAccount(request, response) {
+  const artistSession = getArtistSession(request);
+  if (!artistSession) {
+    sendArtistUnauthorized(response);
+    return;
+  }
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const currentPassword = String(body.currentPassword || "");
+  const nextEmail = normalizeEmail(body.email);
+  const nextPassword = String(body.newPassword || "");
+  const confirmPassword = String(body.confirmPassword || "");
+
+  let result = null;
+  await mutateStore(async (store) => {
+    const account = (store.artistAccounts || []).find((item) => item.id === artistSession.session.accountId);
+    if (!account || !(await verifyPassword(currentPassword, account.passwordHash))) {
+      result = { status: 401, payload: { error: "Current password is incorrect." } };
+      return;
+    }
+    if (nextEmail && nextEmail !== normalizeEmail(account.email)) {
+      const existing = accountByEmail(store, nextEmail);
+      if (existing && existing.id !== account.id) {
+        result = { status: 409, payload: { error: "That email address is already registered." } };
+        return;
+      }
+      account.email = nextEmail;
+      const artist = (store.artists || []).find((item) => String(item.id) === String(account.artistId));
+      if (artist) {
+        artist.email = nextEmail;
+        artist.socials = artist.socials || {};
+        artist.socials.email = `mailto:${nextEmail}`;
+      }
+    }
+    if (nextPassword) {
+      if (nextPassword.length < 8) {
+        result = { status: 400, payload: { error: "New password must be at least 8 characters." } };
+        return;
+      }
+      if (nextPassword !== confirmPassword) {
+        result = { status: 400, payload: { error: "New passwords do not match." } };
+        return;
+      }
+      account.passwordHash = await passwordHash(nextPassword);
+      account.passwordResetTokenHash = "";
+      account.passwordResetExpiresAt = 0;
+    }
+    account.updatedAt = new Date().toISOString();
+    result = { status: 200, payload: { ok: true, account: publicAccount(account) } };
+  });
+  sendJson(response, result.status, result.payload);
+}
+
+async function loginStoreManager(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const email = normalizeEmail(body.email);
+  const password = String(body.password || "");
+  const store = await readStore();
+  const account = email ? managerAccountByEmail(store, email) : null;
+
+  if (account) {
+    if (!(await verifyPassword(password, account.passwordHash))) {
+      sendJson(response, 401, { error: "Incorrect Store Manager email or password." });
+      return;
+    }
+    const sessionId = createAdminSession(account);
+    sendJsonWithHeaders(response, 200, { ok: true, account: publicManagerAccount(account) }, {
+      "Set-Cookie": sessionCookie(sessionId),
+    });
+    return;
+  }
+
+  if (!email && verifyAdminPassword(password)) {
+    const sessionId = createAdminSession();
+    sendJsonWithHeaders(response, 200, { ok: true, legacy: true }, {
+      "Set-Cookie": sessionCookie(sessionId),
+    });
+    return;
+  }
+
+  sendJson(response, 401, { error: "Incorrect Store Manager email or password." });
+}
+
+async function forgotStoreManagerPassword(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const email = normalizeEmail(body.email);
+  let resetUrl = "";
+  await mutateStore((store) => {
+    const account = managerAccountByEmail(store, email);
+    if (!account) return;
+    const token = randomToken();
+    account.passwordResetTokenHash = hashToken(token);
+    account.passwordResetExpiresAt = Date.now() + TOKEN_TTL_MS;
+    account.updatedAt = new Date().toISOString();
+    resetUrl = tokenUrl(request, "/store-manager-reset-password", token);
+  });
+  if (resetUrl) {
+    await sendArtistEmail(email, "Reset your MusicBusiness Arena Store Manager password", `Reset your Store Manager password here: ${resetUrl}`);
+  }
+  sendJson(response, 200, { ok: true, message: "If that Store Manager email exists, a reset link has been sent." });
+}
+
+async function resetStoreManagerPassword(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const token = String(body.token || "");
+  const password = String(body.password || "");
+  const confirmPassword = String(body.confirmPassword || "");
+  if (!token || !password || !confirmPassword) {
+    sendJson(response, 400, { error: "Token, password, and confirmation are required." });
+    return;
+  }
+  if (password.length < 8) {
+    sendJson(response, 400, { error: "Password must be at least 8 characters." });
+    return;
+  }
+  if (password !== confirmPassword) {
+    sendJson(response, 400, { error: "Passwords do not match." });
+    return;
+  }
+
+  let result = null;
+  await mutateStore(async (store) => {
+    const account = managerAccountByResetToken(store, token);
+    if (!account) {
+      result = { status: 400, payload: { error: "Password reset link is invalid or expired." } };
+      return;
+    }
+    account.passwordHash = await passwordHash(password);
+    account.passwordResetTokenHash = "";
+    account.passwordResetExpiresAt = 0;
+    account.updatedAt = new Date().toISOString();
+    result = { status: 200, payload: { ok: true } };
+  });
+  sendJson(response, result.status, result.payload);
+}
+
+async function updateStoreManagerAccount(request, response) {
+  const adminSession = getAdminSession(request);
+  if (!adminSession || adminSession.session.accountId === "legacy-admin") {
+    sendAdminUnauthorized(response);
+    return;
+  }
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const currentPassword = String(body.currentPassword || "");
+  const nextEmail = normalizeEmail(body.email);
+  const nextPassword = String(body.newPassword || "");
+  const confirmPassword = String(body.confirmPassword || "");
+
+  let result = null;
+  await mutateStore(async (store) => {
+    const account = (store.storeManagerAccounts || []).find((item) => item.id === adminSession.session.accountId);
+    if (!account || !(await verifyPassword(currentPassword, account.passwordHash))) {
+      result = { status: 401, payload: { error: "Current password is incorrect." } };
+      return;
+    }
+    if (nextEmail && nextEmail !== normalizeEmail(account.email)) {
+      const existing = managerAccountByEmail(store, nextEmail);
+      if (existing && existing.id !== account.id) {
+        result = { status: 409, payload: { error: "That Store Manager email is already registered." } };
+        return;
+      }
+      account.email = nextEmail;
+      adminSession.session.email = nextEmail;
+    }
+    if (nextPassword) {
+      if (nextPassword.length < 8) {
+        result = { status: 400, payload: { error: "New password must be at least 8 characters." } };
+        return;
+      }
+      if (nextPassword !== confirmPassword) {
+        result = { status: 400, payload: { error: "New passwords do not match." } };
+        return;
+      }
+      account.passwordHash = await passwordHash(nextPassword);
+      account.passwordResetTokenHash = "";
+      account.passwordResetExpiresAt = 0;
+    }
+    account.updatedAt = new Date().toISOString();
+    result = { status: 200, payload: { ok: true, account: publicManagerAccount(account) } };
+  });
+  sendJson(response, result.status, result.payload);
+}
+
+async function sendArtistStore(request, response) {
+  const artistSession = getArtistSession(request);
+  if (!artistSession) {
+    sendArtistUnauthorized(response);
+    return;
+  }
+  const store = await readStore();
+  sendJson(response, 200, artistScopedStore(store, artistSession.session.artistId));
+}
+
+async function saveArtistStore(request, response) {
+  const artistSession = getArtistSession(request);
+  if (!artistSession) {
+    sendArtistUnauthorized(response);
+    return;
+  }
+  const store = await readStore();
+  const account = (store.artistAccounts || []).find((item) => item.id === artistSession.session.accountId);
+  if (!account || !account.emailVerified) {
+    sendJson(response, 403, { error: "Verify your email address before publishing or saving uploads." });
+    return;
+  }
+
+  const body = await readRequestBody(request);
+  const payload = JSON.parse(body);
+  const incoming = withoutClientAnalytics(await normalizeUploads(payload.store || payload));
+  const artistId = artistSession.session.artistId;
+  const scopedStore = {
+    artists: (incoming.artists || []).filter((artist) => String(artist.id) === String(artistId)),
+    releases: (incoming.releases || []).filter((release) => String(release.artistId) === String(artistId)),
+  };
+  const requestedReleaseDeletes = new Set((payload.deletions?.releaseIds || []).map(String));
+  const allowedReleaseDeletes = (store.releases || [])
+    .filter((release) => requestedReleaseDeletes.has(String(release.id)) && String(release.artistId) === String(artistId))
+    .map((release) => release.id);
+  const allowedClears = withoutAnalyticsClears(payload.clears).filter((clear) => {
+    if (clear.collection === "artists") return String(clear.id) === String(artistId);
+    if (clear.collection === "releases") {
+      return (store.releases || scopedStore.releases || []).some(
+        (release) => String(release.id) === String(clear.id) && String(release.artistId) === String(artistId)
+      );
+    }
+    return false;
+  });
+
+  const saved = await mergeAndWriteStore(scopedStore, {
+    deletions: { releaseIds: allowedReleaseDeletes },
+    clears: allowedClears,
+    allowAnalyticsReset: false,
+    archiveDeletedAnalytics: true,
+  });
+  sendJson(response, 200, artistScopedStore(saved, artistId));
 }
 
 const ZERO_DECIMAL_CURRENCIES = new Set([
@@ -1168,9 +1955,17 @@ const CLEAN_ROUTES = {
   "/listen": "/artist-page-2.html",
   "/download": "/download.html",
   "/video": "/videos.html",
-  "/upload": "/artist-dashboard.html",
+  "/upload": "/upload.html",
+  "/artist-dashboard": "/artist-dashboard.html",
+  "/artist-login": "/artist-login.html",
+  "/artist-register": "/artist-register.html",
+  "/artist-forgot-password": "/artist-forgot-password.html",
+  "/artist-reset-password": "/artist-reset-password.html",
+  "/artist-verify": "/artist-verify.html",
   "/store-manager": "/store-manager.html",
   "/store-manager-login": "/store-manager-login.html",
+  "/store-manager-forgot-password": "/store-manager-forgot-password.html",
+  "/store-manager-reset-password": "/store-manager-reset-password.html",
 };
 
 const LEGACY_REDIRECTS = Object.fromEntries(Object.entries(CLEAN_ROUTES).map(([clean, file]) => [file, clean]));
@@ -1206,6 +2001,11 @@ async function serveStatic(request, response) {
 
   if (isStoreManagerRequest(request) && !getAdminSession(request)) {
     redirect(response, "/store-manager-login");
+    return;
+  }
+
+  if (isArtistDashboardRequest(request) && !getArtistSession(request)) {
+    redirect(response, "/artist-login");
     return;
   }
 
@@ -1297,7 +2097,52 @@ async function handleRequest(request, response) {
     }
 
     if (url.pathname === "/api/store" && request.method === "GET") {
-      sendJson(response, 200, await readStore());
+      sendJson(response, 200, publicStore(await readStore()));
+      return;
+    }
+
+    if (url.pathname === "/api/artist/session" && request.method === "GET") {
+      await sendArtistSession(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/register" && request.method === "POST") {
+      await createArtistAccount(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/verify" && request.method === "POST") {
+      await verifyArtistEmail(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/login" && request.method === "POST") {
+      await loginArtist(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/logout" && request.method === "POST") {
+      await logoutArtist(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/forgot-password" && request.method === "POST") {
+      await forgotArtistPassword(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/reset-password" && request.method === "POST") {
+      await resetArtistPassword(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/account" && request.method === "POST") {
+      await updateArtistAccount(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/store" && request.method === "GET") {
+      await sendArtistStore(request, response);
       return;
     }
 
@@ -1321,9 +2166,17 @@ async function handleRequest(request, response) {
     }
 
     if (url.pathname === "/api/admin/session" && request.method === "GET") {
+      const adminSession = getAdminSession(request);
       sendJson(response, 200, {
-        authenticated: Boolean(getAdminSession(request)),
+        authenticated: Boolean(adminSession),
         configured: configuredAdminPassword(),
+        account: adminSession
+          ? {
+              id: adminSession.session.accountId,
+              email: adminSession.session.email,
+              role: adminSession.session.role,
+            }
+          : null,
       });
       return;
     }
@@ -1336,22 +2189,22 @@ async function handleRequest(request, response) {
         return;
       }
 
-      const bodyText = await readRequestBody(request);
-      const body = bodyText ? JSON.parse(bodyText) : {};
-      if (!verifyAdminPassword(body.password)) {
-        sendJson(response, 401, { error: "Incorrect Store Manager password." });
-        return;
-      }
+      await loginStoreManager(request, response);
+      return;
+    }
 
-      const sessionId = createAdminSession();
-      response.writeHead(200, {
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json; charset=utf-8",
-        "Set-Cookie": sessionCookie(sessionId),
-      });
-      response.end(JSON.stringify({ ok: true }));
+    if (url.pathname === "/api/admin/forgot-password" && request.method === "POST") {
+      await forgotStoreManagerPassword(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/admin/reset-password" && request.method === "POST") {
+      await resetStoreManagerPassword(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/admin/account" && request.method === "POST") {
+      await updateStoreManagerAccount(request, response);
       return;
     }
 
@@ -1391,13 +2244,20 @@ async function handleRequest(request, response) {
       const body = await readRequestBody(request);
       const payload = JSON.parse(body);
       const incoming = withoutClientAnalytics(await normalizeUploads(payload.store || payload));
+      delete incoming.artistAccounts;
+      delete incoming.storeManagerAccounts;
       const store = await mergeAndWriteStore(incoming, {
         deletions: payload.deletions || {},
         clears: withoutAnalyticsClears(payload.clears),
         allowAnalyticsReset: false,
         archiveDeletedAnalytics: true,
       });
-      sendJson(response, 200, store);
+      sendJson(response, 200, publicStore(store));
+      return;
+    }
+
+    if (url.pathname === "/api/artist/store" && request.method === "POST") {
+      await saveArtistStore(request, response);
       return;
     }
 

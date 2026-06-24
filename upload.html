@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Music | MusicBusiness Arena</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="site-page-body artist-auth-body">
+    <header class="site-header">
+      <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
+        <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="/home">Home</a>
+        <a href="/music">Music</a>
+        <a href="/video">Video</a>
+        <a href="/upload">Upload</a>
+      </nav>
+    </header>
+
+    <main class="artist-auth-main upload-entry-main">
+      <section class="artist-auth-card upload-entry-card">
+        <p class="eyebrow">Artist upload</p>
+        <h1>What do you want to upload?</h1>
+        <p class="auth-support">Choose a release type first. If you are not logged in, MusicBusiness Arena will help you create an artist account or sign in, then return you here.</p>
+        <div class="release-type-options upload-entry-options" role="list">
+          <button class="release-type-option" type="button" data-upload-entry="Single" role="listitem">
+            <span class="release-type-icon">♪</span>
+            <strong>Single Song</strong>
+            <small>One song release</small>
+          </button>
+          <button class="release-type-option" type="button" data-upload-entry="EP" role="listitem">
+            <span class="release-type-icon">♫</span>
+            <strong>EP</strong>
+            <small>Two to six tracks</small>
+          </button>
+          <button class="release-type-option" type="button" data-upload-entry="Album" role="listitem">
+            <span class="release-type-icon">▣</span>
+            <strong>Album</strong>
+            <small>Seven to seventeen tracks</small>
+          </button>
+        </div>
+        <div class="artist-auth-choice" id="uploadAuthChoice" hidden>
+          <p id="uploadChoiceText">Create an account or log in to continue.</p>
+          <div class="auth-actions">
+            <a class="primary-button" id="uploadCreateAccount" href="/artist-register">Create Artist Account</a>
+            <a class="secondary-button" id="uploadLogin" href="/artist-login">Login</a>
+          </div>
+        </div>
+        <p class="form-message" id="uploadEntryMessage" role="status"></p>
+      </section>
+    </main>
+
+    <script src="upload.js"></script>
+  </body>
+</html>
