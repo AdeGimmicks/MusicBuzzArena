@@ -264,8 +264,12 @@ function setUploadWizardStep(step) {
   if (uploadWizardBack) uploadWizardBack.hidden = uploadWizardStep === 1;
   if (uploadWizardNext) {
   uploadWizardNext.hidden = uploadWizardStep === 7;
-  uploadWizardNext.textContent =
-    uploadWizardStep === 6 ? "Review" : "Next";
+}
+if (uploadWizardBack) {
+  uploadWizardBack.hidden = uploadWizardStep === 1;
+}
+if (uploadWizardActions) {
+  uploadWizardActions.hidden = uploadWizardStep === 7;
 }
 
 if (uploadWizardPublish) {
