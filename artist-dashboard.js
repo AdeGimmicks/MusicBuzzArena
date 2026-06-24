@@ -263,9 +263,15 @@ function setUploadWizardStep(step) {
   });
   if (uploadWizardBack) uploadWizardBack.hidden = uploadWizardStep === 1;
   if (uploadWizardNext) {
-    uploadWizardNext.hidden = uploadWizardStep === 7;
-    uploadWizardNext.textContent = uploadWizardStep === 6 ? "Review" : "Next";
-  }
+  uploadWizardNext.hidden = uploadWizardStep === 7;
+  uploadWizardNext.textContent =
+    uploadWizardStep === 6 ? "Review" : "Next";
+}
+
+if (uploadWizardPublish) {
+  uploadWizardPublish.style.display =
+    uploadWizardStep === 7 ? "inline-flex" : "none";
+}
   if (releaseFlowEyebrow) releaseFlowEyebrow.textContent = `Step ${uploadWizardStep} of 7`;
   const titles = ["Release Type", "Upload Audio & Artwork", "Song Information", "Streaming Links", "Artist Profile", "Video (Optional)", "Review & Publish"];
   const flowTitle = document.querySelector("#releaseFlowTitle");
@@ -1555,6 +1561,10 @@ document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () 
 async function initDashboard() {
   currentStore = await window.MBA.loadStore();
   setupUploadWizard();
+  
+  if (uploadWizardPublish) {
+  uploadWizardPublish.style.display = "none";
+}
   populateCountrySelect();
   renderArtistAccountPicker();
   fillArtistForm();
