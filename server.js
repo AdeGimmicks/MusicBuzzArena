@@ -322,8 +322,7 @@ function isPlainObject(value) {
 }
 
 function hasSavedValue(value) {
-  if (value === undefined || value === null || value === "") return false;
-  if (Array.isArray(value)) return value.length > 0;
+  if (value === undefined || value === null) return false;
   return true;
 }
 
