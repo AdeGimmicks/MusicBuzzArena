@@ -58,19 +58,9 @@ const payoutHistoryList = document.querySelector("#payoutHistoryList");
 const analyticsTopModal = document.querySelector("#analyticsTopModal");
 const analyticsTopModalTitle = document.querySelector("#analyticsTopModalTitle");
 const analyticsTopModalList = document.querySelector("#analyticsTopModalList");
-const songEditorSection = document.querySelector("#songEditorSection");
-const profileSection = document.querySelector("#profileSection");
-const videosSection = document.querySelector("#videosSection");
-const uploadWizardProgress = document.querySelector("#uploadWizardProgress");
-const uploadWizardActions = document.querySelector("#uploadWizardActions");
-const uploadWizardBack = document.querySelector("#uploadWizardBack");
-const uploadWizardNext = document.querySelector("#uploadWizardNext");
-const uploadWizardPublish = document.querySelector("#uploadWizardPublish");
 
 let currentStore = window.MBA.defaults();
 let activeArtistId = localStorage.getItem("mba-active-artist-id") || "";
-let uploadWizardStep = 1;
-let uploadWizardReady = false;
 const DEFAULT_PREVIEW_START = 0;
 const DEFAULT_PREVIEW_END = 60;
 const COUNTRY_CODES = [
@@ -237,216 +227,6 @@ function formLinks(form, links) {
   }, {});
 }
 
-function wizardPanels() {
-  return [...document.querySelectorAll("[data-upload-step]")];
-}
-
-function updateWizardReview() {
-  updateHomePreview();
-  updateArtistPreview();
-  updateVideoPreview();
-}
-
-function setUploadWizardStep(step) {
-  uploadWizardStep = Math.min(7, Math.max(1, Number(step) || 1));
-  const showReleaseShell = [2, 3, 4, 7].includes(uploadWizardStep);
-  songUploadSection?.classList.toggle("is-wizard-hidden", !showReleaseShell);
-  wizardPanels().forEach((panel) => {
-    panel.classList.toggle("is-active", Number(panel.dataset.uploadStep) === uploadWizardStep);
-  });
-  uploadWizardProgress?.querySelectorAll("[data-wizard-progress]").forEach((item) => {
-    const itemStep = Number(item.dataset.wizardProgress);
-    item.classList.toggle("is-active", itemStep === uploadWizardStep);
-    item.classList.toggle("is-complete", itemStep < uploadWizardStep);
-    if (itemStep === uploadWizardStep) item.setAttribute("aria-current", "step");
-    else item.removeAttribute("aria-current");
-  });
-  if (uploadWizardBack) uploadWizardBack.hidden = uploadWizardStep === 1;
-  if (uploadWizardNext) {
-  uploadWizardNext.hidden = uploadWizardStep === 7;
-  uploadWizardNext.textContent =
-    uploadWizardStep === 6 ? "Review" : "Next";
-}
-
-if (uploadWizardPublish) {
-  uploadWizardPublish.style.display =
-    uploadWizardStep === 7 ? "inline-flex" : "none";
-}
-  if (releaseFlowEyebrow) releaseFlowEyebrow.textContent = `Step ${uploadWizardStep} of 7`;
-  const titles = ["Release Type", "Upload Audio & Artwork", "Song Information", "Streaming Links", "Artist Profile", "Video (Optional)", "Review & Publish"];
-  const flowTitle = document.querySelector("#releaseFlowTitle");
-  if (flowTitle) flowTitle.textContent = titles[uploadWizardStep - 1];
-  if (uploadWizardStep === 7) updateWizardReview();
-  songEditorSection?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function setupUploadWizard() {
-  if (!songEditorSection || uploadWizardReady) return;
-  [profileSection, videosSection].forEach((section) => {
-    if (!section) return;
-    section.classList.remove("artist-dashboard-section", "is-active");
-    uploadWizardActions?.before(section);
-  });
-  songUploadSection?.classList.remove("is-hidden");
-  uploadWizardReady = true;
-  setUploadWizardStep(1);
-}
-
-function visibleStepFields(step) {
-  return wizardPanels()
-    .filter((panel) => Number(panel.dataset.uploadStep) === step)
-    .flatMap((panel) => [...panel.querySelectorAll("input, select, textarea")]);
-}
-
-function validateUploadWizardStep(step) {
-  if (step === 1 && !document.querySelector("[data-start-release].is-selected")) {
-    message(releaseMessage, "Choose Single Song or Album to continue.", "error");
-    return false;
-  }
-  const invalid = visibleStepFields(step).find((field) => !field.disabled && !field.checkValidity());
-  if (!invalid) return true;
-  invalid.reportValidity();
-  message(releaseMessage, "Complete the required fields in this step before continuing.", "error");
-  return false;
-}
-
-function mergeNonEmptyLinks(existing = {}, next = {}) {
-  const merged = {};
-
-  Object.entries(next).forEach(([key, value]) => {
-    if (value && value.trim()) {
-      merged[key] = value.trim();
-    }
-  });
-
-  return merged;
-}
-
-async function autoSaveReleaseDraft() {
-  const artist = primaryArtist();
-  const editingId = releaseForm.editingId.value;
-  const existingIndex = currentStore.releases.findIndex((item) => item.id === editingId);
-  const existing = existingIndex >= 0 ? currentStore.releases[existingIndex] : null;
-  const release = existing || {
-    id: window.MBA.uid("release"),
-    artistId: artist.id,
-    downloads: 0,
-    earnings: 0,
-    donations: 0,
-    status: "draft",
-    createdAt: new Date().toISOString(),
-  };
-  const cover = await fileToDataUrl(releaseForm.cover.files[0]);
-  const audioData = await fileToDataUrl(releaseForm.audio.files[0]);
-  const textValues = {
-    title: releaseForm.title.value.trim(),
-    artistName: releaseForm.artistName.value.trim(),
-    releaseType: releaseForm.releaseType.value,
-    genre: releaseForm.genre.value,
-    secondaryGenre: releaseForm.secondaryGenre.value,
-    songBio: releaseForm.songBio.value.trim(),
-    releaseDate: releaseForm.releaseDate.value,
-    producer: releaseForm.producer.value.trim(),
-    writer: releaseForm.writer?.value.trim() || "",
-    country: releaseForm.country.value,
-    cityState: releaseForm.cityState.value.trim(),
-  };
-    Object.entries(textValues).forEach(([key, value]) => {
-      release[key] = value || "";
-    });
-  const moods = [releaseForm.moodPrimary.value, releaseForm.moodSecondary.value].filter(Boolean);
-  if (moods.length) release.mood = moods;
-  const price = Number(releaseForm.price.value);
-  if (Number.isFinite(price)) release.price = price;
-  const previewStart = parsePreviewTime(releaseForm.previewStart.value, DEFAULT_PREVIEW_START);
-  const previewEnd = parsePreviewTime(releaseForm.previewEnd.value, DEFAULT_PREVIEW_END);
-  if (Number.isFinite(previewStart) && Number.isFinite(previewEnd) && previewEnd > previewStart) {
-    release.previewStart = previewStart;
-    release.previewEnd = previewEnd;
-    release.previewDuration = previewEnd - previewStart;
-  }
-  release.location = [release.cityState, release.country].filter(Boolean).join(", ");
-  release.streaming = mergeNonEmptyLinks(release.streaming, formLinks(releaseForm, STREAMING_LINKS));
-  if (cover) release.cover = cover;
-  if (audioData) {
-    release.audioData = audioData;
-    release.audioUrl = audioData;
-    release.audioName = releaseForm.audio.files[0].name;
-  }
-  release.updatedAt = new Date().toISOString();
-  if (existingIndex >= 0) currentStore.releases[existingIndex] = release;
-  else currentStore.releases.unshift(release);
-  currentStore = await window.MBA.saveStore(currentStore);
-  releaseForm.editingId.value = release.id;
-  releaseForm.cover.required = !release.cover;
-  releaseForm.audio.required = !(release.audioUrl || release.audioData);
-  renderDashboardReleases();
-  message(releaseMessage, "Draft auto-saved.", "pending");
-}
-
-async function autoSaveArtistProfile() {
-  const artist = primaryArtist();
-  const photo = await fileToDataUrl(artistForm.photo.files[0]);
-  const banner = await fileToDataUrl(artistForm.banner.files[0]);
-  const fields = {
-    name: artistForm.name.value.trim(),
-    handle: artistForm.handle.value.trim(),
-    bio: artistForm.bio.value.trim(),
-    location: artistForm.location?.value.trim() || "",
-    email: artistForm.email?.value.trim() || "",
-  };
-  Object.entries(fields).forEach(([key, value]) => {
-  artist[key] = value || "";
-});
-  artist.socials = formLinks(artistForm, SOCIAL_LINKS);
-  if (artist.email && !artist.socials.email) artist.socials.email = `mailto:${artist.email}`;
-  if (photo) artist.photo = photo;
-  if (banner) artist.banner = banner;
-  artist.status = "approved";
-  currentStore = await window.MBA.saveStore(currentStore);
-  message(artistMessage, "Artist profile auto-saved.", "pending");
-}
-
-async function autoSaveVideoLinks() {
-  const artist = primaryArtist();
-  const nextVideos = {
-    mainVideoUrl: normalizeLink(videoForm.mainVideoUrl.value),
-    mainVideoTitle: videoForm.mainVideoTitle.value.trim(),
-    shortVideoUrl: normalizeLink(videoForm.shortVideoUrl.value),
-    tiktokUrl: normalizeLink(videoForm.tiktokUrl.value),
-    moreVideosUrl: normalizeLink(videoForm.moreVideosUrl.value),
-    moreShortsUrl: normalizeLink(videoForm.moreShortsUrl.value),
-  };
-  artist.videos = { ...(artist.videos || {}) };
-  Object.entries(nextVideos).forEach(([key, value]) => {
-  artist.videos[key] = value || "";
-});
-  currentStore.site = currentStore.site || {};
-  currentStore.site.videos = { ...artist.videos };
-  currentStore = await window.MBA.saveStore(currentStore);
-  message(videoMessage, "Video links auto-saved.", "pending");
-}
-
-async function advanceUploadWizard() {
-  if (!validateUploadWizardStep(uploadWizardStep)) return;
-  const currentStep = uploadWizardStep;
-  const nextLabel = uploadWizardNext.textContent;
-  uploadWizardNext.disabled = true;
-  uploadWizardNext.textContent = currentStep === 6 ? "Preparing..." : "Saving...";
-  message(releaseMessage, currentStep >= 2 && currentStep <= 6 ? "Saving this step..." : "Moving to next step...", "pending");
-  try {
-    if (currentStep >= 2 && currentStep <= 4) await autoSaveReleaseDraft();
-    if (currentStep === 5) await autoSaveArtistProfile();
-    if (currentStep === 6) await autoSaveVideoLinks();
-    setUploadWizardStep(currentStep + 1);
-  } catch (error) {
-    message(releaseMessage, error.message || "This step could not be saved.", "error");
-  } finally {
-    uploadWizardNext.disabled = false;
-    if (uploadWizardStep === currentStep) uploadWizardNext.textContent = nextLabel;
-  }
-}
-
 function blankArtist() {
   return {
     id: window.MBA.uid("artist"),
@@ -514,25 +294,22 @@ function fillVideoForm() {
 }
 
 function showReleaseTypeChoice() {
-  songUploadSection?.classList.remove("is-hidden");
-  if (uploadWizardReady) setUploadWizardStep(1);
+  releaseTypeGate?.classList.remove("is-hidden");
+  songUploadSection?.classList.add("is-hidden");
 }
 
 function showReleaseForm(releaseType = "Single") {
   const selectedType = releaseType === "Album" ? "Album" : "Single";
+  releaseTypeGate?.classList.add("is-hidden");
   songUploadSection?.classList.remove("is-hidden");
-  setSelectValue(releaseForm.releaseType, selectedType);
-  releaseTypeOptions.forEach((button) => {
-    button.classList.toggle("is-selected", button.dataset.startRelease === selectedType);
-  });
+  if (!releaseForm.editingId.value) setSelectValue(releaseForm.releaseType, selectedType);
+  if (releaseFlowEyebrow) releaseFlowEyebrow.textContent = selectedType === "Album" ? "Album" : "Single Song";
   updateHomePreview();
-  if (uploadWizardReady) setUploadWizardStep(releaseForm.editingId.value ? 3 : 2);
 }
 
 function clearReleaseForm() {
   releaseForm.reset();
   releaseForm.editingId.value = "";
-  releaseTypeOptions.forEach((button) => button.classList.remove("is-selected"));
   populateCountrySelect();
   releaseForm.price.value = "0.99";
   releaseForm.previewStart.value = formatPreviewTime(DEFAULT_PREVIEW_START);
@@ -1244,22 +1021,10 @@ clearReleaseButton?.addEventListener("click", () => {
 releaseTypeOptions.forEach((button) => {
   button.addEventListener("click", () => {
     const releaseType = button.dataset.startRelease || "Single";
-    setSelectValue(releaseForm.releaseType, releaseType);
-    releaseTypeOptions.forEach((option) => option.classList.toggle("is-selected", option === button));
-    message(releaseMessage, `${releaseType === "Album" ? "Album" : "Single song"} selected. Choose Next to continue.`, "pending");
+    showReleaseForm(releaseType);
+    message(releaseMessage, `${releaseType === "Album" ? "Album" : "Single song"} upload started.`, "pending");
+    songUploadSection?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
-});
-
-uploadWizardBack?.addEventListener("click", () => setUploadWizardStep(uploadWizardStep - 1));
-uploadWizardNext?.addEventListener("click", advanceUploadWizard);
-uploadWizardPublish?.addEventListener("click", () => {
-  for (const step of [2, 3]) {
-    if (!validateUploadWizardStep(step)) {
-      setUploadWizardStep(step);
-      return;
-    }
-  }
-  releaseForm.requestSubmit();
 });
 
 function updateVideoPreview() {
@@ -1342,7 +1107,6 @@ releaseForm.addEventListener("submit", async (event) => {
     clearReleaseForm();
     fillArtistForm();
     renderDashboardReleases();
-    showDashboardSection("songsSection");
     message(
       releaseMessage,
       existingIndex >= 0
@@ -1560,11 +1324,6 @@ document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () 
 
 async function initDashboard() {
   currentStore = await window.MBA.loadStore();
-  setupUploadWizard();
-  
-  if (uploadWizardPublish) {
-  uploadWizardPublish.style.display = "none";
-}
   populateCountrySelect();
   renderArtistAccountPicker();
   fillArtistForm();
