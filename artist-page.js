@@ -106,6 +106,28 @@ function releasePlatformLinks(release) {
   }).join("");
 }
 
+function releaseTracks(release) {
+  const tracks = Array.isArray(release.tracks) ? release.tracks : [];
+  if (tracks.length) {
+    return tracks
+      .slice()
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+      .map((track, index) => ({
+        ...track,
+        title: track.title || `Track ${index + 1}`,
+      }));
+  }
+  return release.audioUrl
+    ? [{
+        id: `${release.id}-single-track`,
+        title: release.title || "Untitled track",
+        audioUrl: release.audioUrl,
+        audioName: release.audioName || "",
+        order: 1,
+      }]
+    : [];
+}
+
 function trackRow(release, artist, artistReleases = []) {
   const row = document.createElement("article");
   row.className = "music-release-page";
@@ -122,6 +144,22 @@ function trackRow(release, artist, artistReleases = []) {
     .slice(0, 2);
   const otherReleases = artistReleases.filter((item) => item.id !== release.id).slice(0, 8);
   const platformLinks = releasePlatformLinks(release);
+  const tracks = releaseTracks(release);
+  const trackList = tracks.length > 1
+    ? `<div class="music-track-list">
+        <p>Track List</p>
+        ${tracks
+          .map(
+            (track, index) => `
+              <div class="music-track-list-row">
+                <span>${index + 1}</span>
+                <strong>${track.title}</strong>
+              </div>
+            `
+          )
+          .join("")}
+      </div>`
+    : "";
 
   row.innerHTML = `
     <section class="music-release-hero" aria-label="${title} release">
@@ -144,6 +182,7 @@ function trackRow(release, artist, artistReleases = []) {
           <a class="music-capsule music-capsule-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
           <a class="music-capsule music-capsule-download" href="/download?release=${encodeURIComponent(release.id)}">Download</a>
         </div>
+        ${trackList}
         ${
           platformLinks
             ? `<div class="music-platforms">
@@ -295,6 +334,22 @@ function linkHubPage(release, artist) {
   const shareUrl = `${window.location.origin}/listen?release=${encodeURIComponent(release.id)}`;
   const encodedShareUrl = encodeURIComponent(shareUrl);
   const encodedShareText = encodeURIComponent(`Listen to ${release.title || "this song"} by ${artistLabel}`);
+  const tracks = releaseTracks(release);
+  const hubTrackList = tracks.length > 1
+    ? `<div class="link-track-list">
+        <p>${release.releaseType || "Release"} Tracks</p>
+        ${tracks
+          .map(
+            (track, index) => `
+              <div class="link-track-row">
+                <span>${index + 1}</span>
+                <strong>${track.title}</strong>
+              </div>
+            `
+          )
+          .join("")}
+      </div>`
+    : "";
   const socialRows = SOCIAL_LINKS.map(([label, key, icon]) => {
     const href = artist?.socials?.[key];
     if (!href) return "";
@@ -388,6 +443,7 @@ function linkHubPage(release, artist) {
     ${
       pageMode === "listen"
         ? `<div class="service-list">
+            ${hubTrackList}
             ${platformRows || `<p class="empty-state">Streaming links will appear here after they are added.</p>`}
           </div>`
         : ""

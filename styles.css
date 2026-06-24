@@ -2123,6 +2123,71 @@ h3 {
   place-content: center;
 }
 
+.track-manager {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-column: 1 / -1;
+  padding: 18px;
+}
+
+.track-manager-list {
+  display: grid;
+  gap: 12px;
+}
+
+.track-manager-row {
+  align-items: end;
+  background: #fff;
+  border: 1px solid #dfe4ec;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(160px, 1fr) minmax(120px, 0.5fr) minmax(120px, 0.5fr) auto;
+  padding: 14px;
+}
+
+.track-manager-row small {
+  color: var(--muted);
+  font-weight: 800;
+  grid-column: 2 / -1;
+}
+
+.track-number {
+  align-items: center;
+  background: #11141b;
+  border-radius: 999px;
+  color: var(--gold);
+  display: inline-flex;
+  font-weight: 1000;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.track-manager-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.track-manager-actions button {
+  background: #11141b;
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.track-manager-actions button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
 #songEditorSection .upload-dropzone.has-artwork {
   place-content: start;
 }
@@ -2214,6 +2279,21 @@ h3 {
   #songEditorSection .audio-picker,
   #songEditorSection .artwork-button {
     min-height: 190px;
+  }
+
+  .track-manager-row {
+    align-items: stretch;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .track-manager-row label,
+  .track-manager-actions,
+  .track-manager-row small {
+    grid-column: 1 / -1;
+  }
+
+  .track-manager-actions {
+    flex-wrap: wrap;
   }
 }
 
@@ -3147,6 +3227,54 @@ select:focus {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   margin-top: 30px;
   padding-top: 22px;
+}
+
+.music-track-list {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  gap: 8px;
+  margin-top: 28px;
+  padding-top: 22px;
+}
+
+.link-track-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.music-track-list > p,
+.link-track-list > p {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.music-track-list-row,
+.link-track-row {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #fff;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  padding: 10px 12px;
+}
+
+.music-track-list-row span,
+.link-track-row span {
+  color: var(--gold);
+  font-weight: 1000;
+}
+
+.music-track-list-row strong,
+.link-track-row strong {
+  overflow-wrap: anywhere;
 }
 
 .music-platforms > p {
@@ -4957,6 +5085,10 @@ select:focus {
   .music-platform-link {
     min-width: 0;
     padding: 8px 10px;
+  }
+
+  .music-platforms {
+    display: none;
   }
 
   .music-more-by {

@@ -686,6 +686,20 @@ async function normalizeUploads(store) {
 
   for (const release of normalized.releases) {
     release.cover = await saveDataUrl(release.cover, "images", `${release.title || "release"}-cover.jpg`);
+    if (Array.isArray(release.tracks)) {
+      release.tracks = await Promise.all(
+        release.tracks.map(async (track, index) => {
+          const nextTrack = { ...track, order: Number(track.order || index + 1) };
+          nextTrack.audioUrl = await saveDataUrl(
+            nextTrack.audioData || nextTrack.audioUrl,
+            "audio",
+            nextTrack.audioName || `${release.title || "track"}-${index + 1}.mp3`
+          );
+          nextTrack.audioData = "";
+          return nextTrack;
+        })
+      );
+    }
     release.audioUrl = await saveDataUrl(
       release.audioData || release.audioUrl,
       "audio",

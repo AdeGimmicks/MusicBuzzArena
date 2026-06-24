@@ -3,6 +3,10 @@ const releaseForm = document.querySelector("#releaseForm");
 const videoForm = document.querySelector("#videoForm");
 const socialFields = document.querySelector("#socialFields");
 const streamingFields = document.querySelector("#streamingFields");
+const trackManager = document.querySelector("#trackManager");
+const trackManagerHelp = document.querySelector("#trackManagerHelp");
+const trackManagerList = document.querySelector("#trackManagerList");
+const audioUploadHelp = document.querySelector("#audioUploadHelp");
 const artistMessage = document.querySelector("#artistMessage");
 const releaseMessage = document.querySelector("#releaseMessage");
 const videoMessage = document.querySelector("#videoMessage");
@@ -72,8 +76,14 @@ let currentStore = window.MBA.defaults();
 let activeArtistId = localStorage.getItem("mba-active-artist-id") || "";
 let uploadWizardStep = 1;
 let uploadWizardReady = false;
+let uploadTracks = [];
 const DEFAULT_PREVIEW_START = 0;
 const DEFAULT_PREVIEW_END = 60;
+const RELEASE_TRACK_LIMITS = {
+  Single: { min: 1, max: 1 },
+  EP: { min: 2, max: 6 },
+  Album: { min: 7, max: 17 },
+};
 const COUNTRY_CODES = [
   "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ", "BS", "BH", "BD", "BB", "BY", "BE", "BZ", "BJ", "BM", "BT", "BO", "BQ", "BA", "BW", "BV", "BR", "IO", "BN", "BG", "BF", "BI", "CV", "KH", "CM", "CA", "KY", "CF", "TD", "CL", "CN", "CX", "CC", "CO", "KM", "CG", "CD", "CK", "CR", "CI", "HR", "CU", "CW", "CY", "CZ", "DK", "DJ", "DM", "DO", "EC", "EG", "SV", "GQ", "ER", "EE", "SZ", "ET", "FK", "FO", "FJ", "FI", "FR", "GF", "PF", "TF", "GA", "GM", "GE", "DE", "GH", "GI", "GR", "GL", "GD", "GP", "GU", "GT", "GG", "GN", "GW", "GY", "HT", "HM", "VA", "HN", "HK", "HU", "IS", "IN", "ID", "IR", "IQ", "IE", "IM", "IL", "IT", "JM", "JP", "JE", "JO", "KZ", "KE", "KI", "KP", "KR", "KW", "KG", "LA", "LV", "LB", "LS", "LR", "LY", "LI", "LT", "LU", "MO", "MG", "MW", "MY", "MV", "ML", "MT", "MH", "MQ", "MR", "MU", "YT", "MX", "FM", "MD", "MC", "MN", "ME", "MS", "MA", "MZ", "MM", "NA", "NR", "NP", "NL", "NC", "NZ", "NI", "NE", "NG", "NU", "NF", "MK", "MP", "NO", "OM", "PK", "PW", "PS", "PA", "PG", "PY", "PE", "PH", "PN", "PL", "PT", "PR", "QA", "RE", "RO", "RU", "RW", "BL", "SH", "KN", "LC", "MF", "PM", "VC", "WS", "SM", "ST", "SA", "SN", "RS", "SC", "SL", "SG", "SX", "SK", "SI", "SB", "SO", "ZA", "GS", "SS", "ES", "LK", "SD", "SR", "SJ", "SE", "CH", "SY", "TW", "TJ", "TZ", "TH", "TL", "TG", "TK", "TO", "TT", "TN", "TR", "TM", "TC", "TV", "UG", "UA", "AE", "GB", "US", "UM", "UY", "UZ", "VU", "VE", "VN", "VG", "VI", "WF", "EH", "YE", "ZM", "ZW",
 ];
@@ -190,6 +200,162 @@ function fileToDataUrl(file) {
   });
 }
 
+function releaseTypeValue() {
+  const value = releaseForm?.releaseType?.value || "Single";
+  return value === "Album" || value === "EP" ? value : "Single";
+}
+
+function isMultiTrackRelease(type = releaseTypeValue()) {
+  return type === "Album" || type === "EP";
+}
+
+function trackLimits(type = releaseTypeValue()) {
+  return RELEASE_TRACK_LIMITS[type] || RELEASE_TRACK_LIMITS.Single;
+}
+
+function titleFromFileName(fileName = "") {
+  return String(fileName || "Untitled track")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "Untitled track";
+}
+
+function normalizeTrack(track, index = 0) {
+  const previewStart = Number.isFinite(Number(track.previewStart)) ? Number(track.previewStart) : DEFAULT_PREVIEW_START;
+  const previewEnd = Number.isFinite(Number(track.previewEnd)) && Number(track.previewEnd) > previewStart
+    ? Number(track.previewEnd)
+    : DEFAULT_PREVIEW_END;
+  return {
+    id: track.id || window.MBA.uid("track"),
+    title: track.title || titleFromFileName(track.audioName || track.name) || `Track ${index + 1}`,
+    audioName: track.audioName || track.name || "",
+    audioUrl: track.audioUrl || "",
+    audioData: track.audioData || "",
+    order: Number(track.order || index + 1),
+    previewStart,
+    previewEnd,
+    previewDuration: previewEnd - previewStart,
+    file: track.file || null,
+  };
+}
+
+function syncTrackInputsToState() {
+  if (!trackManagerList) return;
+  trackManagerList.querySelectorAll("[data-track-id]").forEach((row, index) => {
+    const track = uploadTracks.find((item) => item.id === row.dataset.trackId);
+    if (!track) return;
+    track.title = row.querySelector("[data-track-title]")?.value.trim() || `Track ${index + 1}`;
+    track.previewStart = parsePreviewTime(row.querySelector("[data-track-preview-start]")?.value, DEFAULT_PREVIEW_START);
+    track.previewEnd = parsePreviewTime(row.querySelector("[data-track-preview-end]")?.value, DEFAULT_PREVIEW_END);
+  });
+}
+
+function renderTrackManager() {
+  if (!trackManager || !trackManagerList) return;
+  const type = releaseTypeValue();
+  const multiTrack = isMultiTrackRelease(type);
+  const limits = trackLimits(type);
+  releaseForm.audio.multiple = multiTrack;
+  trackManager.hidden = !multiTrack;
+  if (audioUploadHelp) {
+    audioUploadHelp.textContent = multiTrack
+      ? `${type} uploads: select ${limits.min}-${limits.max} MP3/WAV files at once.`
+      : "Supported files: MP3, WAV.";
+  }
+  if (trackManagerHelp) {
+    trackManagerHelp.textContent = multiTrack
+      ? `${type} requires ${limits.min}-${limits.max} tracks. Rename, reorder, remove, and set preview times before publishing.`
+      : "Upload audio files to build the track list.";
+  }
+  trackManagerList.replaceChildren();
+  if (!multiTrack) return;
+  if (!uploadTracks.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "No tracks selected yet.";
+    trackManagerList.append(empty);
+    return;
+  }
+  uploadTracks.forEach((track, index) => {
+    const row = document.createElement("article");
+    row.className = "track-manager-row";
+    row.dataset.trackId = track.id;
+    row.innerHTML = `
+      <span class="track-number">${index + 1}</span>
+      <label>
+        Track title
+        <input data-track-title type="text" value="${escapeAttr(track.title || `Track ${index + 1}`)}">
+      </label>
+      <label>
+        Preview start
+        <input data-track-preview-start type="text" inputmode="numeric" pattern="[0-9]+(:[0-5][0-9])?" value="${formatPreviewTime(track.previewStart)}">
+      </label>
+      <label>
+        Preview stop
+        <input data-track-preview-end type="text" inputmode="numeric" pattern="[0-9]+(:[0-5][0-9])?" value="${formatPreviewTime(track.previewEnd)}">
+      </label>
+      <div class="track-manager-actions">
+        <button type="button" data-track-move="up" ${index === 0 ? "disabled" : ""}>Up</button>
+        <button type="button" data-track-move="down" ${index === uploadTracks.length - 1 ? "disabled" : ""}>Down</button>
+        <button type="button" data-track-remove>Remove</button>
+      </div>
+      <small>${escapeText(track.audioName || track.audioUrl || "Audio saved")}</small>
+    `;
+    trackManagerList.append(row);
+  });
+}
+
+function applyReleaseTypeMode() {
+  const type = releaseTypeValue();
+  if (!isMultiTrackRelease(type)) uploadTracks = [];
+  renderTrackManager();
+}
+
+function validateTrackList(type = releaseTypeValue()) {
+  if (!isMultiTrackRelease(type)) return true;
+  syncTrackInputsToState();
+  const limits = trackLimits(type);
+  const count = uploadTracks.length;
+  if (count < limits.min || count > limits.max) {
+    message(releaseMessage, `${type} uploads must include ${limits.min}-${limits.max} tracks. You currently have ${count}.`, "error");
+    return false;
+  }
+  const badTrack = uploadTracks.find((track, index) => {
+    const start = parsePreviewTime(track.previewStart, DEFAULT_PREVIEW_START);
+    const end = parsePreviewTime(track.previewEnd, DEFAULT_PREVIEW_END);
+    return !track.title || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || index >= limits.max;
+  });
+  if (badTrack) {
+    message(releaseMessage, "Each track needs a title and valid preview times.", "error");
+    return false;
+  }
+  return true;
+}
+
+async function serializedTracks() {
+  syncTrackInputsToState();
+  const tracks = [];
+  for (let index = 0; index < uploadTracks.length; index += 1) {
+    const track = normalizeTrack(uploadTracks[index], index);
+    const audioData = track.file ? await fileToDataUrl(track.file) : track.audioData;
+    const previewStart = parsePreviewTime(track.previewStart, DEFAULT_PREVIEW_START);
+    const previewEnd = parsePreviewTime(track.previewEnd, DEFAULT_PREVIEW_END);
+    tracks.push({
+      id: track.id,
+      title: track.title || `Track ${index + 1}`,
+      audioName: track.audioName,
+      audioUrl: track.audioUrl,
+      audioData,
+      order: index + 1,
+      previewStart,
+      previewEnd,
+      previewDuration: previewEnd - previewStart,
+    });
+  }
+  return tracks;
+}
+
 function youtubeIdFromUrl(value) {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -300,9 +466,10 @@ function visibleStepFields(step) {
 
 function validateUploadWizardStep(step) {
   if (step === 1 && !document.querySelector("[data-start-release].is-selected")) {
-    message(releaseMessage, "Choose Single Song or Album to continue.", "error");
+    message(releaseMessage, "Choose Single Song, EP, or Album to continue.", "error");
     return false;
   }
+  if (step === 2 && !validateTrackList()) return false;
   const invalid = visibleStepFields(step).find((field) => !field.disabled && !field.checkValidity());
   if (!invalid) return true;
   invalid.reportValidity();
@@ -312,6 +479,7 @@ function validateUploadWizardStep(step) {
 
 async function autoSaveReleaseDraft() {
   const artist = primaryArtist();
+  const type = releaseTypeValue();
   const editingId = releaseForm.editingId.value;
   const existingIndex = currentStore.releases.findIndex((item) => item.id === editingId);
   const existing = existingIndex >= 0 ? currentStore.releases[existingIndex] : null;
@@ -325,11 +493,11 @@ async function autoSaveReleaseDraft() {
     createdAt: new Date().toISOString(),
   };
   const cover = await fileToDataUrl(releaseForm.cover.files[0]);
-  const audioData = await fileToDataUrl(releaseForm.audio.files[0]);
+  const audioData = isMultiTrackRelease(type) ? "" : await fileToDataUrl(releaseForm.audio.files[0]);
   const textValues = {
     title: releaseForm.title.value.trim(),
     artistName: releaseForm.artistName.value.trim(),
-    releaseType: releaseForm.releaseType.value,
+    releaseType: type,
     genre: releaseForm.genre.value,
     secondaryGenre: releaseForm.secondaryGenre.value,
     songBio: releaseForm.songBio.value.trim(),
@@ -355,7 +523,18 @@ async function autoSaveReleaseDraft() {
   release.location = [release.cityState, release.country].filter(Boolean).join(", ");
   release.streaming = formLinks(releaseForm, STREAMING_LINKS);
   if (cover) release.cover = cover;
-  if (audioData) {
+  if (isMultiTrackRelease(type)) {
+    release.tracks = await serializedTracks();
+    const firstTrack = release.tracks[0];
+    if (firstTrack) {
+      release.audioData = firstTrack.audioData || "";
+      release.audioUrl = firstTrack.audioUrl || release.audioUrl || "";
+      release.audioName = firstTrack.audioName || `${firstTrack.title || release.title}.mp3`;
+    }
+  } else {
+    release.tracks = [];
+  }
+  if (!isMultiTrackRelease(type) && audioData) {
     release.audioData = audioData;
     release.audioUrl = audioData;
     release.audioName = releaseForm.audio.files[0].name;
@@ -365,14 +544,17 @@ async function autoSaveReleaseDraft() {
   else currentStore.releases.unshift(release);
   currentStore = await window.MBA.saveStore(currentStore, {
     clears: [
-      { collection: "releases", id: release.id, fields: ["streaming", "mood"], value: null },
+      { collection: "releases", id: release.id, fields: ["streaming", "mood", "tracks"], value: null },
       { collection: "releases", id: release.id, fields: ["streaming"], value: release.streaming },
       { collection: "releases", id: release.id, fields: ["mood"], value: release.mood || [] },
+      { collection: "releases", id: release.id, fields: ["tracks"], value: release.tracks || [] },
     ],
   });
   releaseForm.editingId.value = release.id;
   releaseForm.cover.required = !release.cover;
-  releaseForm.audio.required = !(release.audioUrl || release.audioData);
+  releaseForm.audio.required = isMultiTrackRelease(type)
+    ? !(release.tracks || []).length
+    : !(release.audioUrl || release.audioData);
   renderDashboardReleases();
   message(releaseMessage, "Draft auto-saved.", "pending");
 }
@@ -534,12 +716,13 @@ function showReleaseTypeChoice() {
 }
 
 function showReleaseForm(releaseType = "Single") {
-  const selectedType = releaseType === "Album" ? "Album" : "Single";
+  const selectedType = releaseType === "Album" || releaseType === "EP" ? releaseType : "Single";
   songUploadSection?.classList.remove("is-hidden");
   setSelectValue(releaseForm.releaseType, selectedType);
   releaseTypeOptions.forEach((button) => {
     button.classList.toggle("is-selected", button.dataset.startRelease === selectedType);
   });
+  applyReleaseTypeMode();
   updateHomePreview();
   if (uploadWizardReady) setUploadWizardStep(releaseForm.editingId.value ? 3 : 2);
 }
@@ -547,6 +730,7 @@ function showReleaseForm(releaseType = "Single") {
 function clearReleaseForm() {
   releaseForm.reset();
   releaseForm.editingId.value = "";
+  uploadTracks = [];
   releaseTypeOptions.forEach((button) => button.classList.remove("is-selected"));
   populateCountrySelect();
   releaseForm.price.value = "0.99";
@@ -556,6 +740,7 @@ function clearReleaseForm() {
   releaseForm.audio.required = true;
   songBioCount.textContent = "0";
   renderLinkInputs(streamingFields, STREAMING_LINKS);
+  applyReleaseTypeMode();
   updateHomePreview();
   updateUploadStatus();
   showReleaseTypeChoice();
@@ -705,7 +890,7 @@ function populateCountrySelect(selectedValue = "") {
 
 function fillReleaseForm(release) {
   releaseForm.editingId.value = release.id;
-  const releaseType = release.releaseType === "Album" ? "Album" : "Single";
+  const releaseType = release.releaseType === "Album" || release.releaseType === "EP" ? release.releaseType : "Single";
   showReleaseForm(releaseType);
   releaseForm.title.value = release.title || "";
   releaseForm.artistName.value = release.artistName || primaryArtist().name || "";
@@ -732,6 +917,18 @@ function fillReleaseForm(release) {
   releaseForm.cityState.value = release.cityState || "";
   releaseForm.cover.required = false;
   releaseForm.audio.required = false;
+  uploadTracks = Array.isArray(release.tracks) && release.tracks.length
+    ? release.tracks.map((track, index) => normalizeTrack(track, index))
+    : release.audioUrl
+      ? [normalizeTrack({
+          title: release.title || "Track 1",
+          audioName: release.audioName || "",
+          audioUrl: release.audioUrl || "",
+          previewStart: release.previewStart ?? DEFAULT_PREVIEW_START,
+          previewEnd: release.previewEnd ?? DEFAULT_PREVIEW_END,
+        }, 0)]
+      : [];
+  renderTrackManager();
   songBioCount.textContent = String(releaseForm.songBio.value.length);
   renderLinkInputs(streamingFields, STREAMING_LINKS, release.streaming || {});
   updateHomePreview(release.cover || "");
@@ -1253,6 +1450,54 @@ releaseForm.cover.addEventListener("change", async () => {
   updateHomePreview(cover);
 });
 
+releaseForm.releaseType.addEventListener("change", () => {
+  releaseTypeOptions.forEach((option) => {
+    option.classList.toggle("is-selected", option.dataset.startRelease === releaseTypeValue());
+  });
+  applyReleaseTypeMode();
+});
+
+releaseForm.audio.addEventListener("change", () => {
+  const type = releaseTypeValue();
+  if (!isMultiTrackRelease(type)) {
+    uploadTracks = [];
+    return;
+  }
+  uploadTracks = [...releaseForm.audio.files].map((file, index) =>
+    normalizeTrack({
+      title: titleFromFileName(file.name),
+      audioName: file.name,
+      file,
+      previewStart: DEFAULT_PREVIEW_START,
+      previewEnd: DEFAULT_PREVIEW_END,
+    }, index)
+  );
+  renderTrackManager();
+});
+
+trackManagerList?.addEventListener("input", syncTrackInputsToState);
+trackManagerList?.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-track-id]");
+  if (!row) return;
+  syncTrackInputsToState();
+  const index = uploadTracks.findIndex((track) => track.id === row.dataset.trackId);
+  if (index < 0) return;
+  if (event.target.closest("[data-track-remove]")) {
+    uploadTracks.splice(index, 1);
+    renderTrackManager();
+    return;
+  }
+  const move = event.target.closest("[data-track-move]")?.dataset.trackMove;
+  if (move === "up" && index > 0) {
+    [uploadTracks[index - 1], uploadTracks[index]] = [uploadTracks[index], uploadTracks[index - 1]];
+    renderTrackManager();
+  }
+  if (move === "down" && index < uploadTracks.length - 1) {
+    [uploadTracks[index], uploadTracks[index + 1]] = [uploadTracks[index + 1], uploadTracks[index]];
+    renderTrackManager();
+  }
+});
+
 clearReleaseButton?.addEventListener("click", () => {
   clearReleaseForm();
   message(releaseMessage, "Choose a release type to start a new upload.", "pending");
@@ -1263,7 +1508,7 @@ releaseTypeOptions.forEach((button) => {
     const releaseType = button.dataset.startRelease || "Single";
     setSelectValue(releaseForm.releaseType, releaseType);
     releaseTypeOptions.forEach((option) => option.classList.toggle("is-selected", option === button));
-    message(releaseMessage, `${releaseType === "Album" ? "Album" : "Single song"} selected. Continue with files.`, "pending");
+    message(releaseMessage, `${releaseType === "Single" ? "Single song" : releaseType} selected. Continue with files.`, "pending");
     setUploadWizardStep(2);
   });
 });
@@ -1310,11 +1555,13 @@ releaseForm.addEventListener("submit", async (event) => {
 
   try {
     const artist = primaryArtist();
+    const type = releaseTypeValue();
+    if (!validateTrackList(type)) return;
     const editingId = releaseForm.editingId.value;
     const existingIndex = currentStore.releases.findIndex((item) => item.id === editingId);
     const existing = existingIndex >= 0 ? currentStore.releases[existingIndex] : null;
     const cover = await fileToDataUrl(releaseForm.cover.files[0]);
-    const audioData = await fileToDataUrl(releaseForm.audio.files[0]);
+    const audioData = isMultiTrackRelease(type) ? "" : await fileToDataUrl(releaseForm.audio.files[0]);
 
     const release = existing || {
       id: window.MBA.uid("release"),
@@ -1328,7 +1575,7 @@ releaseForm.addEventListener("submit", async (event) => {
     release.status = "approved";
     release.title = releaseForm.title.value.trim();
     release.artistName = releaseForm.artistName.value.trim() || artist.name;
-    release.releaseType = releaseForm.releaseType.value;
+    release.releaseType = type;
     release.genre = releaseForm.genre.value;
     release.secondaryGenre = releaseForm.secondaryGenre.value;
     release.mood = [releaseForm.moodPrimary.value, releaseForm.moodSecondary.value].filter(Boolean);
@@ -1355,11 +1602,22 @@ releaseForm.addEventListener("submit", async (event) => {
     release.donationLink = "";
     release.streaming = formLinks(releaseForm, STREAMING_LINKS);
     if (cover) release.cover = cover;
-    if (audioData) {
-  release.audioData = audioData;
-  release.audioUrl = audioData;
-  release.audioName = releaseForm.audio.files[0].name;
-}
+    if (isMultiTrackRelease(type)) {
+      release.tracks = await serializedTracks();
+      const firstTrack = release.tracks[0];
+      if (firstTrack) {
+        release.audioData = firstTrack.audioData || "";
+        release.audioUrl = firstTrack.audioUrl || release.audioUrl || "";
+        release.audioName = firstTrack.audioName || `${firstTrack.title || release.title}.mp3`;
+      }
+    } else {
+      release.tracks = [];
+    }
+    if (!isMultiTrackRelease(type) && audioData) {
+      release.audioData = audioData;
+      release.audioUrl = audioData;
+      release.audioName = releaseForm.audio.files[0].name;
+    }
     release.updatedAt = new Date().toISOString();
     if (existingIndex >= 0) {
       currentStore.releases[existingIndex] = release;
@@ -1371,6 +1629,7 @@ releaseForm.addEventListener("submit", async (event) => {
       clears: [
         { collection: "releases", id: release.id, fields: ["streaming"], value: release.streaming },
         { collection: "releases", id: release.id, fields: ["mood"], value: release.mood || [] },
+        { collection: "releases", id: release.id, fields: ["tracks"], value: release.tracks || [] },
       ],
     });
     clearReleaseForm();

@@ -203,10 +203,15 @@
                 <strong>Single Song</strong>
                 <small>One song release</small>
               </button>
+              <button class="release-type-option" type="button" data-start-release="EP" role="listitem">
+                <span class="release-type-icon">♫</span>
+                <strong>EP</strong>
+                <small>Two to six tracks</small>
+              </button>
               <button class="release-type-option" type="button" data-start-release="Album" role="listitem">
                 <span class="release-type-icon">▣</span>
                 <strong>Album</strong>
-                <small>Two songs or more</small>
+                <small>Seven to seventeen tracks</small>
               </button>
             </div>
           </section>
@@ -228,7 +233,7 @@
                       </div>
                       <label class="audio-picker upload-file-box">
                         <span>Upload song file</span>
-                        <small>Supported files: MP3, WAV.</small>
+                        <small id="audioUploadHelp">Supported files: MP3, WAV.</small>
                         <input name="audio" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" required />
                       </label>
                       <label class="artwork-button upload-dropzone">
@@ -236,6 +241,14 @@
                         <span>Upload artwork</span>
                         <input name="cover" type="file" accept="image/*" required />
                       </label>
+                      <div class="track-manager" id="trackManager" hidden>
+                        <div class="artist-card-heading">
+                          <p class="eyebrow">Track management</p>
+                          <h3>Tracks</h3>
+                        </div>
+                        <p class="field-note" id="trackManagerHelp">Upload audio files to build the track list.</p>
+                        <div class="track-manager-list" id="trackManagerList"></div>
+                      </div>
                     </section>
 
                     <section class="creator-fields">
@@ -259,6 +272,7 @@
                         Release type
                         <select name="releaseType">
                           <option>Single</option>
+                          <option>EP</option>
                           <option>Album</option>
                         </select>
                       </label>
