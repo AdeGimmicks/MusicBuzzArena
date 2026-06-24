@@ -431,8 +431,8 @@ function setUploadWizardStep(step) {
   });
   if (uploadWizardBack) uploadWizardBack.hidden = uploadWizardStep === 1;
   if (uploadWizardNext) {
-    uploadWizardNext.hidden = uploadWizardStep === 6;
-    uploadWizardNext.textContent = uploadWizardStep === 5 ? "Review" : "Next";
+    uploadWizardNext.hidden = false;
+    uploadWizardNext.textContent = uploadWizardStep === 6 ? "Publish" : uploadWizardStep === 5 ? "Review" : "Next";
   }
 
   if (uploadWizardPublish) {
@@ -615,6 +615,10 @@ async function autoSaveCurrentWizardStep() {
 }
 
 async function advanceUploadWizard() {
+  if (uploadWizardStep === 6) {
+    publishReleaseFromWizard();
+    return;
+  }
   if (!validateUploadWizardStep(uploadWizardStep)) return;
   const currentStep = uploadWizardStep;
   const nextLabel = uploadWizardNext.textContent;
@@ -1526,7 +1530,7 @@ uploadWizardProgress?.addEventListener("keydown", (event) => {
   event.preventDefault();
   goToUploadWizardStep(item.dataset.wizardProgress);
 });
-uploadWizardPublish?.addEventListener("click", () => {
+function publishReleaseFromWizard() {
   for (const step of [2, 3]) {
     if (!validateUploadWizardStep(step)) {
       setUploadWizardStep(step);
@@ -1534,7 +1538,9 @@ uploadWizardPublish?.addEventListener("click", () => {
     }
   }
   releaseForm.requestSubmit();
-});
+}
+
+uploadWizardPublish?.addEventListener("click", publishReleaseFromWizard);
 
 function updateVideoPreview() {
   const artistName = primaryArtist().name || "artist";
