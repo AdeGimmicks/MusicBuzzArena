@@ -29,6 +29,7 @@ const videoPreviewMainFrame = document.querySelector("#videoPreviewMainFrame");
 const videoPreviewShortFrame = document.querySelector("#videoPreviewShortFrame");
 const videoPreviewMainTitle = document.querySelector("#videoPreviewMainTitle");
 const artistAccountSelect = document.querySelector("#artistAccountSelect");
+const artistConsoleTopbar = document.querySelector("#artistConsoleTopbar");
 const createArtistProfile = document.querySelector("#createArtistProfile");
 const artistAccountMessage = document.querySelector("#artistAccountMessage");
 const uploadStatusTitle = document.querySelector("#uploadStatusTitle");
@@ -116,6 +117,7 @@ function setText(selector, value) {
 }
 
 function showDashboardSection(sectionId) {
+  artistConsoleTopbar?.classList.toggle("is-hidden", sectionId === "songEditorSection");
   dashboardSections.forEach((section) => {
     section.classList.toggle("is-active", section.id === sectionId);
   });
@@ -248,8 +250,8 @@ function updateWizardReview() {
 }
 
 function setUploadWizardStep(step) {
-  uploadWizardStep = Math.min(7, Math.max(1, Number(step) || 1));
-  const showReleaseShell = [2, 3, 4, 7].includes(uploadWizardStep);
+  uploadWizardStep = Math.min(6, Math.max(1, Number(step) || 1));
+  const showReleaseShell = [2, 3, 4, 6].includes(uploadWizardStep);
   songUploadSection?.classList.toggle("is-wizard-hidden", !showReleaseShell);
   wizardPanels().forEach((panel) => {
     panel.classList.toggle("is-active", Number(panel.dataset.uploadStep) === uploadWizardStep);
@@ -263,26 +265,24 @@ function setUploadWizardStep(step) {
   });
   if (uploadWizardBack) uploadWizardBack.hidden = uploadWizardStep === 1;
   if (uploadWizardNext) {
-  uploadWizardNext.hidden = uploadWizardStep === 7;
-  uploadWizardNext.textContent =
-    uploadWizardStep === 6 ? "Review" : "Next";
-}
+    uploadWizardNext.hidden = uploadWizardStep === 6;
+    uploadWizardNext.textContent = uploadWizardStep === 5 ? "Review" : "Next";
+  }
 
-if (uploadWizardPublish) {
-  uploadWizardPublish.style.display =
-    uploadWizardStep === 7 ? "inline-flex" : "none";
-}
-  if (releaseFlowEyebrow) releaseFlowEyebrow.textContent = `Step ${uploadWizardStep} of 7`;
-  const titles = ["Release Type", "Upload Audio & Artwork", "Song Information", "Streaming Links", "Artist Profile", "Video (Optional)", "Review & Publish"];
+  if (uploadWizardPublish) {
+    uploadWizardPublish.style.display = uploadWizardStep === 6 ? "inline-flex" : "none";
+  }
+  if (releaseFlowEyebrow) releaseFlowEyebrow.textContent = `Step ${uploadWizardStep} of 6`;
+  const titles = ["Release Type", "Upload Audio & Artwork", "Song Information", "Streaming Links", "Video (Optional)", "Review & Publish"];
   const flowTitle = document.querySelector("#releaseFlowTitle");
   if (flowTitle) flowTitle.textContent = titles[uploadWizardStep - 1];
-  if (uploadWizardStep === 7) updateWizardReview();
+  if (uploadWizardStep === 6) updateWizardReview();
   songEditorSection?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function setupUploadWizard() {
   if (!songEditorSection || uploadWizardReady) return;
-  [profileSection, videosSection].forEach((section) => {
+  [videosSection].forEach((section) => {
     if (!section) return;
     section.classList.remove("artist-dashboard-section", "is-active");
     uploadWizardActions?.before(section);
@@ -308,18 +308,6 @@ function validateUploadWizardStep(step) {
   invalid.reportValidity();
   message(releaseMessage, "Complete the required fields in this step before continuing.", "error");
   return false;
-}
-
-function mergeNonEmptyLinks(existing = {}, next = {}) {
-  const merged = {};
-
-  Object.entries(next).forEach(([key, value]) => {
-    if (value && value.trim()) {
-      merged[key] = value.trim();
-    }
-  });
-
-  return merged;
 }
 
 async function autoSaveReleaseDraft() {
@@ -354,8 +342,7 @@ async function autoSaveReleaseDraft() {
     Object.entries(textValues).forEach(([key, value]) => {
       release[key] = value || "";
     });
-  const moods = [releaseForm.moodPrimary.value, releaseForm.moodSecondary.value].filter(Boolean);
-  if (moods.length) release.mood = moods;
+  release.mood = [releaseForm.moodPrimary.value, releaseForm.moodSecondary.value].filter(Boolean);
   const price = Number(releaseForm.price.value);
   if (Number.isFinite(price)) release.price = price;
   const previewStart = parsePreviewTime(releaseForm.previewStart.value, DEFAULT_PREVIEW_START);
@@ -366,7 +353,7 @@ async function autoSaveReleaseDraft() {
     release.previewDuration = previewEnd - previewStart;
   }
   release.location = [release.cityState, release.country].filter(Boolean).join(", ");
-  release.streaming = mergeNonEmptyLinks(release.streaming, formLinks(releaseForm, STREAMING_LINKS));
+  release.streaming = formLinks(releaseForm, STREAMING_LINKS);
   if (cover) release.cover = cover;
   if (audioData) {
     release.audioData = audioData;
@@ -376,7 +363,13 @@ async function autoSaveReleaseDraft() {
   release.updatedAt = new Date().toISOString();
   if (existingIndex >= 0) currentStore.releases[existingIndex] = release;
   else currentStore.releases.unshift(release);
-  currentStore = await window.MBA.saveStore(currentStore);
+  currentStore = await window.MBA.saveStore(currentStore, {
+    clears: [
+      { collection: "releases", id: release.id, fields: ["streaming", "mood"], value: null },
+      { collection: "releases", id: release.id, fields: ["streaming"], value: release.streaming },
+      { collection: "releases", id: release.id, fields: ["mood"], value: release.mood || [] },
+    ],
+  });
   releaseForm.editingId.value = release.id;
   releaseForm.cover.required = !release.cover;
   releaseForm.audio.required = !(release.audioUrl || release.audioData);
@@ -403,7 +396,9 @@ async function autoSaveArtistProfile() {
   if (photo) artist.photo = photo;
   if (banner) artist.banner = banner;
   artist.status = "approved";
-  currentStore = await window.MBA.saveStore(currentStore);
+  currentStore = await window.MBA.saveStore(currentStore, {
+    clears: [{ collection: "artists", id: artist.id, fields: ["socials"], value: artist.socials }],
+  });
   message(artistMessage, "Artist profile auto-saved.", "pending");
 }
 
@@ -423,8 +418,18 @@ async function autoSaveVideoLinks() {
 });
   currentStore.site = currentStore.site || {};
   currentStore.site.videos = { ...artist.videos };
-  currentStore = await window.MBA.saveStore(currentStore);
+  currentStore = await window.MBA.saveStore(currentStore, {
+    clears: [
+      { collection: "artists", id: artist.id, fields: ["videos"], value: artist.videos },
+      { collection: "site", fields: ["videos"], value: currentStore.site.videos },
+    ],
+  });
   message(videoMessage, "Video links auto-saved.", "pending");
+}
+
+async function autoSaveCurrentWizardStep() {
+  if (uploadWizardStep >= 2 && uploadWizardStep <= 4) await autoSaveReleaseDraft();
+  if (uploadWizardStep === 5) await autoSaveVideoLinks();
 }
 
 async function advanceUploadWizard() {
@@ -432,12 +437,10 @@ async function advanceUploadWizard() {
   const currentStep = uploadWizardStep;
   const nextLabel = uploadWizardNext.textContent;
   uploadWizardNext.disabled = true;
-  uploadWizardNext.textContent = currentStep === 6 ? "Preparing..." : "Saving...";
-  message(releaseMessage, currentStep >= 2 && currentStep <= 6 ? "Saving this step..." : "Moving to next step...", "pending");
+  uploadWizardNext.textContent = currentStep === 5 ? "Preparing..." : "Saving...";
+  message(releaseMessage, currentStep >= 2 && currentStep <= 5 ? "Saving this step..." : "Moving to next step...", "pending");
   try {
-    if (currentStep >= 2 && currentStep <= 4) await autoSaveReleaseDraft();
-    if (currentStep === 5) await autoSaveArtistProfile();
-    if (currentStep === 6) await autoSaveVideoLinks();
+    await autoSaveCurrentWizardStep();
     setUploadWizardStep(currentStep + 1);
   } catch (error) {
     message(releaseMessage, error.message || "This step could not be saved.", "error");
@@ -445,6 +448,18 @@ async function advanceUploadWizard() {
     uploadWizardNext.disabled = false;
     if (uploadWizardStep === currentStep) uploadWizardNext.textContent = nextLabel;
   }
+}
+
+async function goToUploadWizardStep(targetStep) {
+  const nextStep = Math.min(6, Math.max(1, Number(targetStep) || 1));
+  if (nextStep === uploadWizardStep) return;
+  const editing = Boolean(releaseForm.editingId.value);
+  if (!editing && nextStep > uploadWizardStep) return;
+  if (uploadWizardStep >= 2 && uploadWizardStep <= 5) {
+    if (!validateUploadWizardStep(uploadWizardStep)) return;
+    await autoSaveCurrentWizardStep();
+  }
+  setUploadWizardStep(nextStep);
 }
 
 function blankArtist() {
@@ -1210,7 +1225,9 @@ artistForm.addEventListener("submit", async (event) => {
       artist.featuredReleaseId = "";
     }
 
-    currentStore = await window.MBA.saveStore(currentStore);
+    currentStore = await window.MBA.saveStore(currentStore, {
+      clears: [{ collection: "artists", id: artist.id, fields: ["socials"], value: artist.socials }],
+    });
     renderArtistAccountPicker();
     fillArtistForm();
     renderDashboardReleases();
@@ -1246,12 +1263,24 @@ releaseTypeOptions.forEach((button) => {
     const releaseType = button.dataset.startRelease || "Single";
     setSelectValue(releaseForm.releaseType, releaseType);
     releaseTypeOptions.forEach((option) => option.classList.toggle("is-selected", option === button));
-    message(releaseMessage, `${releaseType === "Album" ? "Album" : "Single song"} selected. Choose Next to continue.`, "pending");
+    message(releaseMessage, `${releaseType === "Album" ? "Album" : "Single song"} selected. Continue with files.`, "pending");
+    setUploadWizardStep(2);
   });
 });
 
 uploadWizardBack?.addEventListener("click", () => setUploadWizardStep(uploadWizardStep - 1));
 uploadWizardNext?.addEventListener("click", advanceUploadWizard);
+uploadWizardProgress?.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-wizard-progress]");
+  if (item) goToUploadWizardStep(item.dataset.wizardProgress);
+});
+uploadWizardProgress?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const item = event.target.closest("[data-wizard-progress]");
+  if (!item) return;
+  event.preventDefault();
+  goToUploadWizardStep(item.dataset.wizardProgress);
+});
 uploadWizardPublish?.addEventListener("click", () => {
   for (const step of [2, 3]) {
     if (!validateUploadWizardStep(step)) {
@@ -1338,7 +1367,12 @@ releaseForm.addEventListener("submit", async (event) => {
       currentStore.releases.unshift(release);
     }
 
-    currentStore = await window.MBA.saveStore(currentStore);
+    currentStore = await window.MBA.saveStore(currentStore, {
+      clears: [
+        { collection: "releases", id: release.id, fields: ["streaming"], value: release.streaming },
+        { collection: "releases", id: release.id, fields: ["mood"], value: release.mood || [] },
+      ],
+    });
     clearReleaseForm();
     fillArtistForm();
     renderDashboardReleases();

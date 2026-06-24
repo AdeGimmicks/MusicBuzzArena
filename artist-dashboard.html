@@ -27,6 +27,7 @@
         </div>
         <nav class="artist-console-nav">          
           <a href="#songEditorSection" data-dashboard-section="songEditorSection">Upload Song</a>
+          <a href="#profileSection" data-dashboard-section="profileSection">Profile</a>
           <a href="#songsSection" data-dashboard-section="songsSection">Songs</a>
           <a href="#downloadsSection" data-dashboard-section="downloadsSection">Workspace</a>
           <a href="#analyticsSection" data-dashboard-section="analyticsSection">Analytics</a>
@@ -42,7 +43,7 @@
       </aside>
 
       <section class="artist-console-main">
-        <section class="artist-console-topbar">
+        <section class="artist-console-topbar" id="artistConsoleTopbar">
           <div>
             <p class="eyebrow">Workspace</p>
             <h2 id="artistWorkspaceTitle">Artist Dashboard</h2>
@@ -182,13 +183,12 @@
 
           <nav class="upload-wizard-progress" id="uploadWizardProgress" aria-label="Upload progress">
             <ol>
-              <li data-wizard-progress="1"><span>1</span><strong>Release Type</strong></li>
-              <li data-wizard-progress="2"><span>2</span><strong>Files</strong></li>
-              <li data-wizard-progress="3"><span>3</span><strong>Song Info</strong></li>
-              <li data-wizard-progress="4"><span>4</span><strong>Streaming</strong></li>
-              <li data-wizard-progress="5"><span>5</span><strong>Profile</strong></li>
-              <li data-wizard-progress="6"><span>6</span><strong>Video</strong></li>
-              <li data-wizard-progress="7"><span>7</span><strong>Review</strong></li>
+              <li data-wizard-progress="1" role="button" tabindex="0"><span>1</span><strong>Release Type</strong></li>
+              <li data-wizard-progress="2" role="button" tabindex="0"><span>2</span><strong>Files</strong></li>
+              <li data-wizard-progress="3" role="button" tabindex="0"><span>3</span><strong>Song Info</strong></li>
+              <li data-wizard-progress="4" role="button" tabindex="0"><span>4</span><strong>Streaming</strong></li>
+              <li data-wizard-progress="5" role="button" tabindex="0"><span>5</span><strong>Video</strong></li>
+              <li data-wizard-progress="6" role="button" tabindex="0"><span>6</span><strong>Review</strong></li>
             </ol>
           </nav>
 
@@ -411,7 +411,7 @@
                   </section>
                     </section>
                   </div>
-                  <div class="upload-form-footer upload-form-group upload-wizard-panel" data-upload-step="7">
+                  <div class="upload-form-footer upload-form-group upload-wizard-panel" data-upload-step="6">
                     <div>
                       <p class="eyebrow">Review</p>
                       <h3>Save song</h3>
@@ -420,7 +420,6 @@
                       <span id="homePreviewArtist">Artist name</span>
                     </div>
                     <div class="file-editor-actions">
-                      <button class="secondary-button" id="deleteEditingSong" type="button">Delete Song</button>
                       <button class="primary-button" id="uploadWizardPublish" type="button">Publish Release</button>
                     </div>
                   </div>
@@ -435,7 +434,7 @@
             </div>
           </section>
 
-        <section class="artist-dashboard-section upload-wizard-panel" id="profileSection" data-upload-step="5" data-section-title="Profile">
+        <section class="artist-dashboard-section" id="profileSection" data-section-title="Profile">
           <div class="artist-section-heading">
             <div>
               <p class="eyebrow">Profile page</p>
@@ -489,13 +488,13 @@
                 </label>
               </div>
               <div class="link-fields compact-link-fields" id="socialFields"></div>
-              <button class="primary-button wizard-embedded-save" id="saveSongNext" type="submit">Save Profile</button>
+              <button class="primary-button" id="saveSongNext" type="submit">Save Profile</button>
               <p class="form-message" id="artistMessage" role="status"></p>
             </form>
           </section>
         </section>
 
-        <section class="artist-dashboard-section upload-wizard-panel" id="videosSection" data-upload-step="6" data-section-title="Videos">
+        <section class="artist-dashboard-section upload-wizard-panel" id="videosSection" data-upload-step="5" data-section-title="Videos">
           <div class="artist-section-heading">
             <div>
               <p class="eyebrow">Video links</p>
