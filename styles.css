@@ -439,7 +439,7 @@ h3 {
 .feature-copy p:not(.eyebrow) {
   color: rgba(255, 255, 255, 0.72);
   display: -webkit-box;
-  font-size: 1rem;
+  font-size: 1.04rem;
   line-height: 1.32;
   margin-bottom: 10px;
   max-width: 680px;
@@ -539,6 +539,18 @@ h3 {
 
 .artist-home-shell .release-cover-frame {
   max-width: min(100%, 206px);
+}
+
+.artist-home-shell .release-body h3 {
+  font-size: 1rem;
+}
+
+.artist-home-shell .release-body span {
+  font-size: 1.03rem;
+}
+
+.artist-home-shell .mini-actions a {
+  font-size: 0.82rem;
 }
 
 .home-release-loading {
@@ -3261,10 +3273,11 @@ select:focus {
 
 .music-release-info h1 {
   color: #fff;
-  font-family: "Avenir Next", Montserrat, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: clamp(2.2rem, 4.2vw, 4.25rem);
-  font-weight: 900;
-  line-height: 1.02;
+  font-family: Inter, "Avenir Next", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(2rem, 3.6vw, 3.65rem);
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.04;
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -4798,11 +4811,20 @@ select:focus {
     font-size: 0.94rem;
   }
 
+  .artist-home-shell .release-body h3,
+  .artist-home-shell .release-body span {
+    font-size: 1rem;
+  }
+
   .mini-actions a {
     font-size: 0.68rem;
     min-height: 34px;
     min-width: 88px;
     padding: 7px 10px 7px 12px;
+  }
+
+  .artist-home-shell .mini-actions a {
+    font-size: 0.76rem;
   }
 
   .feature-banner {
@@ -4833,7 +4855,7 @@ select:focus {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     display: -webkit-box;
-    font-size: 0.86rem;
+    font-size: 0.92rem;
     line-height: 1.24;
     margin-bottom: 5px;
     overflow: hidden;
@@ -5052,8 +5074,13 @@ select:focus {
 
   .release-body h3,
   .release-body span {
-    font-size: 0.88rem;
+    font-size: 0.94rem;
     line-height: 1.15;
+  }
+
+  .artist-home-shell .release-body h3,
+  .artist-home-shell .release-body span {
+    font-size: 0.98rem;
   }
 
   .release-meta {
@@ -5066,9 +5093,13 @@ select:focus {
   }
 
   .mini-actions a {
-    font-size: 0.7rem;
+    font-size: 0.74rem;
     min-height: 32px;
     min-width: 84px;
+  }
+
+  .artist-home-shell .mini-actions a {
+    font-size: 0.76rem;
   }
 
   .section-heading {
@@ -5108,7 +5139,7 @@ select:focus {
   }
 
   .feature-copy p:not(.eyebrow) {
-    font-size: 0.76rem;
+    font-size: 0.82rem;
     line-height: 1.22;
     margin-bottom: 4px;
   }
@@ -5182,8 +5213,8 @@ select:focus {
   }
 
   .music-release-info h1 {
-    font-size: clamp(1.9rem, 10vw, 3rem);
-    line-height: 1.04;
+    font-size: clamp(1.72rem, 8.4vw, 2.55rem);
+    line-height: 1.05;
   }
 
   .music-release-facts {
