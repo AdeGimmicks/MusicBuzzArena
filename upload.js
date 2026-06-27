@@ -3,6 +3,7 @@ const uploadChoiceText = document.querySelector("#uploadChoiceText");
 const uploadCreateAccount = document.querySelector("#uploadCreateAccount");
 const uploadLogin = document.querySelector("#uploadLogin");
 const uploadEntryMessage = document.querySelector("#uploadEntryMessage");
+const uploadExistingLogin = document.querySelector("#uploadExistingLogin");
 
 const RELEASE_TYPES = new Set(["Single", "EP", "Album"]);
 
@@ -11,7 +12,8 @@ function cleanReleaseType(value) {
 }
 
 function dashboardUrl(type) {
-  return `/artist-dashboard?start=${encodeURIComponent(cleanReleaseType(type))}`;
+  const releaseType = cleanReleaseType(type);
+  return type ? `/artist-dashboard?start=${encodeURIComponent(releaseType)}` : "/artist-dashboard";
 }
 
 function authUrl(path, type) {
@@ -26,6 +28,26 @@ async function isLoggedIn() {
   } catch {
     return false;
   }
+}
+
+async function redirectLoggedInArtist() {
+  uploadEntryMessage.textContent = "Checking artist session...";
+  if (await isLoggedIn()) {
+    window.location.replace(dashboardUrl());
+    return;
+  }
+  if (localStorage.getItem("mba-has-artist-account") === "true") {
+    localStorage.removeItem("mba-pending-upload-type");
+    window.location.replace("/artist-login?next=/artist-dashboard");
+    return;
+  }
+  uploadEntryMessage.textContent = "";
+}
+
+if (uploadExistingLogin) {
+  uploadExistingLogin.addEventListener("click", () => {
+    localStorage.removeItem("mba-pending-upload-type");
+  });
 }
 
 document.querySelectorAll("[data-upload-entry]").forEach((button) => {
@@ -44,3 +66,5 @@ document.querySelectorAll("[data-upload-entry]").forEach((button) => {
     uploadEntryMessage.textContent = "";
   });
 });
+
+redirectLoggedInArtist();

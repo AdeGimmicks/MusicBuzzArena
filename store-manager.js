@@ -72,6 +72,16 @@ async function saveAdminStore(store, options = {}) {
   return response.json();
 }
 
+async function loadAdminStore() {
+  const response = await fetch("/api/admin/store", { credentials: "same-origin", cache: "no-store" });
+  if (response.status === 401) {
+    window.location.assign("/store-manager-login");
+    throw new Error("Store Manager login required.");
+  }
+  if (!response.ok) throw new Error("Unable to load Store Manager data.");
+  return response.json();
+}
+
 function money(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
 }
@@ -161,6 +171,25 @@ function artistRevenue(artistId) {
 
 function artistDownloads(artistId) {
   return artistReleases(artistId).reduce((sum, release) => sum + Number(release.downloads || 0), 0);
+}
+
+function artistTransactions(artistId) {
+  return (currentStore.transactions || []).filter((transaction) => String(transaction.artistId) === String(artistId));
+}
+
+function transactionGross(transaction) {
+  return Number(transaction.grossAmount ?? transaction.amount ?? 0);
+}
+
+function transactionNet(transaction) {
+  if (Number.isFinite(Number(transaction.artistPayout))) return Number(transaction.artistPayout || 0);
+  return Math.max(0, transactionGross(transaction) - Number(transaction.platformFee || 0) - Number(transaction.paymentProcessingFee || 0));
+}
+
+function stripeStatusLabel(status) {
+  if (status === "connected") return "connected";
+  if (status === "pending_verification") return "pending verification";
+  return "not connected";
 }
 
 function videoEntries() {
@@ -421,25 +450,56 @@ function renderDownloads() {
 
 function renderPayouts() {
   if (!managerPayoutTable) return;
-  const platformFeePercent = Number(currentStore.site?.commissionRate || 10);
   const artists = currentStore.artists || [];
+  const transactions = currentStore.transactions || [];
+  const connectedCount = artists.filter((artist) => artist.stripeAccountStatus === "connected").length;
+  const pendingPayoutTotal = transactions
+    .filter((transaction) => transaction.payoutStatus !== "paid")
+    .reduce((sum, transaction) => sum + transactionNet(transaction), 0);
+  const completedPayoutTotal = transactions
+    .filter((transaction) => transaction.payoutStatus === "paid")
+    .reduce((sum, transaction) => sum + transactionNet(transaction), 0);
+  const failedPayoutCount = transactions.filter((transaction) => transaction.payoutStatus === "failed").length;
+
+  setText("#payoutStripeConnected", String(connectedCount));
+  setText("#payoutStripeNotConnected", String(Math.max(0, artists.length - connectedCount)));
+  setText("#payoutPendingTotal", money(pendingPayoutTotal));
+  setText("#payoutCompletedTotal", money(completedPayoutTotal));
+  setText("#payoutFailedCount", String(failedPayoutCount));
+
   managerPayoutTable.innerHTML = artists.length
     ? `
-      <div class="manager-table-header payout-columns"><span>Artist</span><span>Downloads</span><span>Revenue</span><span>Platform Fee</span><span>Net Earnings</span><span>Available Balance</span><span>Pending Balance</span><span>Payout Status</span><span>Actions</span></div>
+      <div class="manager-table-header payout-columns"><span>Artist</span><span>Stripe</span><span>Downloads</span><span>Gross Sales</span><span>Processor Fee</span><span>Platform Fee</span><span>Net Earnings</span><span>Available</span><span>Payout Status</span><span>Actions</span></div>
       ${artists.map((artist) => {
-        const revenue = artistRevenue(artist.id);
-        const platformFee = revenue * platformFeePercent / 100;
+        const artistTxns = artistTransactions(artist.id);
+        const grossSales = artistTxns.length
+          ? artistTxns.reduce((sum, transaction) => sum + transactionGross(transaction), 0)
+          : artistRevenue(artist.id);
+        const processorFees = artistTxns.reduce((sum, transaction) => sum + Number(transaction.paymentProcessingFee || 0), 0);
+        const platformFees = artistTxns.length
+          ? artistTxns.reduce((sum, transaction) => sum + Number(transaction.platformFee || 0), 0)
+          : grossSales * Number(currentStore.site?.commissionRate || 10) / 100;
+        const netEarnings = artistTxns.length
+          ? artistTxns.reduce((sum, transaction) => sum + transactionNet(transaction), 0)
+          : Math.max(0, grossSales - platformFees);
+        const availableBalance = artistTxns
+          .filter((transaction) => transaction.payoutStatus !== "paid" && transaction.payoutStatus !== "processing")
+          .reduce((sum, transaction) => sum + transactionNet(transaction), 0) || netEarnings;
+        const payoutStatus = artist.stripeAccountStatus === "connected"
+          ? (availableBalance > 0 ? "pending" : "ready")
+          : stripeStatusLabel(artist.stripeAccountStatus);
         return `
           <article class="manager-table-row payout-columns">
             <strong>${escapeText(artist.name || artist.handle || "Artist")}</strong>
+            <span>${escapeText(stripeStatusLabel(artist.stripeAccountStatus))}</span>
             <span>${artistDownloads(artist.id)}</span>
-            <span>${money(revenue)}</span>
-            <span>${money(platformFee)}</span>
-            <span>${money(revenue - platformFee)}</span>
-            <span>${money(revenue - platformFee)}</span>
-            <span>${money(0)}</span>
-            <mark>pending</mark>
-            <div class="manager-row-actions"><button type="button">Approve Payout</button><button type="button">Reject Payout</button><button type="button">Mark Paid</button></div>
+            <span>${money(grossSales)}</span>
+            <span>${money(processorFees)}</span>
+            <span>${money(platformFees)}</span>
+            <span>${money(netEarnings)}</span>
+            <span>${money(availableBalance)}</span>
+            <mark>${escapeText(payoutStatus)}</mark>
+            <div class="manager-row-actions"><button type="button">View</button><button type="button">Export</button><button type="button">Mark Paid</button></div>
           </article>
         `;
       }).join("")}
@@ -477,7 +537,18 @@ function renderSupportAndReports() {
   renderList("#failedLoginAttempts", [], "Failed login attempts will appear here.");
   renderList("#artistLoginActivity", [], "Artist login activity will appear after artist accounts are added.");
   renderList("#ipLogs", [], "IP logs will appear here.");
-  renderList("#auditLogs", [], "Audit logs will appear after admin actions are recorded.");
+  renderList(
+    "#auditLogs",
+    (currentStore.auditLogs || [])
+      .slice()
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .slice(0, 20)
+      .map((entry) => ({
+        title: entry.action || "Store Manager action",
+        meta: `${formatDate(entry.createdAt)} | ${entry.storeManagerEmail || "Store Manager"} | ${entry.reason || "No reason recorded"}`,
+      })),
+    "Audit logs will appear after admin actions are recorded."
+  );
 }
 
 function renderAll() {
@@ -671,7 +742,7 @@ storeManagerSidebarLogout?.addEventListener("click", logoutStoreManager);
 async function initStoreManager() {
   const hasSession = await requireStoreManagerSession();
   if (!hasSession) return;
-  currentStore = await window.MBA.loadStore();
+  currentStore = await loadAdminStore();
   renderAll();
   showManagerSection("managerDashboard");
 }

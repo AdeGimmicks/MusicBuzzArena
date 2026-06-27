@@ -57,7 +57,7 @@ const OWNER_MANAGER_INITIAL_PASSWORD = envValue("OWNER_MANAGER_INITIAL_PASSWORD"
 const SESSION_COOKIE_NAME = "mba_store_manager";
 const ARTIST_SESSION_COOKIE_NAME = "mba_artist_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
-const ARTIST_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
+const ARTIST_SESSION_TTL_MS = 1000 * 60 * 60;
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -69,6 +69,7 @@ const adminSessions = new Map();
 const artistSessions = new Map();
 const stripe = STRIPE_SECRET_KEY && Stripe ? Stripe(STRIPE_SECRET_KEY) : null;
 const hasValidStripeSecretKey = /^sk_(test|live)_/.test(STRIPE_SECRET_KEY);
+const stripeConnectReady = Boolean(stripe && hasValidStripeSecretKey);
 
 const PROTECTED_ANALYTICS_FIELDS = new Set([
   "artistPageVisits",
@@ -288,6 +289,7 @@ function defaultStore() {
     donations: [],
     transactions: [],
     analyticsArchive: [],
+    auditLogs: [],
     artistAccounts: [],
     storeManagerAccounts: [],
   };
@@ -323,6 +325,7 @@ function mergeStore(store) {
     donations: Array.isArray(store?.donations) ? store.donations : [],
     transactions: Array.isArray(store?.transactions) ? store.transactions : [],
     analyticsArchive: Array.isArray(store?.analyticsArchive) ? store.analyticsArchive : [],
+    auditLogs: Array.isArray(store?.auditLogs) ? store.auditLogs : [],
     artistAccounts: Array.isArray(store?.artistAccounts) ? store.artistAccounts : [],
     storeManagerAccounts: Array.isArray(store?.storeManagerAccounts) ? store.storeManagerAccounts : [],
   };
@@ -466,6 +469,7 @@ function withoutClientAnalytics(store) {
   sanitized.donations = [];
   sanitized.transactions = [];
   sanitized.analyticsArchive = [];
+  sanitized.auditLogs = [];
   return sanitized;
 }
 
@@ -508,6 +512,7 @@ function mergePersistentStore(existingStore, incomingStore, options = {}) {
     }),
     donations: mergeEntityLists(existing.donations, incoming.donations || [], options),
     transactions: mergeEntityLists(existing.transactions, incoming.transactions || [], options),
+    auditLogs: mergeEntityLists(existing.auditLogs, incoming.auditLogs || [], options),
     artistAccounts: mergeEntityLists(existing.artistAccounts, incoming.artistAccounts || [], options),
     storeManagerAccounts: mergeEntityLists(existing.storeManagerAccounts, incoming.storeManagerAccounts || [], options),
     analyticsArchive,
@@ -877,6 +882,18 @@ function publicStore(store) {
   const sanitized = cloneValue(store || {});
   delete sanitized.artistAccounts;
   delete sanitized.storeManagerAccounts;
+  delete sanitized.auditLogs;
+  sanitized.artists = (sanitized.artists || []).map((artist) => {
+    const publicArtist = { ...artist };
+    delete publicArtist.stripeAccountId;
+    delete publicArtist.stripeAccountStatus;
+    delete publicArtist.stripeChargesEnabled;
+    delete publicArtist.stripePayoutsEnabled;
+    delete publicArtist.stripeDetailsSubmitted;
+    delete publicArtist.stripeRequirementsDue;
+    delete publicArtist.stripeLastCheckedAt;
+    return publicArtist;
+  });
   return sanitized;
 }
 
@@ -1097,6 +1114,27 @@ function isArtistDashboardRequest(request) {
 
 function sendAdminUnauthorized(response) {
   sendJson(response, 401, { error: "Store Manager login required." });
+}
+
+function adminAuditLogEntry(session, action, reason) {
+  return {
+    id: `audit-${Date.now()}-${crypto.randomBytes(6).toString("hex")}`,
+    createdAt: new Date().toISOString(),
+    action,
+    storeManagerAccountId: session?.accountId || "legacy-admin",
+    storeManagerEmail: session?.email || "",
+    reason,
+  };
+}
+
+function auditReasonForAdminSave(payload = {}) {
+  const reasons = [];
+  const deletions = payload.deletions || {};
+  if ((deletions.artistIds || []).length) reasons.push(`deleted artists: ${deletions.artistIds.join(", ")}`);
+  if ((deletions.releaseIds || []).length) reasons.push(`deleted releases: ${deletions.releaseIds.join(", ")}`);
+  if ((payload.clears || []).length) reasons.push("cleared saved fields");
+  if (payload.resetAnalytics === true) reasons.push("reset analytics records");
+  return reasons.join("; ");
 }
 
 function sendArtistUnauthorized(response) {
@@ -1718,6 +1756,153 @@ function checkoutImageUrl(origin, imagePath) {
   return `${origin}/${String(imagePath).replace(/^\/+/, "")}`;
 }
 
+function stripeAccountStatus(account = {}) {
+  if (!account || !account.id) return "not_connected";
+  if (account.charges_enabled && account.payouts_enabled && account.details_submitted) return "connected";
+  if (account.details_submitted || account.requirements?.currently_due?.length || account.requirements?.eventually_due?.length) {
+    return "pending_verification";
+  }
+  return "not_connected";
+}
+
+function saveArtistStripeSnapshot(artist, account = {}) {
+  if (!artist || !account?.id) return artist;
+  artist.stripeAccountId = account.id;
+  artist.stripeAccountStatus = stripeAccountStatus(account);
+  artist.stripeChargesEnabled = Boolean(account.charges_enabled);
+  artist.stripePayoutsEnabled = Boolean(account.payouts_enabled);
+  artist.stripeDetailsSubmitted = Boolean(account.details_submitted);
+  artist.stripeRequirementsDue = [
+    ...(account.requirements?.currently_due || []),
+    ...(account.requirements?.past_due || []),
+  ];
+  artist.stripeLastCheckedAt = new Date().toISOString();
+  return artist;
+}
+
+async function refreshArtistStripeStatus(store, artist) {
+  if (!artist?.stripeAccountId || !stripeConnectReady) return artist;
+  try {
+    const account = await stripe.accounts.retrieve(artist.stripeAccountId);
+    saveArtistStripeSnapshot(artist, account);
+    await writeStore(store);
+  } catch {
+    artist.stripeAccountStatus = "pending_verification";
+    artist.stripeLastCheckedAt = new Date().toISOString();
+  }
+  return artist;
+}
+
+function artistPayoutSummary(store, artistId) {
+  const transactions = (store.transactions || []).filter((transaction) => String(transaction.artistId) === String(artistId));
+  const downloadTransactions = transactions.filter((transaction) => transaction.type === "download");
+  const totalEarnings = downloadTransactions.reduce((sum, transaction) => sum + Number(transaction.artistPayout || 0), 0);
+  const totalPaidOut = downloadTransactions
+    .filter((transaction) => transaction.payoutStatus === "paid")
+    .reduce((sum, transaction) => sum + Number(transaction.artistPayout || 0), 0);
+  const pendingBalance = downloadTransactions
+    .filter((transaction) => transaction.payoutStatus === "processing")
+    .reduce((sum, transaction) => sum + Number(transaction.artistPayout || 0), 0);
+  const availableBalance = Math.max(0, totalEarnings - totalPaidOut - pendingBalance);
+  const payoutHistory = downloadTransactions
+    .filter((transaction) => transaction.payoutStatus || transaction.paidOutAt)
+    .slice()
+    .sort((a, b) => new Date(b.paidOutAt || b.createdAt || 0) - new Date(a.paidOutAt || a.createdAt || 0))
+    .map((transaction) => ({
+      id: transaction.id,
+      amount: Number(transaction.artistPayout || 0),
+      status: transaction.payoutStatus || "pending",
+      date: transaction.paidOutAt || transaction.createdAt || "",
+      releaseId: transaction.releaseId || "",
+    }));
+  return {
+    totalEarnings,
+    totalPaidOut,
+    availableBalance,
+    pendingBalance,
+    nextEstimatedPayoutDate: "",
+    payoutHistory,
+  };
+}
+
+async function sendArtistStripeStatus(request, response) {
+  const artistSession = getArtistSession(request);
+  if (!artistSession) {
+    sendArtistUnauthorized(response);
+    return;
+  }
+  const store = await readStore();
+  const artist = (store.artists || []).find((item) => String(item.id) === String(artistSession.session.artistId));
+  if (!artist) {
+    sendJson(response, 404, { error: "Artist profile not found." });
+    return;
+  }
+  await refreshArtistStripeStatus(store, artist);
+  sendJson(response, 200, {
+    ok: true,
+    stripeConfigured: stripeConnectReady,
+    status: artist.stripeAccountStatus || (artist.stripeAccountId ? "pending_verification" : "not_connected"),
+    accountId: artist.stripeAccountId || "",
+    chargesEnabled: Boolean(artist.stripeChargesEnabled),
+    payoutsEnabled: Boolean(artist.stripePayoutsEnabled),
+    detailsSubmitted: Boolean(artist.stripeDetailsSubmitted),
+    requirementsDue: artist.stripeRequirementsDue || [],
+    ...artistPayoutSummary(store, artist.id),
+  });
+}
+
+async function createArtistStripeAccountLink(request, response) {
+  const artistSession = getArtistSession(request);
+  if (!artistSession) {
+    sendArtistUnauthorized(response);
+    return;
+  }
+  if (!stripeConnectReady) {
+    sendJson(response, 503, {
+      error: "Stripe Connect is not configured. Add a valid STRIPE_SECRET_KEY in Render environment variables.",
+    });
+    return;
+  }
+
+  const store = await readStore();
+  const account = (store.artistAccounts || []).find((item) => item.id === artistSession.session.accountId);
+  const artist = (store.artists || []).find((item) => String(item.id) === String(artistSession.session.artistId));
+  if (!account || !artist) {
+    sendJson(response, 404, { error: "Artist account not found." });
+    return;
+  }
+
+  if (!artist.stripeAccountId) {
+    const stripeAccount = await stripe.accounts.create({
+      type: "express",
+      email: account.email || undefined,
+      business_profile: {
+        name: artist.name || account.artistName || "MusicBusiness Arena Artist",
+      },
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      metadata: {
+        artistId: artist.id,
+        artistName: artist.name || account.artistName || "",
+        platform: "MusicBusiness Arena",
+      },
+    });
+    saveArtistStripeSnapshot(artist, stripeAccount);
+    await writeStore(store);
+  }
+
+  const origin = requestOrigin(request);
+  const accountLink = await stripe.accountLinks.create({
+    account: artist.stripeAccountId,
+    refresh_url: `${origin}/artist-dashboard?section=earnings&stripe=refresh`,
+    return_url: `${origin}/artist-dashboard?section=earnings&stripe=return`,
+    type: "account_onboarding",
+  });
+  sendJson(response, 200, { ok: true, url: accountLink.url });
+}
+
 async function createCheckoutSession(request, response) {
   if (!stripe) {
     sendJson(response, 503, {
@@ -1814,7 +1999,9 @@ async function paidDownloadPurchase(sessionId, releaseId) {
 
   let session;
   try {
-    session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] });
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent", "payment_intent.latest_charge.balance_transaction"],
+    });
   } catch {
     return { status: 404, error: "Stripe checkout session was not found." };
   }
@@ -1842,19 +2029,28 @@ async function paidDownloadPurchase(sessionId, releaseId) {
   if (!transaction) {
     const amount = Number(session.amount_total || 0) / 100;
     const platformFeePercent = Number(session.metadata?.platformFeePercent || store.site?.commissionRate || 10);
+    const paymentIntent = typeof session.payment_intent === "string" ? null : session.payment_intent;
+    const balanceTransaction = paymentIntent?.latest_charge?.balance_transaction;
+    const paymentProcessingFee = Number(balanceTransaction?.fee || 0) / 100;
+    const platformFee = amount * (platformFeePercent / 100);
+    const artistPayout = Math.max(0, amount - platformFee - paymentProcessingFee);
     transaction = {
       id: `txn-${session.id}`,
       releaseId: release.id,
       artistId: release.artistId || "",
       type: "download",
       amount,
-      platformFee: amount * (platformFeePercent / 100),
-      artistPayout: amount * (1 - platformFeePercent / 100),
+      grossAmount: amount,
+      paymentProcessingFee,
+      platformFee,
+      artistPayout,
       currency: session.currency || release.currency || "usd",
       checkoutSessionId: session.id,
       paymentIntentId,
+      paymentStatus: "paid",
       downloaded: false,
       downloadedAt: "",
+      payoutStatus: "pending",
       createdAt: new Date((session.created || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
     };
     store.transactions.push(transaction);
@@ -2146,6 +2342,16 @@ async function handleRequest(request, response) {
       return;
     }
 
+    if (url.pathname === "/api/artist/stripe-status" && request.method === "GET") {
+      await sendArtistStripeStatus(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist/connect-stripe" && request.method === "POST") {
+      await createArtistStripeAccountLink(request, response);
+      return;
+    }
+
     if (url.pathname === "/api/download-status" && request.method === "GET") {
       await sendDownloadStatus(request, response, url);
       return;
@@ -2208,6 +2414,15 @@ async function handleRequest(request, response) {
       return;
     }
 
+    if (url.pathname === "/api/admin/store" && request.method === "GET") {
+      if (!getAdminSession(request)) {
+        sendAdminUnauthorized(response);
+        return;
+      }
+      sendJson(response, 200, await readStore());
+      return;
+    }
+
     if (url.pathname === "/api/admin/logout" && request.method === "POST") {
       const adminSession = getAdminSession(request);
       if (adminSession) adminSessions.delete(adminSession.sessionId);
@@ -2223,7 +2438,8 @@ async function handleRequest(request, response) {
     }
 
     if (url.pathname === "/api/admin/store" && request.method === "POST") {
-      if (!getAdminSession(request)) {
+      const adminSession = getAdminSession(request);
+      if (!adminSession) {
         sendAdminUnauthorized(response);
         return;
       }
@@ -2231,6 +2447,13 @@ async function handleRequest(request, response) {
       const body = await readRequestBody(request);
       const payload = JSON.parse(body);
       const incoming = await normalizeUploads(payload.store || payload);
+      const auditReason = auditReasonForAdminSave(payload);
+      if (auditReason) {
+        incoming.auditLogs = [
+          ...(incoming.auditLogs || []),
+          adminAuditLogEntry(adminSession.session, "Store Manager data update", auditReason),
+        ];
+      }
       const store = await mergeAndWriteStore(incoming, {
         deletions: payload.deletions || {},
         clears: payload.clears || [],

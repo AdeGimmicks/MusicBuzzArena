@@ -9,12 +9,12 @@ function cleanReleaseType(value) {
 }
 
 function pendingType() {
-  return cleanReleaseType(params.get("start")) || cleanReleaseType(localStorage.getItem("mba-pending-upload-type")) || "Single";
+  return cleanReleaseType(params.get("start")) || cleanReleaseType(localStorage.getItem("mba-pending-upload-type"));
 }
 
 function withStart(path) {
   const type = pendingType();
-  return `${path}?start=${encodeURIComponent(type)}`;
+  return type ? `${path}?start=${encodeURIComponent(type)}` : path;
 }
 
 function dashboardUrl() {
@@ -48,7 +48,7 @@ function formValues(form) {
 function wireReturnLinks() {
   if (selectedUploadCopy) {
     const type = pendingType();
-    selectedUploadCopy.textContent = `Selected upload: ${type === "Single" ? "Single Song" : type}.`;
+    selectedUploadCopy.textContent = type ? `Selected upload: ${type === "Single" ? "Single Song" : type}.` : "";
   }
   document.querySelectorAll("[data-login-link]").forEach((link) => link.href = withStart("/artist-login"));
   document.querySelectorAll("[data-register-link]").forEach((link) => link.href = withStart("/artist-register"));
@@ -58,7 +58,10 @@ function wireReturnLinks() {
 async function handleRegister(form) {
   setMessage("Creating your artist account...", "pending");
   const data = await postJson("/api/artist/register", formValues(form));
-  localStorage.setItem("mba-pending-upload-type", pendingType());
+  const type = pendingType();
+  localStorage.setItem("mba-has-artist-account", "true");
+  if (type) localStorage.setItem("mba-pending-upload-type", type);
+  else localStorage.removeItem("mba-pending-upload-type");
   setMessage("Account created. Check your email to verify before logging in.", "success");
   if (data.verificationUrl) {
     const link = document.createElement("a");
@@ -73,6 +76,7 @@ async function handleRegister(form) {
 async function handleLogin(form) {
   setMessage("Logging in...", "pending");
   await postJson("/api/artist/login", formValues(form));
+  localStorage.setItem("mba-has-artist-account", "true");
   window.location.assign(dashboardUrl());
 }
 

@@ -164,6 +164,13 @@
 
         <section class="manager-dashboard-section" id="managerPayouts" data-section-title="Payouts">
           <div class="manager-section-heading"><div><p class="eyebrow">Artist earnings</p><h2>Payout Management</h2></div><button class="secondary-button" type="button">Export Payout Report</button></div>
+          <section class="manager-metric-grid">
+            <article><span>Stripe Connected</span><strong id="payoutStripeConnected">0</strong></article>
+            <article><span>Not Connected</span><strong id="payoutStripeNotConnected">0</strong></article>
+            <article><span>Pending Payouts</span><strong id="payoutPendingTotal">$0.00</strong></article>
+            <article><span>Completed Payouts</span><strong id="payoutCompletedTotal">$0.00</strong></article>
+            <article><span>Failed Payouts</span><strong id="payoutFailedCount">0</strong></article>
+          </section>
           <section class="manager-console-card"><div class="manager-table manager-payout-table" id="managerPayoutTable"></div></section>
         </section>
 

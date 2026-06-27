@@ -60,6 +60,11 @@ const recentActivityList = document.querySelector("#recentActivityList");
 const recentDownloadsList = document.querySelector("#recentDownloadsList");
 const recentUploadsList = document.querySelector("#recentUploadsList");
 const payoutHistoryList = document.querySelector("#payoutHistoryList");
+const connectStripeAccount = document.querySelector("#connectStripeAccount");
+const stripeConnectStatus = document.querySelector("#stripeConnectStatus");
+const stripeConnectDetails = document.querySelector("#stripeConnectDetails");
+const stripeConnectNotice = document.querySelector("#stripeConnectNotice");
+const earningsBreakdownTable = document.querySelector("#earningsBreakdownTable");
 const analyticsTopModal = document.querySelector("#analyticsTopModal");
 const analyticsTopModalTitle = document.querySelector("#analyticsTopModalTitle");
 const analyticsTopModalList = document.querySelector("#analyticsTopModalList");
@@ -80,8 +85,13 @@ let artistSession = null;
 let uploadWizardStep = 1;
 let uploadWizardReady = false;
 let uploadTracks = [];
+let lastArtistActivityAt = Date.now();
+let sessionHeartbeatTimer = null;
 const DEFAULT_PREVIEW_START = 0;
 const DEFAULT_PREVIEW_END = 60;
+const ARTIST_IDLE_LIMIT_MS = 60 * 60 * 1000;
+const ARTIST_ACTIVE_WINDOW_MS = 25 * 60 * 1000;
+const ARTIST_HEARTBEAT_MS = 5 * 60 * 1000;
 const RELEASE_TRACK_LIMITS = {
   Single: { min: 1, max: 1 },
   EP: { min: 2, max: 6 },
@@ -1127,6 +1137,141 @@ function renderActivityList(container, items, emptyText) {
     : emptyLine(emptyText);
 }
 
+function transactionGross(transaction) {
+  return Number(transaction.grossAmount ?? transaction.amount ?? 0);
+}
+
+function transactionProcessorFee(transaction) {
+  return Number(transaction.paymentProcessingFee || 0);
+}
+
+function transactionPlatformFee(transaction) {
+  return Number(transaction.platformFee || 0);
+}
+
+function transactionNet(transaction) {
+  if (Number.isFinite(Number(transaction.artistPayout))) return Number(transaction.artistPayout || 0);
+  return Math.max(0, transactionGross(transaction) - transactionProcessorFee(transaction) - transactionPlatformFee(transaction));
+}
+
+function renderEarningsBreakdown() {
+  const releases = artistReleases();
+  const releaseById = new Map(releases.map((release) => [String(release.id), release]));
+  const transactions = artistTransactions()
+    .filter((transaction) => transaction.type === "download" && releaseById.has(String(transaction.releaseId)))
+    .slice()
+    .sort((a, b) => new Date(b.downloadedAt || b.createdAt || 0) - new Date(a.downloadedAt || a.createdAt || 0));
+  const grossSales = transactions.reduce((sum, transaction) => sum + transactionGross(transaction), 0);
+  const processorFees = transactions.reduce((sum, transaction) => sum + transactionProcessorFee(transaction), 0);
+  const platformFees = transactions.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0);
+  const netEarnings = transactions.reduce((sum, transaction) => sum + transactionNet(transaction), 0);
+
+  setText("#breakdownTotalDownloads", String(transactions.length));
+  setText("#breakdownGrossSales", money(grossSales));
+  setText("#breakdownProcessorFees", money(processorFees));
+  setText("#breakdownPlatformFees", money(platformFees));
+  setText("#breakdownNetEarnings", money(netEarnings));
+
+  if (!earningsBreakdownTable) return;
+  earningsBreakdownTable.innerHTML = transactions.length
+    ? `
+      <div class="earnings-table-header">
+        <span>Release</span><span>Price</span><span>Processor Fee</span><span>Platform Fee</span><span>Artist Net</span><span>Date</span>
+      </div>
+      ${transactions.map((transaction) => {
+        const release = releaseById.get(String(transaction.releaseId)) || {};
+        return `
+          <article class="earnings-table-row">
+            <strong>${escapeText(release.title || "Untitled release")}</strong>
+            <span>${money(transactionGross(transaction))}</span>
+            <span>${money(transactionProcessorFee(transaction))}</span>
+            <span>${money(transactionPlatformFee(transaction))}</span>
+            <span>${money(transactionNet(transaction))}</span>
+            <span>${escapeText(formatReleaseDate(String(transaction.downloadedAt || transaction.createdAt || "").slice(0, 10)))}</span>
+          </article>
+        `;
+      }).join("")}
+    `
+    : emptyLine("No completed paid downloads yet. Earnings will show zero until verified purchases are recorded.");
+}
+
+function stripeStatusLabel(status) {
+  if (status === "connected") return "Connected";
+  if (status === "pending_verification") return "Pending Verification";
+  return "Not Connected";
+}
+
+function payoutStatusLabel(status) {
+  if (status === "paid") return "paid";
+  if (status === "processing") return "processing";
+  if (status === "failed") return "failed";
+  return "pending";
+}
+
+function stripeStatusDetails(payload) {
+  if (!payload?.stripeConfigured) {
+    return "Stripe Connect is not configured yet. Add a valid Stripe secret key in Render to enable artist onboarding.";
+  }
+  if (payload.status === "connected") {
+    return "Stripe Account Connected. Payouts can be processed securely through Stripe Connect.";
+  }
+  if (payload.status === "pending_verification") {
+    return "Stripe is still reviewing or needs more information. Continue onboarding to finish verification.";
+  }
+  return "Connect a Stripe account to receive payouts. MusicBusiness Arena never stores bank details.";
+}
+
+function renderStripePayoutStatus(payload = {}) {
+  if (stripeConnectStatus) {
+    stripeConnectStatus.textContent = stripeStatusLabel(payload.status);
+    stripeConnectStatus.dataset.status = payload.status || "not_connected";
+  }
+  if (stripeConnectDetails) stripeConnectDetails.textContent = stripeStatusDetails(payload);
+
+  const hasEarnings = Number(payload.totalEarnings || 0) > 0;
+  if (stripeConnectNotice) {
+    if (!payload.stripeConfigured) {
+      message(stripeConnectNotice, "Stripe Connect setup is waiting for the platform Stripe key.", "pending");
+    } else if (payload.status === "connected") {
+      message(stripeConnectNotice, "Your payout account is connected. Stripe handles bank details and verification.", "success");
+    } else if (hasEarnings) {
+      message(stripeConnectNotice, "You have earnings. Connect Stripe before payouts can be processed.", "pending");
+    } else {
+      message(stripeConnectNotice, "Artists can upload and publish music before connecting Stripe, but payouts require Stripe Connect.", "pending");
+    }
+  }
+
+  if (connectStripeAccount) {
+    connectStripeAccount.hidden = payload.status === "connected";
+    connectStripeAccount.disabled = !payload.stripeConfigured;
+    connectStripeAccount.textContent = payload.status === "pending_verification" ? "Continue Stripe Setup" : "Connect Stripe Account";
+  }
+
+  if (Number.isFinite(Number(payload.availableBalance))) setText("#earningsAvailableBalance", money(payload.availableBalance));
+  if (Number.isFinite(Number(payload.pendingBalance))) setText("#earningsPendingBalance", money(payload.pendingBalance));
+  if (Number.isFinite(Number(payload.totalPaidOut))) setText("#earningsTotalPaidOut", money(payload.totalPaidOut));
+  setText("#earningsNextPayout", payload.nextEstimatedPayoutDate || "Not scheduled");
+
+  const history = (payload.payoutHistory || []).map((item) => ({
+    title: `${money(item.amount)} ${payoutStatusLabel(item.status)}`,
+    meta: item.date ? formatReleaseDate(String(item.date).slice(0, 10)) : "Payout record",
+  }));
+  renderActivityList(payoutHistoryList, history, "Payout history will appear after payouts are processed.");
+}
+
+async function loadStripePayoutStatus() {
+  if (!stripeConnectStatus) return;
+  try {
+    const response = await fetch("/api/artist/stripe-status", { cache: "no-store", credentials: "same-origin" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Unable to load Stripe status.");
+    renderStripePayoutStatus(payload);
+  } catch (error) {
+    if (stripeConnectDetails) stripeConnectDetails.textContent = error.message || "Unable to load Stripe status.";
+    if (stripeConnectStatus) stripeConnectStatus.textContent = "Unavailable";
+  }
+}
+
 function videoEntries(artist) {
   const videos = artist.videos || currentStore.site?.videos || {};
   return [
@@ -1276,9 +1421,11 @@ function renderArtistConsole() {
   const historicalReleases = [...releases, ...archivedReleaseAnalytics(artist.id)];
   const videos = videoEntries(artist);
   const totalDownloads = historicalReleases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
-  const totalRevenue = historicalReleases.reduce((sum, release) => sum + releaseRevenue(release), 0);
+  const verifiedTransactions = artistTransactions().filter((transaction) => transaction.type === "download");
+  const totalRevenue = verifiedTransactions.reduce((sum, transaction) => sum + transactionGross(transaction), 0);
   const streamingClicks = historicalReleases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
-  const platformFee = totalRevenue * Number(currentStore.site?.commissionRate || 10) / 100;
+  const platformFee = verifiedTransactions.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0);
+  const netRevenue = verifiedTransactions.reduce((sum, transaction) => sum + transactionNet(transaction), 0);
 
   setText("#artistTotalSongs", String(releases.length));
   setText("#artistTotalVideos", String(videos.length));
@@ -1323,11 +1470,13 @@ function renderArtistConsole() {
   setText("#analyticsTrafficSources", artist.trafficSources || "Direct");
 
   setText("#earningsTotalRevenue", money(totalRevenue));
-  setText("#earningsAvailableBalance", money(Math.max(0, totalRevenue - platformFee)));
+  setText("#earningsAvailableBalance", money(netRevenue));
   setText("#earningsPendingBalance", money(0));
   setText("#earningsPlatformFees", money(platformFee));
-  setText("#earningsNetRevenue", money(Math.max(0, totalRevenue - platformFee)));
+  setText("#earningsNetRevenue", money(netRevenue));
   setText("#earningsDownloadRevenue", money(totalRevenue));
+  setText("#earningsTotalPaidOut", money(0));
+  setText("#earningsNextPayout", "Not scheduled");
 
   renderActivityList(
     recentActivityList,
@@ -1345,6 +1494,8 @@ function renderArtistConsole() {
     "Recent uploads will appear here."
   );
   renderActivityList(payoutHistoryList, [], "Payout history will appear after payouts are processed.");
+  renderEarningsBreakdown();
+  loadStripePayoutStatus();
   renderVideosPanel();
   renderDownloadsPanel();
 }
@@ -1758,6 +1909,26 @@ artistLogoutButtons.forEach((button) => {
   });
 });
 
+connectStripeAccount?.addEventListener("click", async () => {
+  connectStripeAccount.disabled = true;
+  const originalText = connectStripeAccount.textContent;
+  connectStripeAccount.textContent = "Opening Stripe...";
+  try {
+    const response = await fetch("/api/artist/connect-stripe", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.url) throw new Error(payload.error || "Unable to start Stripe onboarding.");
+    window.location.assign(payload.url);
+  } catch (error) {
+    connectStripeAccount.disabled = false;
+    connectStripeAccount.textContent = originalText || "Connect Stripe Account";
+    if (stripeConnectNotice) message(stripeConnectNotice, error.message || "Unable to start Stripe onboarding.", "error");
+  }
+});
+
 artistAccountSettingsForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   message(artistAccountSettingsMessage, "Saving account settings...", "pending");
@@ -1885,6 +2056,37 @@ async function getArtistSessionOrRedirect() {
   }
 }
 
+function markArtistActivity() {
+  lastArtistActivityAt = Date.now();
+}
+
+async function expireArtistSession() {
+  try {
+    await fetch("/api/artist/logout", { method: "POST", credentials: "same-origin" });
+  } catch {
+    // Redirect even if the network request fails.
+  }
+  window.location.assign("/artist-login");
+}
+
+function startArtistSessionHeartbeat() {
+  ["click", "keydown", "input", "change", "pointermove", "scroll", "drop"].forEach((eventName) => {
+    window.addEventListener(eventName, markArtistActivity, { passive: true });
+  });
+  clearInterval(sessionHeartbeatTimer);
+  sessionHeartbeatTimer = setInterval(async () => {
+    const idleFor = Date.now() - lastArtistActivityAt;
+    if (idleFor >= ARTIST_IDLE_LIMIT_MS) {
+      await expireArtistSession();
+      return;
+    }
+    if (idleFor <= ARTIST_ACTIVE_WINDOW_MS) {
+      const response = await fetch("/api/artist/session", { cache: "no-store", credentials: "same-origin" }).catch(() => null);
+      if (!response?.ok) await expireArtistSession();
+    }
+  }, ARTIST_HEARTBEAT_MS);
+}
+
 function applyRequestedUploadType() {
   const params = new URLSearchParams(window.location.search);
   const requested = params.get("start") || localStorage.getItem("mba-pending-upload-type") || "";
@@ -1902,6 +2104,7 @@ function applyRequestedUploadType() {
 async function initDashboard() {
   artistSession = await getArtistSessionOrRedirect();
   if (!artistSession) return;
+  startArtistSessionHeartbeat();
   activeArtistId = artistSession.artistId;
   currentStore = await window.MBA.loadStore({ artist: true, force: true });
   setupUploadWizard();
@@ -1912,13 +2115,17 @@ async function initDashboard() {
   renderLinkInputs(streamingFields, STREAMING_LINKS);
   updateHomePreview();
   renderDashboardReleases();
-  const editId = new URLSearchParams(window.location.search).get("edit");
+  const params = new URLSearchParams(window.location.search);
+  const editId = params.get("edit");
+  const requestedSection = params.get("section");
   const editRelease = currentStore.releases.find((release) => release.id === editId);
   if (editRelease) {
     fillReleaseForm(editRelease);
     showDashboardSection("songEditorSection");
   } else if (applyRequestedUploadType()) {
     showDashboardSection("songEditorSection");
+  } else if (requestedSection === "earnings") {
+    showDashboardSection("earningsSection");
   } else {
     showDashboardSection("songEditorSection");
   }

@@ -23,7 +23,13 @@
       <section class="artist-auth-card upload-entry-card">
         <p class="eyebrow">Artist upload</p>
         <h1>What do you want to upload?</h1>
-        <p class="auth-support">Choose a release type first. If you are not logged in, MusicBusiness Arena will help you create an artist account or sign in, then return you here.</p>
+        <p class="auth-support">Existing artists can log in and continue from the Artist Dashboard. New artists can choose a release type first, then create an account.</p>
+        <div class="artist-auth-choice upload-login-shortcut" id="uploadLoginShortcut">
+          <p>Already have an artist account?</p>
+          <div class="auth-actions">
+            <a class="primary-button" id="uploadExistingLogin" href="/artist-login?next=/artist-dashboard">Login to Artist Dashboard</a>
+          </div>
+        </div>
         <div class="release-type-options upload-entry-options" role="list">
           <button class="release-type-option" type="button" data-upload-entry="Single" role="listitem">
             <span class="release-type-icon">♪</span>

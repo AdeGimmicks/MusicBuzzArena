@@ -1041,7 +1041,8 @@ h3 {
 }
 
 .artist-song-table,
-.artist-download-table {
+.artist-download-table,
+.artist-earnings-table {
   display: grid;
   gap: 8px;
 }
@@ -1060,8 +1061,16 @@ h3 {
   grid-template-columns: minmax(180px, 1.3fr) 90px 100px 110px 130px 120px;
 }
 
+.earnings-table-header,
+.earnings-table-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 1.3fr) 90px 120px 110px 110px 130px;
+}
+
 .song-table-header,
-.download-table-header {
+.download-table-header,
+.earnings-table-header {
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 1000;
@@ -1071,6 +1080,7 @@ h3 {
 
 .song-table-row,
 .download-table-row,
+.earnings-table-row,
 .compact-activity-list article,
 .artist-video-list article {
   align-items: center;
@@ -1089,7 +1099,8 @@ h3 {
 }
 
 .song-table-row strong,
-.download-table-row strong {
+.download-table-row strong,
+.earnings-table-row strong {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1097,7 +1108,8 @@ h3 {
 }
 
 .song-table-row span,
-.download-table-row span {
+.download-table-row span,
+.earnings-table-row span {
   color: #4d5563;
   font-size: 0.9rem;
   font-weight: 800;
@@ -1105,6 +1117,10 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.compact-earnings-summary {
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
 }
 
 .song-table-row mark {
@@ -1394,7 +1410,7 @@ h3 {
 }
 
 .payout-columns {
-  grid-template-columns: minmax(140px, 1.1fr) 90px 100px 110px 110px 120px 120px 110px minmax(300px, 1.6fr);
+  grid-template-columns: minmax(130px, 1fr) 110px 80px 100px 110px 100px 110px 100px 110px minmax(220px, 1.3fr);
 }
 
 .manager-table-header {
@@ -4577,18 +4593,21 @@ select:focus {
   }
 
   .song-table-header,
-  .download-table-header {
+  .download-table-header,
+  .earnings-table-header {
     display: none;
   }
 
   .song-table-row,
-  .download-table-row {
+  .download-table-row,
+  .earnings-table-row {
     grid-template-columns: 64px minmax(0, 1fr);
   }
 
   .song-table-row span,
   .song-table-row .song-row-actions,
-  .download-table-row span {
+  .download-table-row span,
+  .earnings-table-row span {
     grid-column: 2;
   }
 
