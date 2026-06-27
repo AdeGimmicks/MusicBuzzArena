@@ -34,14 +34,46 @@ function applyLink(link, href) {
   link.href = href;
 }
 
+function slugify(value) {
+  return String(value || "artist")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function artistSlug(artist) {
+  return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id);
+}
+
+function artistSlugFromPath() {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts.length >= 2 && ["videos", "video"].includes(parts[1])) return parts[0];
+  return "";
+}
+
+function setArtistNav(artist) {
+  const nav = document.querySelector("#siteNav");
+  if (!nav || !artist) return;
+  const slug = artistSlug(artist);
+  nav.innerHTML = `
+    <a href="/${slug}">${artist.name || "Artist"}</a>
+    <a href="/${slug}/music">Music</a>
+    <a href="/${slug}/videos">Videos</a>
+    <a href="/upload">Upload</a>
+  `;
+}
+
 function artistForVideoPage(store) {
   const params = new URLSearchParams(window.location.search);
   const artistId = params.get("artist");
   const releaseId = params.get("release");
+  const pathSlug = artistSlugFromPath();
   const release = releaseId ? (store.releases || []).find((item) => item.id === releaseId) : null;
 
   return (
     store.artists?.find((artist) => artist.id === release?.artistId) ||
+    store.artists?.find((artist) => artistSlug(artist) === pathSlug) ||
     store.artists?.find((artist) => artist.id === artistId) ||
     store.artists?.find((artist) => artist.id === store.site?.featuredArtistId) ||
     store.artists?.[0]
@@ -51,6 +83,7 @@ function artistForVideoPage(store) {
 async function renderVideos() {
   const store = await window.MBA.loadStore({ force: true });
   const artist = artistForVideoPage(store);
+  setArtistNav(artist);
 
   if (artist) {
     const result = await window.MBA.incrementAnalytics(

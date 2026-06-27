@@ -7,7 +7,7 @@ function showLoginMessage(text, type = "pending") {
 }
 
 async function redirectIfAuthenticated() {
-  const response = await fetch("/api/admin/session", { credentials: "same-origin" }).catch(() => null);
+  const response = await fetch("/api/admin/session", { cache: "no-store", credentials: "same-origin" }).catch(() => null);
   const session = response?.ok ? await response.json() : null;
   if (session?.authenticated) window.location.replace("/store-manager");
 }

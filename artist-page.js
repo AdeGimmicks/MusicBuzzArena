@@ -5,6 +5,36 @@ let activePreviewButton = null;
 let renderedMusicReleases = [];
 let renderedMusicArtist = null;
 
+function slugify(value) {
+  return String(value || "artist")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function artistSlug(artist) {
+  return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id);
+}
+
+function artistSlugFromPath() {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts.length >= 2 && parts[1] === "music") return parts[0];
+  return "";
+}
+
+function setArtistNav(artist) {
+  const nav = document.querySelector("#siteNav");
+  if (!nav || !artist) return;
+  const slug = artistSlug(artist);
+  nav.innerHTML = `
+    <a href="/${slug}">${artist.name || "Artist"}</a>
+    <a href="/${slug}/music">Music</a>
+    <a href="/${slug}/videos">Videos</a>
+    <a href="/upload">Upload</a>
+  `;
+}
+
 function applySite(store) {
   document.querySelectorAll("[data-logo]").forEach((img) => {
     img.src = store.site?.logo || "Mba Logos/MusicBusiness Logo.png";
@@ -64,10 +94,12 @@ function artistForPage(store, approvedReleases) {
   const params = new URLSearchParams(window.location.search);
   const releaseId = params.get("release");
   const artistId = params.get("artist");
+  const pathSlug = artistSlugFromPath();
   const release = releaseId ? approvedReleases.find((item) => item.id === releaseId) : null;
 
   return (
     store.artists.find((artist) => artist.id === release?.artistId) ||
+    store.artists.find((artist) => artistSlug(artist) === pathSlug) ||
     store.artists.find((artist) => artist.id === artistId) ||
     store.artists.find((artist) => artist.id === store.site?.featuredArtistId) ||
     store.artists[0]
@@ -201,7 +233,7 @@ function trackRow(release, artist, artistReleases = []) {
               ${otherReleases
                 .map(
                   (item) => `
-                    <a class="music-more-card" href="/music?release=${encodeURIComponent(item.id)}" data-release-id="${item.id}">
+                    <a class="music-more-card" href="/${artistSlug(artist)}/music?release=${encodeURIComponent(item.id)}" data-release-id="${item.id}">
                       <img src="${item.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${item.title || "Song"} cover" loading="lazy" decoding="async">
                       <strong>${item.title || "Untitled track"}</strong>
                       <span>${releaseYear(item)}</span>
@@ -685,6 +717,7 @@ async function renderArtistPage(force = false) {
 
   const approvedReleases = (store.releases || []).filter((release) => release.status === "approved");
   const artist = artistForPage(store, approvedReleases);
+  setArtistNav(artist);
 
   if (artist) {
     const result = await window.MBA.incrementAnalytics(
@@ -694,7 +727,7 @@ async function renderArtistPage(force = false) {
     );
     if (result) artist.artistPageVisits = result.value;
 
-    if (window.location.pathname === "/music" && !musicPageVisitRecorded) {
+    if ((window.location.pathname === "/music" || window.location.pathname.endsWith("/music")) && !musicPageVisitRecorded) {
       musicPageVisitRecorded = true;
       const musicResult = await window.MBA.incrementAnalytics(
         "artist",

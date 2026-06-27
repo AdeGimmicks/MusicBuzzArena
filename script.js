@@ -31,6 +31,46 @@ const SIMPLE_SOCIAL_ICONS = {
   website: "https://cdn.simpleicons.org/linktree/FFFFFF",
 };
 
+function slugify(value) {
+  return String(value || "artist")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function artistSlug(artist) {
+  return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id);
+}
+
+function artistFromPath(store) {
+  const slug = window.location.pathname.split("/").filter(Boolean)[0];
+  if (!slug || slug === "home") return null;
+  return (store.artists || []).find((artist) => artistSlug(artist) === slug) || null;
+}
+
+function setArtistNav(artist) {
+  const nav = document.querySelector("#siteNav");
+  if (!nav) return;
+  if (!artist) {
+    nav.innerHTML = `
+      <a href="/home">Home</a>
+      <a href="#featuredArtists">Artists</a>
+      <a href="/music">Music</a>
+      <a href="/video">Video</a>
+      <a href="/upload">Upload</a>
+    `;
+    return;
+  }
+  const slug = artistSlug(artist);
+  nav.innerHTML = `
+    <a href="/${slug}">${artist.name || "Artist"}</a>
+    <a href="/${slug}/music">Music</a>
+    <a href="/${slug}/videos">Videos</a>
+    <a href="/upload">Upload</a>
+  `;
+}
+
 function renderHomeArtist(artist) {
   const name = artist?.name || "Independent Artist";
   const photo = artist?.photo || "Mba Logos/MusicBusiness Logo.png";
@@ -60,7 +100,7 @@ function renderHomeArtist(artist) {
       bioToggle.textContent = expanded ? "Less" : "More";
     };
   }
-  if (videoLink && artist?.id) videoLink.href = `/video?artist=${encodeURIComponent(artist.id)}`;
+  if (videoLink && artist?.id) videoLink.href = `/${artistSlug(artist)}/videos`;
 
   if (!socialsNode) return;
   socialsNode.replaceChildren();
@@ -122,6 +162,21 @@ function releaseCard(release, artist) {
   return card;
 }
 
+function artistCard(artist, releases) {
+  const card = document.createElement("article");
+  card.className = "platform-artist-card";
+  const slug = artistSlug(artist);
+  const artistReleases = releases.filter((release) => release.artistId === artist.id);
+  card.innerHTML = `
+    <a href="/${slug}" aria-label="Open ${artist.name || "artist"} profile">
+      <img src="${artist.photo || artistReleases[0]?.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${artist.name || "Artist"} photo">
+      <strong>${artist.name || "Independent Artist"}</strong>
+      <span>${artistReleases.length} ${artistReleases.length === 1 ? "release" : "releases"}</span>
+    </a>
+  `;
+  return card;
+}
+
 function applyHomeSearch() {
   const input = document.querySelector("#homeSearch");
   const grid = document.querySelector("#latestSongsGrid");
@@ -150,6 +205,7 @@ function emptyShelf(text) {
 }
 
 function renderShelf(container, releases, store, emptyText) {
+  if (!container) return;
   container.setAttribute("aria-busy", "false");
   container.replaceChildren();
   const visibleReleases = releases.slice(0, 20);
@@ -196,18 +252,47 @@ async function renderHome(force = false) {
   const approvedArtists = new Set(approvedArtistList.map((artist) => artist.id));
   const featuredArtist =
     approvedArtistList.find((artist) => artist.id === store.site?.featuredArtistId) || approvedArtistList[0] || store.artists[0];
-  renderHomeArtist(featuredArtist);
-
   const approved = window.MBA
     .approvedReleases(store)
     .filter((release) => approvedArtists.has(release.artistId))
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
+  const pathArtist = artistFromPath(store);
+  const platformHome = document.querySelector("#platformHome");
+  const artistHome = document.querySelector("#artistHome");
+
+  setArtistNav(pathArtist);
+
+  if (!pathArtist) {
+    if (platformHome) platformHome.hidden = false;
+    if (artistHome) artistHome.hidden = true;
+    const artistGrid = document.querySelector("#featuredArtistsGrid");
+    if (artistGrid) {
+      artistGrid.setAttribute("aria-busy", "false");
+      artistGrid.replaceChildren();
+      approvedArtistList.slice(0, 8).forEach((artist) => artistGrid.append(artistCard(artist, approved)));
+      if (!approvedArtistList.length) artistGrid.append(emptyShelf("Artists will appear here after registration."));
+    }
+    renderShelf(
+      document.querySelector("#platformReleasesGrid"),
+      approved,
+      store,
+      "Featured releases will appear here after Store Manager approves uploads."
+    );
+    applyHomeSearch();
+    return;
+  }
+
+  if (platformHome) platformHome.hidden = true;
+  if (artistHome) artistHome.hidden = false;
+  renderHomeArtist(pathArtist || featuredArtist);
+
+  const artistReleases = approved.filter((release) => release.artistId === pathArtist.id);
   renderShelf(
     document.querySelector("#latestSongsGrid"),
-    approved,
+    artistReleases,
     store,
-    "Approved songs will appear here after Store Manager approves uploads."
+    "Approved songs will appear here after this artist uploads music."
   );
   applyHomeSearch();
 }

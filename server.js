@@ -983,6 +983,10 @@ function getArtistSession(request) {
   if (!sessionId) return null;
   const session = artistSessions.get(sessionId);
   if (!session) return null;
+  if (!session.accountId || !session.artistId || session.role === "store-manager") {
+    artistSessions.delete(sessionId);
+    return null;
+  }
   session.expiresAt = Date.now() + ARTIST_SESSION_TTL_MS;
   return { sessionId, session };
 }
@@ -1096,6 +1100,10 @@ function getAdminSession(request) {
   if (!sessionId) return null;
   const session = adminSessions.get(sessionId);
   if (!session) return null;
+  if (session.role !== "store-manager") {
+    adminSessions.delete(sessionId);
+    return null;
+  }
   session.expiresAt = Date.now() + SESSION_TTL_MS;
   return { sessionId, session };
 }
@@ -1389,22 +1397,23 @@ async function logoutArtist(request, response) {
 
 async function sendArtistSession(request, response) {
   const artistSession = getArtistSession(request);
+  const noStore = { "Cache-Control": "no-store" };
   if (!artistSession) {
-    sendJson(response, 200, { authenticated: false });
+    sendJsonWithHeaders(response, 200, { authenticated: false }, noStore);
     return;
   }
   const store = await readStore();
   const account = (store.artistAccounts || []).find((item) => item.id === artistSession.session.accountId);
   if (!account) {
     artistSessions.delete(artistSession.sessionId);
-    sendJson(response, 200, { authenticated: false });
+    sendJsonWithHeaders(response, 200, { authenticated: false }, noStore);
     return;
   }
-  sendJson(response, 200, {
+  sendJsonWithHeaders(response, 200, {
     authenticated: true,
     artistId: account.artistId,
     account: publicAccount(account),
-  });
+  }, noStore);
 }
 
 async function forgotArtistPassword(request, response) {
@@ -1892,17 +1901,24 @@ async function createArtistStripeAccountLink(request, response) {
         },
       });
     } catch (error) {
-      const message = String(error?.message || "");
-      const connectNotActive = /signed up for Connect|dashboard\.stripe\.com\/connect/i.test(message);
-      sendJson(response, connectNotActive ? 503 : 400, {
-        error: connectNotActive
-          ? "Stripe Connect is not activated for MusicBusiness Arena yet. Activate Connect in the platform Stripe Dashboard, then artists can click this button again and they will be redirected automatically."
-          : message || "Unable to create a Stripe Connect account.",
+      sendJson(response, 400, {
+        error: error?.message || "Unable to create a Stripe Connect Express account.",
       });
       return;
     }
     saveArtistStripeSnapshot(artist, stripeAccount);
     await writeStore(store);
+  } else {
+    await refreshArtistStripeStatus(store, artist);
+    if ((artist.stripeAccountStatus || "") === "connected") {
+      try {
+        const loginLink = await stripe.accounts.createLoginLink(artist.stripeAccountId);
+        sendJson(response, 200, { ok: true, url: loginLink.url, mode: "dashboard" });
+      } catch (error) {
+        sendJson(response, 400, { error: error?.message || "Unable to open Stripe Express Dashboard." });
+      }
+      return;
+    }
   }
 
   const origin = requestOrigin(request);
@@ -2189,6 +2205,36 @@ function redirect(response, location) {
   response.end();
 }
 
+function artistSlug(artist = {}) {
+  return slugify(artist.slug || artist.handle || artist.name || artist.id || "artist");
+}
+
+function artistBySlug(store, slug) {
+  const wanted = slugify(slug);
+  return (store.artists || []).find((artist) => artistSlug(artist) === wanted);
+}
+
+async function artistRouteForPath(pathname) {
+  const parts = pathname.split("/").filter(Boolean);
+  if (!parts.length || parts.length > 2) return null;
+  if (parts.some((part) => part.includes("."))) return null;
+  const [slug, section = "profile"] = parts;
+  if (!["profile", "music", "videos", "video", "dashboard"].includes(section)) return null;
+  const store = await readStore();
+  const artist = artistBySlug(store, slug);
+  if (!artist) return null;
+  const normalizedSection = section === "video" ? "videos" : section;
+  const file =
+    normalizedSection === "music"
+      ? "/artist-page.html"
+      : normalizedSection === "videos"
+        ? "/videos.html"
+        : normalizedSection === "dashboard"
+          ? "/artist-dashboard.html"
+          : "/index.html";
+  return { artist, file, section: normalizedSection };
+}
+
 function cacheControlFor(ext, pathname) {
   if (ext === ".html") return "no-cache";
   if (pathname.startsWith("/uploads/") || pathname.startsWith("/assets/")) return "public, max-age=604800";
@@ -2202,11 +2248,6 @@ function cacheControlFor(ext, pathname) {
 async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const requestedPath = decodeURIComponent(url.pathname);
-
-  if (requestedPath === "/") {
-    redirect(response, "/home");
-    return;
-  }
 
   if (LEGACY_REDIRECTS[requestedPath]) {
     redirect(response, `${LEGACY_REDIRECTS[requestedPath]}${url.search}`);
@@ -2223,7 +2264,16 @@ async function serveStatic(request, response) {
     return;
   }
 
-  const pathname = CLEAN_ROUTES[requestedPath] || requestedPath;
+  const artistRoute = await artistRouteForPath(requestedPath);
+  if (artistRoute?.section === "dashboard" && !getArtistSession(request)) {
+    redirect(response, "/artist-login");
+    return;
+  }
+
+  const pathname =
+    requestedPath === "/"
+      ? "/index.html"
+      : artistRoute?.file || CLEAN_ROUTES[requestedPath] || requestedPath;
   const filePath = pathname.startsWith("/uploads/")
     ? path.join(UPLOAD_DIR, pathname.replace(/^\/uploads\//, ""))
     : path.join(ROOT, pathname);
@@ -2391,7 +2441,7 @@ async function handleRequest(request, response) {
 
     if (url.pathname === "/api/admin/session" && request.method === "GET") {
       const adminSession = getAdminSession(request);
-      sendJson(response, 200, {
+      sendJsonWithHeaders(response, 200, {
         authenticated: Boolean(adminSession),
         configured: configuredAdminPassword(),
         account: adminSession
@@ -2401,6 +2451,8 @@ async function handleRequest(request, response) {
               role: adminSession.session.role,
             }
           : null,
+      }, {
+        "Cache-Control": "no-store",
       });
       return;
     }

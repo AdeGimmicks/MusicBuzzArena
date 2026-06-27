@@ -15,7 +15,7 @@
         <label class="sr-only" for="homeSearch">Search artist songs</label>
         <input id="homeSearch" type="search" placeholder="Search songs or artists" autocomplete="off" />
       </form>
-      <nav class="site-nav" aria-label="Main navigation">
+      <nav class="site-nav" id="siteNav" aria-label="Main navigation">
         <a href="/home">Home</a>
         <a href="/music">Music</a>
         <a href="/video">Video</a>
@@ -24,7 +24,39 @@
     </header>
 
     <main>
-      <section class="section-shell" id="releases">
+      <section class="platform-home section-shell" id="platformHome">
+        <section class="platform-hero">
+          <p class="eyebrow">MusicBusiness Arena</p>
+          <h1>Discover Artists. Stream Anywhere. Download Directly.</h1>
+          <p>
+            MusicBusiness Arena helps artists create professional pages, promote music,
+            sell downloadable songs directly to fans, share streaming links, showcase videos,
+            and build their audience.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-button" href="#featuredArtists">Browse Artists</a>
+            <a class="secondary-button" href="/upload">Upload Your Music</a>
+          </div>
+        </section>
+
+        <section class="platform-band" id="featuredArtists">
+          <div class="section-heading">
+            <p class="eyebrow">Featured Artists</p>
+            <h2>Artists on MusicBusiness Arena</h2>
+          </div>
+          <div class="platform-artist-grid" id="featuredArtistsGrid" aria-busy="true"></div>
+        </section>
+
+        <section class="platform-band">
+          <div class="section-heading">
+            <p class="eyebrow">Featured Releases</p>
+            <h2>New music to explore</h2>
+          </div>
+          <div class="release-grid" id="platformReleasesGrid" aria-busy="true"></div>
+        </section>
+      </section>
+
+      <section class="section-shell artist-home-shell" id="artistHome" hidden>
         <section class="feature-banner">
           <div class="feature-visual">
             <img id="homeArtistPhoto" src="Mba Logos/MusicBusiness Logo.png" alt="" />

@@ -35,7 +35,7 @@ let currentStore = window.MBA.defaults();
 let managerSession = null;
 
 async function requireStoreManagerSession() {
-  const response = await fetch("/api/admin/session", { credentials: "same-origin" });
+  const response = await fetch("/api/admin/session", { cache: "no-store", credentials: "same-origin" });
   const session = response.ok ? await response.json() : { authenticated: false };
   if (!session.authenticated) {
     window.location.assign("/store-manager-login");
