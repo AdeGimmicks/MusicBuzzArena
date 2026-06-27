@@ -85,13 +85,8 @@ let artistSession = null;
 let uploadWizardStep = 1;
 let uploadWizardReady = false;
 let uploadTracks = [];
-let lastArtistActivityAt = Date.now();
-let sessionHeartbeatTimer = null;
 const DEFAULT_PREVIEW_START = 0;
 const DEFAULT_PREVIEW_END = 60;
-const ARTIST_IDLE_LIMIT_MS = 60 * 60 * 1000;
-const ARTIST_ACTIVE_WINDOW_MS = 25 * 60 * 1000;
-const ARTIST_HEARTBEAT_MS = 5 * 60 * 1000;
 const RELEASE_TRACK_LIMITS = {
   Single: { min: 1, max: 1 },
   EP: { min: 2, max: 6 },
@@ -2056,37 +2051,6 @@ async function getArtistSessionOrRedirect() {
   }
 }
 
-function markArtistActivity() {
-  lastArtistActivityAt = Date.now();
-}
-
-async function expireArtistSession() {
-  try {
-    await fetch("/api/artist/logout", { method: "POST", credentials: "same-origin" });
-  } catch {
-    // Redirect even if the network request fails.
-  }
-  window.location.assign("/artist-login");
-}
-
-function startArtistSessionHeartbeat() {
-  ["click", "keydown", "input", "change", "pointermove", "scroll", "drop"].forEach((eventName) => {
-    window.addEventListener(eventName, markArtistActivity, { passive: true });
-  });
-  clearInterval(sessionHeartbeatTimer);
-  sessionHeartbeatTimer = setInterval(async () => {
-    const idleFor = Date.now() - lastArtistActivityAt;
-    if (idleFor >= ARTIST_IDLE_LIMIT_MS) {
-      await expireArtistSession();
-      return;
-    }
-    if (idleFor <= ARTIST_ACTIVE_WINDOW_MS) {
-      const response = await fetch("/api/artist/session", { cache: "no-store", credentials: "same-origin" }).catch(() => null);
-      if (!response?.ok) await expireArtistSession();
-    }
-  }, ARTIST_HEARTBEAT_MS);
-}
-
 function applyRequestedUploadType() {
   const params = new URLSearchParams(window.location.search);
   const requested = params.get("start") || localStorage.getItem("mba-pending-upload-type") || "";
@@ -2104,7 +2068,6 @@ function applyRequestedUploadType() {
 async function initDashboard() {
   artistSession = await getArtistSessionOrRedirect();
   if (!artistSession) return;
-  startArtistSessionHeartbeat();
   activeArtistId = artistSession.artistId;
   currentStore = await window.MBA.loadStore({ artist: true, force: true });
   setupUploadWizard();

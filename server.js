@@ -57,7 +57,7 @@ const OWNER_MANAGER_INITIAL_PASSWORD = envValue("OWNER_MANAGER_INITIAL_PASSWORD"
 const SESSION_COOKIE_NAME = "mba_store_manager";
 const ARTIST_SESSION_COOKIE_NAME = "mba_artist_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
-const ARTIST_SESSION_TTL_MS = 1000 * 60 * 60;
+const ARTIST_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 365;
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -987,7 +987,6 @@ function getArtistSession(request) {
     artistSessions.delete(sessionId);
     return null;
   }
-  session.expiresAt = Date.now() + ARTIST_SESSION_TTL_MS;
   return { sessionId, session };
 }
 
