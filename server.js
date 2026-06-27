@@ -1873,33 +1873,51 @@ async function createArtistStripeAccountLink(request, response) {
   }
 
   if (!artist.stripeAccountId) {
-    const stripeAccount = await stripe.accounts.create({
-      type: "express",
-      email: account.email || undefined,
-      business_profile: {
-        name: artist.name || account.artistName || "MusicBusiness Arena Artist",
-      },
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-      metadata: {
-        artistId: artist.id,
-        artistName: artist.name || account.artistName || "",
-        platform: "MusicBusiness Arena",
-      },
-    });
+    let stripeAccount;
+    try {
+      stripeAccount = await stripe.accounts.create({
+        type: "express",
+        email: account.email || undefined,
+        business_profile: {
+          name: artist.name || account.artistName || "MusicBusiness Arena Artist",
+        },
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+        metadata: {
+          artistId: artist.id,
+          artistName: artist.name || account.artistName || "",
+          platform: "MusicBusiness Arena",
+        },
+      });
+    } catch (error) {
+      const message = String(error?.message || "");
+      const connectNotActive = /signed up for Connect|dashboard\.stripe\.com\/connect/i.test(message);
+      sendJson(response, connectNotActive ? 503 : 400, {
+        error: connectNotActive
+          ? "Stripe Connect is not activated for MusicBusiness Arena yet. Activate Connect in the platform Stripe Dashboard, then artists can click this button again and they will be redirected automatically."
+          : message || "Unable to create a Stripe Connect account.",
+      });
+      return;
+    }
     saveArtistStripeSnapshot(artist, stripeAccount);
     await writeStore(store);
   }
 
   const origin = requestOrigin(request);
-  const accountLink = await stripe.accountLinks.create({
-    account: artist.stripeAccountId,
-    refresh_url: `${origin}/artist-dashboard?section=earnings&stripe=refresh`,
-    return_url: `${origin}/artist-dashboard?section=earnings&stripe=return`,
-    type: "account_onboarding",
-  });
+  let accountLink;
+  try {
+    accountLink = await stripe.accountLinks.create({
+      account: artist.stripeAccountId,
+      refresh_url: `${origin}/artist-dashboard?section=earnings&stripe=refresh`,
+      return_url: `${origin}/artist-dashboard?section=earnings&stripe=return`,
+      type: "account_onboarding",
+    });
+  } catch (error) {
+    sendJson(response, 400, { error: error?.message || "Unable to open Stripe Connect onboarding." });
+    return;
+  }
   sendJson(response, 200, { ok: true, url: accountLink.url });
 }
 

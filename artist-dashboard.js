@@ -1925,7 +1925,7 @@ connectStripeAccount?.addEventListener("click", async () => {
   } catch (error) {
     connectStripeAccount.disabled = false;
     connectStripeAccount.textContent = originalText || "Connect Stripe Account";
-    if (stripeConnectNotice) message(stripeConnectNotice, error.message || "Unable to start Stripe onboarding.", "error");
+    if (stripeConnectNotice) message(stripeConnectNotice, error.message || "Unable to start Stripe onboarding.", "pending");
   }
 });
 
