@@ -2180,6 +2180,7 @@ function isPathInsideUploadRoot(filePath) {
 }
 
 const CLEAN_ROUTES = {
+  "/dashboard": "/dashboard.html",
   "/home": "/index.html",
   "/music": "/artist-page.html",
   "/listen": "/artist-page-2.html",
@@ -2218,7 +2219,11 @@ async function artistRouteForPath(pathname) {
   const parts = pathname.split("/").filter(Boolean);
   if (!parts.length || parts.length > 2) return null;
   if (parts.some((part) => part.includes("."))) return null;
-  const [slug, section = "profile"] = parts;
+  let [slug, section = "profile"] = parts;
+  if (parts.length === 1 && /-dashboard$/i.test(slug)) {
+    slug = slug.replace(/-dashboard$/i, "");
+    section = "dashboard";
+  }
   if (!["profile", "music", "videos", "video", "dashboard"].includes(section)) return null;
   const store = await readStore();
   const artist = artistBySlug(store, slug);

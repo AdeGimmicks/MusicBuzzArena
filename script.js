@@ -52,22 +52,13 @@ function artistFromPath(store) {
 function setArtistNav(artist) {
   const nav = document.querySelector("#siteNav");
   if (!nav) return;
-  if (!artist) {
-    nav.innerHTML = `
-      <a href="/home">Home</a>
-      <a href="#featuredArtists">Artists</a>
-      <a href="/music">Music</a>
-      <a href="/video">Video</a>
-      <a href="/upload">Upload</a>
-    `;
-    return;
-  }
+  if (!artist) return;
   const slug = artistSlug(artist);
   nav.innerHTML = `
     <a href="/${slug}">${artist.name || "Artist"}</a>
     <a href="/${slug}/music">Music</a>
     <a href="/${slug}/videos">Videos</a>
-    <a href="/upload">Upload</a>
+    <a href="/${slug}-dashboard">Upload</a>
   `;
 }
 
@@ -257,37 +248,14 @@ async function renderHome(force = false) {
     .filter((release) => approvedArtists.has(release.artistId))
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-  const pathArtist = artistFromPath(store);
-  const platformHome = document.querySelector("#platformHome");
+  const pageArtist = artistFromPath(store) || featuredArtist;
   const artistHome = document.querySelector("#artistHome");
 
-  setArtistNav(pathArtist);
-
-  if (!pathArtist) {
-    if (platformHome) platformHome.hidden = false;
-    if (artistHome) artistHome.hidden = true;
-    const artistGrid = document.querySelector("#featuredArtistsGrid");
-    if (artistGrid) {
-      artistGrid.setAttribute("aria-busy", "false");
-      artistGrid.replaceChildren();
-      approvedArtistList.slice(0, 8).forEach((artist) => artistGrid.append(artistCard(artist, approved)));
-      if (!approvedArtistList.length) artistGrid.append(emptyShelf("Artists will appear here after registration."));
-    }
-    renderShelf(
-      document.querySelector("#platformReleasesGrid"),
-      approved,
-      store,
-      "Featured releases will appear here after Store Manager approves uploads."
-    );
-    applyHomeSearch();
-    return;
-  }
-
-  if (platformHome) platformHome.hidden = true;
   if (artistHome) artistHome.hidden = false;
-  renderHomeArtist(pathArtist || featuredArtist);
+  setArtistNav(pageArtist);
+  renderHomeArtist(pageArtist);
 
-  const artistReleases = approved.filter((release) => release.artistId === pathArtist.id);
+  const artistReleases = approved.filter((release) => release.artistId === pageArtist?.id);
   renderShelf(
     document.querySelector("#latestSongsGrid"),
     artistReleases,

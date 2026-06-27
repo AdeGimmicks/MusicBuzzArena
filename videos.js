@@ -60,7 +60,7 @@ function setArtistNav(artist) {
     <a href="/${slug}">${artist.name || "Artist"}</a>
     <a href="/${slug}/music">Music</a>
     <a href="/${slug}/videos">Videos</a>
-    <a href="/upload">Upload</a>
+    <a href="/${slug}-dashboard">Upload</a>
   `;
 }
 
