@@ -3263,21 +3263,21 @@ select:focus {
 }
 
 .music-release-kicker {
-  color: #f4c430;
-  font-size: 0.82rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 1.08rem;
+  font-weight: 500;
+  letter-spacing: 0;
   margin: 0 0 10px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .music-release-info h1 {
   color: #fff;
-  font-family: Inter, "Avenir Next", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: clamp(2rem, 3.6vw, 3.65rem);
-  font-weight: 850;
+  font-family: "Helvetica Neue", Helvetica, Arial, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(2.15rem, 3.9vw, 4rem);
+  font-weight: 800;
   letter-spacing: 0;
-  line-height: 1.04;
+  line-height: 0.98;
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -5208,13 +5208,13 @@ select:focus {
   }
 
   .music-release-kicker {
-    font-size: 0.72rem;
-    letter-spacing: 0.14em;
+    font-size: 0.94rem;
+    letter-spacing: 0;
   }
 
   .music-release-info h1 {
-    font-size: clamp(1.72rem, 8.4vw, 2.55rem);
-    line-height: 1.05;
+    font-size: clamp(1.9rem, 8.8vw, 2.7rem);
+    line-height: 1;
   }
 
   .music-release-facts {

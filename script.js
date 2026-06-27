@@ -80,6 +80,7 @@ function renderHomeArtist(artist) {
   const nameNode = document.querySelector("#homeArtistName");
   const bioNode = document.querySelector("#homeArtistBio");
   const bioToggle = document.querySelector("#homeBioToggle");
+  const songsHeading = document.querySelector("#homeSongsHeading");
   const socialsNode = document.querySelector("#homeSocialLinks");
   const videoLink = document.querySelector("#homeVideoLink");
 
@@ -88,6 +89,7 @@ function renderHomeArtist(artist) {
     photoNode.alt = `${name} profile photo`;
   }
   if (nameNode) nameNode.textContent = name;
+  if (songsHeading) songsHeading.textContent = `More from ${name}`;
   if (bioNode) {
     bioNode.textContent = bio;
     bioNode.classList.remove("is-expanded");

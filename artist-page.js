@@ -237,7 +237,7 @@ function trackRow(release, artist, artistReleases = []) {
         <img class="music-release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${title} cover" loading="eager" decoding="async">
       </div>
       <div class="music-release-info">
-        <p class="music-release-kicker">Featured release</p>
+        <p class="music-release-kicker">${releaseType}</p>
         <h1>${title}</h1>
         <dl class="music-release-facts">
           <div><dt>Released</dt><dd>${releaseDate}</dd></div>
