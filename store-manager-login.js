@@ -16,8 +16,8 @@ loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   showLoginMessage("Checking access...", "pending");
 
-  const email = loginForm.email.value;
-  const password = loginForm.password.value;
+  const email = loginForm.storeManagerEmail.value;
+  const password = loginForm.storeManagerPassword.value;
   const response = await fetch("/api/admin/login", {
     method: "POST",
     credentials: "same-origin",

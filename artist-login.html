@@ -23,9 +23,9 @@
         <p class="eyebrow">Artist login</p>
         <h1>Login to Upload</h1>
         <p class="auth-support" data-selected-upload-copy></p>
-        <form class="artist-auth-form" data-auth-form="login">
-          <label>Email Address<input name="email" type="email" autocomplete="email" required /></label>
-          <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+        <form class="artist-auth-form" data-auth-form="login" autocomplete="on">
+          <label>Email Address<input name="artistEmail" type="email" autocomplete="section-artist username" required /></label>
+          <label>Password<input name="artistPassword" type="password" autocomplete="section-artist current-password" required /></label>
           <button class="primary-button" type="submit">Login</button>
         </form>
         <p class="form-message" data-auth-message role="status"></p>

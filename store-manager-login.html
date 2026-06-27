@@ -16,14 +16,14 @@
           Sign in to approve releases, manage artist pages, review records, and update platform settings.
         </p>
 
-        <form id="storeManagerLoginForm" class="manager-login-form">
+        <form id="storeManagerLoginForm" class="manager-login-form" autocomplete="on">
           <label>
             Email Address
-            <input name="email" type="email" autocomplete="email" required />
+            <input name="storeManagerEmail" type="email" autocomplete="section-store-manager username" required />
           </label>
           <label>
             Password
-            <input name="password" type="password" autocomplete="current-password" required />
+            <input name="storeManagerPassword" type="password" autocomplete="section-store-manager current-password" required />
           </label>
           <button class="primary-button" type="submit">Unlock Store Manager</button>
           <p class="form-message" id="storeManagerLoginMessage" role="status"></p>

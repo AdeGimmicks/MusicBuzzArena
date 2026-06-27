@@ -42,7 +42,12 @@ async function postJson(path, body) {
 }
 
 function formValues(form) {
-  return Object.fromEntries(new FormData(form).entries());
+  const values = Object.fromEntries(new FormData(form).entries());
+  if (values.artistEmail !== undefined) values.email = values.artistEmail;
+  if (values.artistPassword !== undefined) values.password = values.artistPassword;
+  delete values.artistEmail;
+  delete values.artistPassword;
+  return values;
 }
 
 function wireReturnLinks() {
