@@ -1995,6 +1995,7 @@ async function createCheckoutSession(request, response) {
   };
   const imageUrl = checkoutImageUrl(origin, release.cover);
   if (imageUrl) productData.images = [imageUrl];
+  const downloadPath = releasePublicPath("download", release, artist);
 
   const sessionParams = {
     mode: "payment",
@@ -2011,8 +2012,8 @@ async function createCheckoutSession(request, response) {
     ],
     metadata,
     payment_intent_data: { metadata },
-    success_url: `${origin}/download?release=${encodeURIComponent(release.id)}&checkout=success&type=${checkoutType}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/download?release=${encodeURIComponent(release.id)}&checkout=cancelled`,
+    success_url: `${origin}${downloadPath}?checkout=success&type=${checkoutType}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}${downloadPath}?checkout=cancelled`,
   };
 
   if (connectedAccountId && checkoutType === "download") {
@@ -2210,9 +2211,29 @@ function artistSlug(artist = {}) {
   return slugify(artist.slug || artist.handle || artist.name || artist.id || "artist");
 }
 
+function releaseSlug(release = {}) {
+  return slugify(release.slug || release.title || release.id || "song");
+}
+
+function releasePublicPath(type, release = {}, artist = {}) {
+  const artistPart = artistSlug(artist);
+  const releasePart = releaseSlug(release);
+  return artistPart ? `/${type}/${artistPart}/${releasePart}` : `/${type}/${releasePart}`;
+}
+
 function artistBySlug(store, slug) {
   const wanted = slugify(slug);
   return (store.artists || []).find((artist) => artistSlug(artist) === wanted);
+}
+
+function cleanReleaseRouteForPath(pathname) {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  if (parts.some((part) => part.includes("."))) return null;
+  const [type] = parts;
+  if (type === "listen") return { file: "/artist-page-2.html", type };
+  if (type === "download") return { file: "/download.html", type };
+  return null;
 }
 
 async function artistRouteForPath(pathname) {
@@ -2270,6 +2291,7 @@ async function serveStatic(request, response) {
   }
 
   const artistRoute = await artistRouteForPath(requestedPath);
+  const cleanReleaseRoute = cleanReleaseRouteForPath(requestedPath);
   if (artistRoute?.section === "dashboard" && !getArtistSession(request)) {
     redirect(response, "/artist-login");
     return;
@@ -2278,7 +2300,7 @@ async function serveStatic(request, response) {
   const pathname =
     requestedPath === "/"
       ? "/index.html"
-      : artistRoute?.file || CLEAN_ROUTES[requestedPath] || requestedPath;
+      : cleanReleaseRoute?.file || artistRoute?.file || CLEAN_ROUTES[requestedPath] || requestedPath;
   const filePath = pathname.startsWith("/uploads/")
     ? path.join(UPLOAD_DIR, pathname.replace(/^\/uploads\//, ""))
     : path.join(ROOT, pathname);

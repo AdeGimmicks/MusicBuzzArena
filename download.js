@@ -1,7 +1,7 @@
 (function () {
   const page = document.getElementById("downloadPage");
   const params = new URLSearchParams(window.location.search);
-  const releaseId = params.get("release");
+  const queryReleaseId = params.get("release");
   const checkoutState = params.get("checkout");
   const checkoutSessionId = params.get("session_id");
   let previewAudio = null;
@@ -55,9 +55,56 @@
     return (store.releases || []).filter((release) => release.status === "approved");
   }
 
+  function slugify(value) {
+    return String(value || "song")
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  function artistSlug(artist) {
+    return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id || "artist");
+  }
+
+  function releaseSlug(release) {
+    return slugify(release?.slug || release?.title || release?.id || "song");
+  }
+
+  function releasePublicUrl(type, release, artist) {
+    const artistPart = artistSlug(artist);
+    const releasePart = releaseSlug(release);
+    return artistPart ? `/${type}/${artistPart}/${releasePart}` : `/${type}/${releasePart}`;
+  }
+
+  function releaseSlugFromPath() {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    if (parts[0] !== "download" && parts[0] !== "listen") return "";
+    return parts.length >= 3 ? parts[2] : parts[1] || "";
+  }
+
+  function artistSlugFromPath() {
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    if (parts[0] !== "download" && parts[0] !== "listen") return "";
+    return parts.length >= 3 ? parts[1] : "";
+  }
+
   function selectedRelease(store) {
     const releases = approvedReleases(store);
-    return releases.find((release) => release.id === releaseId) || releases[0] || null;
+    const pathReleaseSlug = releaseSlugFromPath();
+    const pathArtistSlug = artistSlugFromPath();
+    const pathArtist = pathArtistSlug
+      ? (store.artists || []).find((artist) => artistSlug(artist) === pathArtistSlug)
+      : null;
+    return (
+      releases.find((release) => release.id === queryReleaseId) ||
+      releases.find((release) => {
+        if (releaseSlug(release) !== pathReleaseSlug) return false;
+        return pathArtist ? release.artistId === pathArtist.id : true;
+      }) ||
+      releases[0] ||
+      null
+    );
   }
 
   function selectedArtist(store, release) {
@@ -75,7 +122,7 @@
     `;
   }
 
-  function downloadStatusUrl() {
+  function downloadStatusUrl(releaseId) {
     const query = new URLSearchParams({
       release: releaseId || "",
       session_id: checkoutSessionId || "",
@@ -83,7 +130,7 @@
     return `/api/download-status?${query.toString()}`;
   }
 
-  function claimDownloadUrl() {
+  function claimDownloadUrl(releaseId) {
     const query = new URLSearchParams({
       release: releaseId || "",
       session_id: checkoutSessionId || "",
@@ -97,9 +144,9 @@
     return match?.[1] || `${String(release.title || "song").replace(/[^a-z0-9._-]+/gi, "-")}.mp3`;
   }
 
-  async function loadDownloadState() {
+  async function loadDownloadState(releaseId) {
     if (checkoutState !== "success" || !checkoutSessionId) return null;
-    const response = await fetch(downloadStatusUrl());
+    const response = await fetch(downloadStatusUrl(releaseId));
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "Unable to verify this purchase.");
     return data;
@@ -147,7 +194,7 @@
           ${renderPreview(release)}
           <div class="download-actions">
             ${renderDownloadAction(release, isSuccess, downloadState)}
-            <a class="download-secondary-link" href="/listen?release=${encodeURIComponent(release.id)}">Streaming Links</a>
+            <a class="download-secondary-link" href="${releasePublicUrl("listen", release, artist)}">Streaming Links</a>
           </div>
           <p class="download-status ${isSuccess ? "is-success" : isCancelled ? "is-error" : ""}" id="downloadStatus">
             ${downloadStatusText(isSuccess, isCancelled, downloadState)}
@@ -352,7 +399,7 @@
       }
 
       try {
-        const response = await fetch(claimDownloadUrl());
+        const response = await fetch(claimDownloadUrl(release.id));
         if (response.status === 409) {
           const data = await response.json().catch(() => ({}));
           markDownloaded(data.error || "Thank you, this song has already been downloaded for this purchase.");
@@ -402,7 +449,7 @@ async function init() {
       if (result) artist.downloadPageVisits = result.value;
     }
 
-    const downloadState = await loadDownloadState();
+    const downloadState = await loadDownloadState(release?.id);
     renderPage(store, downloadState);
   } catch (error) {
       page.innerHTML = `

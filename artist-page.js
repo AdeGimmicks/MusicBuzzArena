@@ -17,9 +17,20 @@ function artistSlug(artist) {
   return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id);
 }
 
+function releaseSlug(release) {
+  return slugify(release?.slug || release?.title || release?.id || "song");
+}
+
+function releasePublicUrl(type, release, artist) {
+  const artistPart = artistSlug(artist);
+  const releasePart = releaseSlug(release);
+  return artistPart ? `/${type}/${artistPart}/${releasePart}` : `/${type}/${releasePart}`;
+}
+
 function artistSlugFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (parts.length >= 2 && parts[1] === "music") return parts[0];
+  if ((parts[0] === "listen" || parts[0] === "download") && parts.length >= 3) return parts[1];
   return "";
 }
 
@@ -87,7 +98,32 @@ function trackTags(release) {
 function selectedRelease(releases) {
   const params = new URLSearchParams(window.location.search);
   const releaseId = params.get("release");
-  return releases.find((release) => release.id === releaseId) || releases[0];
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const pathReleaseSlug = parts[0] === "listen" || parts[0] === "download"
+    ? parts.length >= 3
+      ? parts[2]
+      : parts[1]
+    : "";
+  return (
+    releases.find((release) => release.id === releaseId) ||
+    releases.find((release) => releaseSlug(release) === pathReleaseSlug) ||
+    releases[0]
+  );
+}
+
+function releaseFromPath(store, approvedReleases) {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts[0] !== "listen" && parts[0] !== "download") return null;
+  const pathArtistSlug = parts.length >= 3 ? parts[1] : "";
+  const pathReleaseSlug = parts.length >= 3 ? parts[2] : parts[1] || "";
+  if (!pathReleaseSlug) return null;
+  const pathArtist = pathArtistSlug
+    ? (store.artists || []).find((artist) => artistSlug(artist) === pathArtistSlug)
+    : null;
+  return approvedReleases.find((release) => {
+    if (releaseSlug(release) !== pathReleaseSlug) return false;
+    return pathArtist ? release.artistId === pathArtist.id : true;
+  }) || null;
 }
 
 function artistForPage(store, approvedReleases) {
@@ -95,7 +131,9 @@ function artistForPage(store, approvedReleases) {
   const releaseId = params.get("release");
   const artistId = params.get("artist");
   const pathSlug = artistSlugFromPath();
-  const release = releaseId ? approvedReleases.find((item) => item.id === releaseId) : null;
+  const release =
+    (releaseId ? approvedReleases.find((item) => item.id === releaseId) : null) ||
+    releaseFromPath(store, approvedReleases);
 
   return (
     store.artists.find((artist) => artist.id === release?.artistId) ||
@@ -211,8 +249,8 @@ function trackRow(release, artist, artistReleases = []) {
           ${moods[1] ? `<div><dt>Mood 2</dt><dd>${moods[1]}</dd></div>` : ""}
         </dl>
         <div class="music-release-actions" aria-label="${title} actions">
-          <a class="music-capsule music-capsule-listen" href="/listen?release=${encodeURIComponent(release.id)}">Listen</a>
-          <a class="music-capsule music-capsule-download" href="/download?release=${encodeURIComponent(release.id)}">Download</a>
+          <a class="music-capsule music-capsule-listen" href="${releasePublicUrl("listen", release, artist)}">Listen</a>
+          <a class="music-capsule music-capsule-download" href="${releasePublicUrl("download", release, artist)}">Download</a>
         </div>
         ${trackList}
         ${
@@ -363,7 +401,7 @@ function linkHubPage(release, artist) {
   const releaseCoverSrc = release.cover || "Mba Logos/MusicBusiness Logo.png";
   const artistPhotoSrc = releaseCoverSrc;
   const downloadAmount = money(release.price || 0);
-  const shareUrl = `${window.location.origin}/listen?release=${encodeURIComponent(release.id)}`;
+  const shareUrl = `${window.location.origin}${releasePublicUrl("listen", release, artist)}`;
   const encodedShareUrl = encodeURIComponent(shareUrl);
   const encodedShareText = encodeURIComponent(`Listen to ${release.title || "this song"} by ${artistLabel}`);
   const tracks = releaseTracks(release);

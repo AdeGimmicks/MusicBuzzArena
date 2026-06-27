@@ -43,6 +43,16 @@ function artistSlug(artist) {
   return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id);
 }
 
+function releaseSlug(release) {
+  return slugify(release?.slug || release?.title || release?.id || "song");
+}
+
+function releasePublicUrl(type, release, artist) {
+  const artistPart = artistSlug(artist);
+  const releasePart = releaseSlug(release);
+  return artistPart ? `/${type}/${artistPart}/${releasePart}` : `/${type}/${releasePart}`;
+}
+
 function artistFromPath(store) {
   const slug = window.location.pathname.split("/").filter(Boolean)[0];
   if (!slug || slug === "home") return null;
@@ -113,7 +123,7 @@ function renderHomeArtist(artist) {
 function releaseCard(release, artist) {
   const card = document.createElement("article");
   card.className = "release-card";
-  const listenUrl = `/listen?release=${encodeURIComponent(release.id)}`;
+  const listenUrl = releasePublicUrl("listen", release, artist);
   card.dataset.search = [
     release.title,
     artist?.name || release.artistName,
