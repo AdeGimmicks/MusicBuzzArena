@@ -1,3 +1,12 @@
+<!-- ==================================================
+     PUBLIC UPLOAD ENTRY PAGE
+
+     CODE OWNER GUIDE
+
+     Shows Single, EP, and Album choices before login or registration.
+     Used by: /upload.
+     Does not save releases by itself; it sends artists into the dashboard workflow.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -7,6 +16,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="site-page-body artist-auth-body">
+    <!-- ==================================================
+         PUBLIC HEADER
+
+         Shows the website logo and main public navigation on the
+         upload entry page.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -19,6 +34,18 @@
       </nav>
     </header>
 
+    <!-- ==================================================
+         UPLOAD ENTRY CHOICES
+
+         Lets visitors choose Single Song, EP, or Album before the
+         site checks whether they should log in or create an account.
+
+         Used by:
+         • /upload
+
+         This section does not save music files; it only starts the
+         upload/login path.
+    ================================================== -->
     <main class="artist-auth-main upload-entry-main">
       <section class="artist-auth-card upload-entry-card">
         <p class="eyebrow">Artist upload</p>

@@ -1,3 +1,22 @@
+/* ===================================================
+   PUBLIC UPLOAD ENTRY SCRIPT
+
+   CODE OWNER GUIDE
+
+   Decides whether a visitor should go to login, registration, or the dashboard upload workflow.
+   Used by: upload.html.
+   Does not create songs directly.
+=================================================== */
+
+/* ===================================================
+   PUBLIC UPLOAD ENTRY PAGE
+
+   Controls the public Upload page where visitors choose
+   Single Song, EP, or Album before logging in or registering.
+
+   Used by:
+   - upload.html
+=================================================== */
 const uploadChoice = document.querySelector("#uploadAuthChoice");
 const uploadChoiceText = document.querySelector("#uploadChoiceText");
 const uploadCreateAccount = document.querySelector("#uploadCreateAccount");
@@ -7,6 +26,12 @@ const uploadExistingLogin = document.querySelector("#uploadExistingLogin");
 
 const RELEASE_TYPES = new Set(["Single", "EP", "Album"]);
 
+/* ===================================================
+   UPLOAD TYPE AND AUTH LINKS
+
+   Builds the correct Artist Dashboard, login, and registration
+   links while remembering the selected release type.
+=================================================== */
 function cleanReleaseType(value) {
   return RELEASE_TYPES.has(value) ? value : "Single";
 }
@@ -20,6 +45,12 @@ function authUrl(path, type) {
   return `${path}?start=${encodeURIComponent(cleanReleaseType(type))}`;
 }
 
+/* ===================================================
+   RETURNING ARTIST CHECK
+
+   Checks whether an artist is already logged in and sends them
+   directly to the Artist Dashboard when appropriate.
+=================================================== */
 async function isLoggedIn() {
   try {
     const response = await fetch("/api/artist/session", { cache: "no-store", credentials: "same-origin" });

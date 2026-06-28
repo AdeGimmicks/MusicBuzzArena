@@ -1,3 +1,22 @@
+/* ===================================================
+   STORE MANAGER DASHBOARD SCRIPT
+
+   CODE OWNER GUIDE
+
+   Controls admin-only platform management, statistics, moderation tables, reports, and Store Manager settings.
+   Used by: store-manager.html.
+   Does not control artist uploads directly.
+=================================================== */
+
+/* ===================================================
+   STORE MANAGER ELEMENTS AND STATE
+
+   Collects the admin page elements and keeps the current
+   Store Manager session and loaded website data.
+
+   Used by:
+   - store-manager.html
+=================================================== */
 const siteForm = document.querySelector("#siteForm");
 const ARTIST_PAYOUT_PERCENT = 80;
 const PLATFORM_SERVICE_FEE_PERCENT = 10;
@@ -38,6 +57,14 @@ const managerAccountSettingsMessage = document.querySelector("#managerAccountSet
 let currentStore = window.MBA.defaults();
 let managerSession = null;
 
+/* ===================================================
+   STORE MANAGER SESSION PROTECTION
+
+   Checks whether a Store Manager is logged in before showing
+   admin tools.
+
+   This does not log in or validate artist accounts.
+=================================================== */
 async function requireStoreManagerSession() {
   const response = await fetch("/api/admin/session", { cache: "no-store", credentials: "same-origin" });
   const session = response.ok ? await response.json() : { authenticated: false };
@@ -50,6 +77,18 @@ async function requireStoreManagerSession() {
   return true;
 }
 
+/* ===================================================
+   ADMIN DATA LOAD AND SAVE
+
+   Reads and saves platform-wide data that only the Store
+   Manager can manage.
+
+   Used by:
+   - Artist management
+   - Song management
+   - Reports
+   - Platform settings
+=================================================== */
 async function saveAdminStore(store, options = {}) {
   const response = await fetch("/api/admin/store", {
     method: "POST",
@@ -86,6 +125,12 @@ async function loadAdminStore() {
   return response.json();
 }
 
+/* ===================================================
+   SHARED STORE MANAGER HELPERS
+
+   Formats money, dates, safe text, links, files, revenue,
+   and payout calculations for the admin dashboard.
+=================================================== */
 function money(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
 }
@@ -232,6 +277,12 @@ function videoEntries() {
   });
 }
 
+/* ===================================================
+   STORE MANAGER NAVIGATION AND PAGE SETUP
+
+   Controls switching between admin sidebar sections and
+   filling global site settings forms.
+=================================================== */
 function setText(selector, value) {
   const node = document.querySelector(selector);
   if (node) node.textContent = value;
@@ -304,6 +355,13 @@ function renderList(containerId, items, emptyText) {
     : emptyState(emptyText);
 }
 
+/* ===================================================
+   DASHBOARD OVERVIEW
+
+   Renders the Store Manager homepage cards and recent activity
+   lists for total artists, songs, videos, downloads, revenue,
+   payouts, and newest records.
+=================================================== */
 function renderDashboard() {
   const artists = currentStore.artists || [];
   const releases = currentStore.releases || [];
@@ -328,6 +386,13 @@ function renderDashboard() {
   renderList("#managerNewestSupport", currentStore.supportTickets || [], "Newest support requests will appear here.");
 }
 
+/* ===================================================
+   ARTIST MANAGEMENT
+
+   Controls artist search, filters, profile rows, suspend,
+   reactivate, delete, and artist statistics shown to the
+   Store Manager.
+=================================================== */
 function filteredArtists() {
   const query = String(artistSearchInput?.value || "").toLowerCase();
   const status = artistStatusFilter?.value || "";
@@ -376,6 +441,13 @@ function renderArtists() {
     : emptyState("No artists match the current filters.");
 }
 
+/* ===================================================
+   RELEASE MANAGEMENT
+
+   Controls release search, artist filters, status filters,
+   edit actions, remove actions, download counts, and streaming
+   click totals for each release.
+=================================================== */
 function filteredSongs() {
   const query = String(songSearchInput?.value || "").toLowerCase();
   const artistId = songArtistFilter?.value || "";
@@ -423,6 +495,12 @@ function renderSongs() {
     : emptyState("No songs match the current filters.");
 }
 
+/* ===================================================
+   VIDEO MANAGEMENT
+
+   Shows uploaded artist videos and video links for Store
+   Manager review.
+=================================================== */
 function renderVideos() {
   if (!managerVideoTable) return;
   const videos = videoEntries();
@@ -444,6 +522,12 @@ function renderVideos() {
     : emptyState("Artist video links will appear here.");
 }
 
+/* ===================================================
+   DOWNLOAD ANALYTICS
+
+   Shows download records, download filters, recent downloads,
+   and artist/song download totals.
+=================================================== */
 function filteredDownloads() {
   const query = String(downloadSearchInput?.value || "").toLowerCase();
   const artistId = downloadArtistFilter?.value || "";
@@ -475,6 +559,15 @@ function renderDownloads() {
     : emptyState("Purchase records will appear here after downloads are unlocked.");
 }
 
+/* ===================================================
+   PAYOUTS AND REVENUE MONITORING
+
+   Shows Stripe Connect status, artist payout readiness,
+   gross sales, platform fees, processing fees, and artist
+   net earnings.
+
+   This section does not expose artist bank information.
+=================================================== */
 function renderPayouts() {
   if (!managerPayoutTable) return;
   const artists = currentStore.artists || [];
@@ -540,6 +633,12 @@ function renderPayouts() {
     : emptyState("Payout records will appear when artists earn revenue.");
 }
 
+/* ===================================================
+   PLATFORM ANALYTICS
+
+   Shows Store Manager summaries for visits, downloads,
+   streaming platform clicks, and overall website activity.
+=================================================== */
 function renderAnalytics() {
   const topArtist = (currentStore.artists || []).slice().sort((a, b) => artistRevenue(b.id) - artistRevenue(a.id))[0];
   const topSong = (currentStore.releases || []).slice().sort((a, b) => releaseRevenue(b) - releaseRevenue(a))[0];
@@ -555,6 +654,12 @@ function renderAnalytics() {
   setText("#analyticsTopPlatform", topPlatform);
 }
 
+/* ===================================================
+   SUPPORT, REPORTS, AND EXPORTS
+
+   Renders support placeholders and report/export sections
+   for artists, releases, downloads, and streaming activity.
+=================================================== */
 function renderSupportAndReports() {
   if (managerSupportTable) {
     managerSupportTable.innerHTML = emptyState("Support tickets will appear here with Ticket ID, Artist, Subject, Date, Priority, Status, and Actions.");
@@ -584,6 +689,12 @@ function renderSupportAndReports() {
   );
 }
 
+/* ===================================================
+   FULL STORE MANAGER RENDER
+
+   Refreshes every Store Manager section after data is loaded
+   or saved.
+=================================================== */
 function renderAll() {
   applyLogo();
   fillSiteForm();
@@ -598,6 +709,12 @@ function renderAll() {
   renderSupportAndReports();
 }
 
+/* ===================================================
+   STORE MANAGER ACTIONS AND FORM HANDLERS
+
+   Handles admin save buttons, table actions, moderation
+   actions, settings changes, and delete confirmations.
+=================================================== */
 async function saveAndRender(options = {}) {
   currentStore = await saveAdminStore(currentStore, options);
   renderAll();
@@ -783,6 +900,12 @@ document.querySelector("#exportDownloadsCsv")?.addEventListener("click", () => {
   URL.revokeObjectURL(link.href);
 });
 
+/* ===================================================
+   LOGOUT AND STARTUP
+
+   Logs out the Store Manager when requested and starts the
+   admin dashboard after the session check passes.
+=================================================== */
 async function logoutStoreManager() {
   await fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
   window.location.assign("/store-manager-login");

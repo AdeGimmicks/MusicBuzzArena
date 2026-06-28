@@ -1,3 +1,12 @@
+<!-- ==================================================
+     ARTIST VIDEO PAGE
+
+     CODE OWNER GUIDE
+
+     Shows artist music videos and short video sections.
+     Used by: /video, /videos, and dynamic artist video routes such as /focuzman/videos.
+     Does not control song uploads or payments.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -8,6 +17,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="artist-body">
+    <!-- ==================================================
+         ARTIST VIDEO HEADER
+
+         Shows the logo and artist navigation for video pages.
+         JavaScript can update these links for the current artist.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -20,6 +35,17 @@
       </nav>
     </header>
 
+    <!-- ==================================================
+         VIDEO PAGE CONTENT
+
+         Displays the main music video, short videos, and links to
+         watch more videos from the artist.
+
+         Used by:
+         • videos.js
+
+         This section does not control song uploads or payments.
+    ================================================== -->
     <main>
       <section class="section-shell artist-catalog-page video-page">
         <div class="section-heading">
@@ -84,6 +110,11 @@
       </section>
     </main>
 
+    <!-- ==================================================
+         FOOTER
+
+         Standard footer shown below the video page.
+    ================================================== -->
     <footer class="site-footer">
       <div class="footer-inner">
         <img data-logo class="footer-logo" src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />

@@ -1,3 +1,26 @@
+/* ===================================================
+   PLATFORM LINK CONFIGURATION
+
+   CODE OWNER GUIDE
+
+   Defines the social media and streaming platform fields used across upload forms and public pages.
+   Used by: artist dashboard and public release pages.
+   Does not save data by itself.
+=================================================== */
+
+/* ===================================================
+   SOCIAL MEDIA LINK DEFINITIONS
+
+   Controls the list of social platforms artists can add
+   to their public profile.
+
+   Used by:
+   • Artist Dashboard profile form
+   • Public artist home/profile pages
+
+   Adding a new row here makes that social platform available
+   where the website builds social link fields.
+=================================================== */
 const SOCIAL_LINKS = [
   ["Instagram", "instagram", "Social media icon/Instagram_logo_2016.svg.png"],
   ["Facebook", "facebook", "Social media icon/Facebook_f_logo_(2021).svg.png"],
@@ -16,6 +39,20 @@ const SOCIAL_LINKS = [
   ["Website", "website", ""],
 ];
 
+/* ===================================================
+   STREAMING PLATFORM LINK DEFINITIONS
+
+   Controls the list of streaming platforms that appear in
+   upload forms and public listen/music pages.
+
+   Used by:
+   • Upload Wizard streaming step
+   • Listen page
+   • Music page streaming platform buttons
+
+   This file only defines labels, field names, and icons.
+   Click tracking and saving happen in other files.
+=================================================== */
 const STREAMING_LINKS = [
   ["Spotify", "spotify", "Music Platforms Logo/Spotify_App_Logo.svg.png"],
   ["Apple Music", "appleMusic", "Music Platforms Logo/Apple_Music_icon.svg.png"],

@@ -1,3 +1,23 @@
+/* ===================================================
+   STORE MANAGER AUTHENTICATION SCRIPT
+
+   CODE OWNER GUIDE
+
+   Controls Store Manager password reset forms and admin auth helper behavior.
+   Used by: Store Manager auth pages.
+   Does not authenticate artist accounts.
+=================================================== */
+
+/* ===================================================
+   STORE MANAGER PASSWORD RESET
+
+   Controls Store Manager forgot-password and reset-password
+   forms.
+
+   Used by:
+   - store-manager-forgot-password.html
+   - store-manager-reset-password.html
+=================================================== */
 const managerAuthForm = document.querySelector("[data-manager-auth-form]");
 const managerAuthMessage = document.querySelector("[data-manager-auth-message]");
 const managerAuthParams = new URLSearchParams(window.location.search);
@@ -8,6 +28,12 @@ function showManagerAuthMessage(text, type = "pending") {
   managerAuthMessage.dataset.type = type;
 }
 
+/* ===================================================
+   STORE MANAGER AUTH API REQUESTS
+
+   Sends password reset requests to the backend and displays
+   the result on the current page.
+=================================================== */
 async function managerPostJson(path, body) {
   const response = await fetch(path, {
     method: "POST",

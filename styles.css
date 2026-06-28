@@ -1,5 +1,29 @@
+/* ===================================================
+   GLOBAL WEBSITE STYLES
+
+   CODE OWNER GUIDE
+
+   Controls the appearance of public pages, artist pages, dashboards, forms, buttons, upload wizard, Store Manager, and mobile layouts.
+   Used by: nearly every HTML page.
+   Does not save data or perform backend actions.
+=================================================== */
+
+/* ===================================================
+   FONTS
+
+   Loads the website font used for headings, buttons,
+   dashboard labels, and body text.
+=================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
 
+/* ===================================================
+   COLORS AND DESIGN TOKENS
+
+   Controls the main MusicBusiness Arena colors, shadows,
+   borders, and shared spacing values.
+
+   Editing this section affects the visual theme site-wide.
+=================================================== */
 :root {
   --bg: #090a0d;
   --panel: #12141a;
@@ -15,6 +39,12 @@
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
 }
 
+/* ===================================================
+   GLOBAL RESET AND PAGE BASICS
+
+   Gives the whole website consistent box sizing and base
+   page behavior before individual page styles are applied.
+=================================================== */
 * {
   box-sizing: border-box;
 }
@@ -26,7 +56,7 @@ body {
     linear-gradient(180deg, #f2f1eb 0%, #e8e9e4 48%, #f6f5f0 100%);
   color: var(--text);
 font-family: "Urbanist", sans-serif;
-margin: 
+margin:
 }
 
 
@@ -86,6 +116,19 @@ select {
   font: inherit;
 }
 
+/* ===================================================
+   HEADER AND NAVIGATION
+
+   Controls the top logo, search box, desktop navigation,
+   and public page menu links.
+
+   Used by:
+   - Homepage
+   - Artist pages
+   - Music page
+   - Video page
+   - Download page
+=================================================== */
 .site-header {
   align-items: center;
   background: rgba(12, 14, 18, 0.96);
@@ -161,6 +204,16 @@ select {
   padding: 0;
 }
 
+/* ===================================================
+   ARTIST HOMEPAGE HERO
+
+   Controls the artist profile banner on artist home pages,
+   including artist photo, biography, social icons, and the
+   main video button.
+
+   Used by:
+   - Artist home pages such as /focuzman
+=================================================== */
 .home-hero {
   display: block;
   min-height: auto;
@@ -220,6 +273,12 @@ h3 {
   margin-bottom: 16px;
 }
 
+/* ===================================================
+   PLATFORM DASHBOARD / WEBSITE LANDING PAGE
+
+   Controls the separate MusicBusiness Arena platform page
+   that introduces the website itself instead of one artist.
+=================================================== */
 .platform-home {
   display: grid;
   gap: clamp(28px, 5vw, 54px);
@@ -492,6 +551,15 @@ h3 {
   width: 16px;
 }
 
+/* ===================================================
+   HOMEPAGE SONG GRID
+
+   Controls the round artist song cards and Listen buttons
+   shown on an artist home page.
+
+   Used by:
+   - Artist home pages
+=================================================== */
 .music-shelf {
   display: grid;
   gap: 12px;
@@ -713,6 +781,12 @@ h3 {
   text-transform: uppercase;
 }
 
+/* ===================================================
+   STANDARD ACTION BUTTONS
+
+   Controls common Listen, Download, Upload, and action
+   button appearances used across public pages.
+=================================================== */
 .listen-action,
 .download-action {
   background: rgba(255, 255, 255, 0.56);
@@ -730,6 +804,12 @@ h3 {
   color: var(--gold);
 }
 
+/* ===================================================
+   DASHBOARD PAGE FOUNDATIONS
+
+   Shared body styles for Artist Dashboard and Store Manager
+   pages.
+=================================================== */
 .dashboard-body,
 .manager-body,
 .manager-login-body {
@@ -847,6 +927,16 @@ h3 {
   padding: clamp(20px, 4vw, 32px);
 }
 
+/* ===================================================
+   ARTIST DASHBOARD LAYOUT
+
+   Controls the Artist Dashboard shell, sidebar, main content
+   area, dashboard cards, profile form, song list, analytics,
+   earnings, settings, and upload workflow container.
+
+   Used by:
+   - artist-dashboard.html
+=================================================== */
 .artist-console-body {
   background: #eef1f5;
 }
@@ -1299,6 +1389,16 @@ h3 {
   color: #f7b7b9;
 }
 
+/* ===================================================
+   STORE MANAGER DASHBOARD LAYOUT
+
+   Controls the Store Manager admin sidebar, dashboard cards,
+   tables, reports, artist management, releases, payouts, and
+   analytics management screens.
+
+   Used by:
+   - store-manager.html
+=================================================== */
 .manager-console-body {
   background: #eef1f5;
 }
@@ -1722,6 +1822,16 @@ h3 {
   color: rgba(255, 255, 255, 0.38);
 }
 
+/* ===================================================
+   UPLOAD WIZARD
+
+   Controls the step-by-step Upload Song workflow, release
+   type cards, progress indicators, file upload boxes, Back,
+   Next, Save, and Publish button styling.
+
+   Used by:
+   - Artist Dashboard Upload Song section
+=================================================== */
 .upload-status-bar {
   align-items: center;
   background: rgba(255, 255, 255, 0.04);
@@ -2573,6 +2683,12 @@ h3 {
   width: 16px;
 }
 
+/* ===================================================
+   FORMS AND INPUT FIELDS
+
+   Controls shared form layouts, labels, inputs, selects,
+   textareas, validation messages, and field spacing.
+=================================================== */
 .form-grid {
   display: grid;
   gap: 16px;
@@ -2889,6 +3005,12 @@ select:focus {
   padding: clamp(28px, 5vw, 54px) clamp(18px, 4vw, 30px) 0;
 }
 
+/* ===================================================
+   ARTIST PUBLIC SONG LISTS
+
+   Controls public artist catalog rows and release previews
+   outside the main Music page feature layout.
+=================================================== */
 .music-showcase {
   max-width: 1280px;
   padding-top: clamp(18px, 3.2vw, 32px);
@@ -3216,6 +3338,17 @@ select:focus {
   height: 46px;
 }
 
+/* ===================================================
+   MUSIC PAGE FEATURED RELEASE
+
+   Controls the main Music page release showcase, artwork,
+   release title, details, Listen button, Download button,
+   streaming platform buttons, and More from Artist section.
+
+   Used by:
+   - artist-page.html
+   - Artist music URLs such as /focuzman/music
+=================================================== */
 .music-release-page {
   color: #14171f;
   display: grid;
@@ -3534,6 +3667,12 @@ select:focus {
   }
 }
 
+/* ===================================================
+   MORE FROM ARTIST / SINGLE AND ALBUM GRIDS
+
+   Controls the additional artist release cards shown below
+   the main artist hero or music feature.
+=================================================== */
 .artist-more-section {
   margin-top: clamp(34px, 5vw, 58px);
 }
@@ -4344,6 +4483,15 @@ select:focus {
   font-weight: 800;
 }
 
+/* ===================================================
+   VIDEO PAGE
+
+   Controls the public artist video page, YouTube embeds,
+   video cards, short video section, and video links.
+
+   Used by:
+   - videos.html
+=================================================== */
 .video-page {
   padding-top: clamp(28px, 5vw, 58px);
 }
@@ -4516,6 +4664,12 @@ select:focus {
   text-align: center;
 }
 
+/* ===================================================
+   FOOTER
+
+   Controls the bottom website footer, logo, social links,
+   legal links, and copyright text.
+=================================================== */
 .footer-inner {
   display: grid;
   gap: 22px;
@@ -4628,6 +4782,12 @@ select:focus {
   color: rgba(255, 255, 255, 0.58);
 }
 
+/* ===================================================
+   MOBILE RESPONSIVE STYLES
+
+   Adjusts layouts for tablets and phones so public pages,
+   dashboards, forms, and upload screens fit smaller screens.
+=================================================== */
 @media (max-width: 860px) {
   .manager-console {
     grid-template-columns: 1fr;
@@ -5308,6 +5468,16 @@ select:focus {
   }
 }
 
+/* ===================================================
+   PAID DOWNLOAD PAGE
+
+   Controls the paid download screen, artwork, price,
+   preview player, Pay Now button, post-payment download
+   button, and download status messages.
+
+   Used by:
+   - download.html
+=================================================== */
 .download-body {
   background: var(--site-cream, #f4f1e7);
   color: #111820;
@@ -5475,6 +5645,13 @@ select:focus {
   margin: 0 0 12px;
 }
 
+/* ===================================================
+   ARTIST LOGIN AND REGISTRATION
+
+   Controls artist login, registration, verification, forgot
+   password, reset password, and upload-entry authentication
+   screens.
+=================================================== */
 .artist-auth-body {
   background:
     radial-gradient(circle at top left, rgba(245, 201, 62, 0.16), transparent 32%),

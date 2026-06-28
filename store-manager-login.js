@@ -1,3 +1,22 @@
+/* ===================================================
+   STORE MANAGER LOGIN SCRIPT
+
+   CODE OWNER GUIDE
+
+   Controls Store Manager login and redirects already-authenticated admins.
+   Used by: store-manager-login.html.
+   Does not affect artist sessions.
+=================================================== */
+
+/* ===================================================
+   STORE MANAGER LOGIN PAGE
+
+   Controls the Store Manager login form, login message, and
+   redirect when an admin is already authenticated.
+
+   Used by:
+   - store-manager-login.html
+=================================================== */
 const loginForm = document.querySelector("#storeManagerLoginForm");
 const loginMessage = document.querySelector("#storeManagerLoginMessage");
 

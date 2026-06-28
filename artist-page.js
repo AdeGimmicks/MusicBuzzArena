@@ -1,3 +1,22 @@
+/* ===================================================
+   ARTIST MUSIC AND LISTEN PAGE SCRIPT
+
+   CODE OWNER GUIDE
+
+   Loads releases, builds clean listen/download links, renders streaming-link pages, and updates music page content.
+   Used by: artist-page.html.
+   Does not control Artist Dashboard form saving.
+=================================================== */
+
+/* ===================================================
+   MUSIC PAGE ELEMENTS AND URL HELPERS
+
+   Collects page elements and creates clean artist/release
+   links for listen and download pages.
+
+   Used by:
+   - artist-page.html
+=================================================== */
 const artistTrackList = document.querySelector("#artistTrackList");
 const artistReleaseList = document.querySelector("#artistReleaseList");
 let activePreviewAudio = null;
@@ -46,6 +65,12 @@ function setArtistNav(artist) {
   `;
 }
 
+/* ===================================================
+   NAVIGATION AND SITE BRANDING
+
+   Applies logo, artist navigation links, and page labels for
+   the artist currently being viewed.
+=================================================== */
 function applySite(store) {
   document.querySelectorAll("[data-logo]").forEach((img) => {
     img.src = store.site?.logo || "Mba Logos/MusicBusiness Logo.png";
@@ -95,6 +120,12 @@ function trackTags(release) {
   return tags.map((tag) => `<span>#${tag}</span>`).join("");
 }
 
+/* ===================================================
+   FEATURED RELEASE SELECTION
+
+   Decides which release should appear as the main featured
+   release on the Music page.
+=================================================== */
 function selectedRelease(releases) {
   const params = new URLSearchParams(window.location.search);
   const releaseId = params.get("release");
@@ -198,6 +229,12 @@ function releaseTracks(release) {
     : [];
 }
 
+/* ===================================================
+   PUBLIC RELEASE CARDS
+
+   Builds release rows/cards, Listen buttons, Download buttons,
+   preview controls, and release details.
+=================================================== */
 function trackRow(release, artist, artistReleases = []) {
   const row = document.createElement("article");
   row.className = "music-release-page";
@@ -335,6 +372,13 @@ function renderTopTracks(releases, artist) {
   });
 }
 
+/* ===================================================
+   MUSIC PAGE FEATURE PANEL
+
+   Builds the large featured release section with artwork,
+   release metadata, buttons, streaming platforms, and track
+   list.
+=================================================== */
 function releasePanel(release) {
   const article = document.createElement("article");
   article.className = "artist-release";
@@ -392,6 +436,12 @@ function releasePanel(release) {
   return article;
 }
 
+/* ===================================================
+   LISTEN / STREAMING LINKS PAGE
+
+   Builds the dedicated listen page where fans can open the
+   artist's streaming platform links.
+=================================================== */
 function linkHubPage(release, artist) {
   const wrap = document.createElement("article");
   wrap.className = "link-hub-card";
@@ -741,6 +791,12 @@ function linkHubPage(release, artist) {
 let lastArtistSnapshot = "";
 let musicPageVisitRecorded = false;
 
+/* ===================================================
+   MUSIC PAGE RENDER LOOP
+
+   Loads saved data, records music page visits when needed,
+   and renders the correct artist music or listen page.
+=================================================== */
 async function renderArtistPage(force = false) {
   const previewSessionActive = activePreviewAudio && !activePreviewAudio.ended;
   const audioIsPlaying =

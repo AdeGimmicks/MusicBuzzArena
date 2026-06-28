@@ -1,3 +1,12 @@
+<!-- ==================================================
+     PAID DOWNLOAD PAGE
+
+     CODE OWNER GUIDE
+
+     Shows the paid download screen, preview player, Pay Now button, streaming links, and one-time download state.
+     Used by: /download and clean download routes.
+     Does not control public artist home layout.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -8,6 +17,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="artist-body download-body">
+    <!-- ==================================================
+         PUBLIC HEADER
+
+         Shows the website logo and public navigation above the
+         paid download screen.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -20,10 +35,27 @@
       </nav>
     </header>
 
+    <!-- ==================================================
+         DOWNLOAD CONTENT AREA
+
+         JavaScript fills this empty shell with the selected release,
+         preview player, Pay Now button, streaming links, and download
+         status after payment.
+
+         Used by:
+         • download.js
+
+         This HTML shell does not process Stripe payments by itself.
+    ================================================== -->
     <main>
       <section class="download-page-shell" id="downloadPage" aria-live="polite"></section>
     </main>
 
+    <!-- ==================================================
+         FOOTER
+
+         Standard MusicBusiness Arena footer links and legal links.
+    ================================================== -->
     <footer class="site-footer">
       <div class="footer-inner">
         <img data-logo class="footer-logo" src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />

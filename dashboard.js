@@ -1,3 +1,22 @@
+/* ===================================================
+   PLATFORM DASHBOARD SCRIPT
+
+   CODE OWNER GUIDE
+
+   Loads featured artists, featured releases, and dashboard search behavior.
+   Used by: dashboard.html.
+   Does not control uploads or payments.
+=================================================== */
+
+/* ===================================================
+   PLATFORM DASHBOARD HELPERS
+
+   Creates clean artist links and applies shared website
+   branding to the platform dashboard page.
+
+   Used by:
+   - dashboard.html
+=================================================== */
 function slugify(value) {
   return String(value || "artist")
     .toLowerCase()
@@ -25,6 +44,12 @@ function emptyShelf(text) {
   return empty;
 }
 
+/* ===================================================
+   PLATFORM ARTIST AND RELEASE CARDS
+
+   Builds the artists, releases, and videos shown on the
+   separate MusicBusiness Arena platform dashboard.
+=================================================== */
 function artistCard(artist, releases) {
   const card = document.createElement("article");
   card.className = "platform-artist-card";
@@ -117,6 +142,13 @@ function renderReleases(container, releases, store) {
   });
 }
 
+/* ===================================================
+   PLATFORM DASHBOARD RENDER
+
+   Loads saved website data and refreshes Featured Artists,
+   New Artists, Featured Releases, Trending Downloads, and
+   Latest Videos.
+=================================================== */
 async function renderDashboard(force = false) {
   const store = await window.MBA.loadStore({ force });
   applySiteContent(store);

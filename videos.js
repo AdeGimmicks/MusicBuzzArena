@@ -1,3 +1,22 @@
+/* ===================================================
+   ARTIST VIDEO PAGE SCRIPT
+
+   CODE OWNER GUIDE
+
+   Loads YouTube video links, builds embeds, and updates video navigation.
+   Used by: videos.html.
+   Does not affect music downloads or Stripe payments.
+=================================================== */
+
+/* ===================================================
+   VIDEO URL HELPERS
+
+   Reads YouTube video links and prepares embed URLs used on
+   the artist video page.
+
+   Used by:
+   - videos.html
+=================================================== */
 function youtubeIdFromUrl(value) {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -46,6 +65,12 @@ function artistSlug(artist) {
   return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id);
 }
 
+/* ===================================================
+   ARTIST VIDEO ROUTING AND NAVIGATION
+
+   Finds the artist being viewed from the URL and updates the
+   public navigation for that artist.
+=================================================== */
 function artistSlugFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (parts.length >= 2 && ["videos", "video"].includes(parts[1])) return parts[0];
@@ -80,6 +105,12 @@ function artistForVideoPage(store) {
   );
 }
 
+/* ===================================================
+   VIDEO PAGE RENDER
+
+   Loads saved artist video links and displays music videos,
+   short videos, and watch buttons.
+=================================================== */
 async function renderVideos() {
   const store = await window.MBA.loadStore({ force: true });
   const artist = artistForVideoPage(store);

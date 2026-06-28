@@ -1,3 +1,24 @@
+/* ===================================================
+   FRONTEND DATA STORAGE HELPER
+
+   CODE OWNER GUIDE
+
+   Loads and saves website data through backend APIs, with local fallback behavior for development.
+   Used by: public pages, artist dashboard, and Store Manager.
+   Does not decide page layout.
+=================================================== */
+
+/* ===================================================
+   DEFAULT FRONTEND STORE
+
+   Provides starter website data for the browser if saved
+   backend data has not loaded yet.
+
+   Used by:
+   - Public pages
+   - Artist Dashboard
+   - Store Manager
+=================================================== */
 const MBA_DEFAULT_STORE = {
   site: {
     logo: "Mba Logos/MusicBusiness Logo.png",
@@ -178,6 +199,12 @@ const MBA_DEFAULT_STORE = {
   analyticsArchive: [],
 };
 
+/* ===================================================
+   STORE API SETTINGS AND CACHE
+
+   Controls where browser pages load/save website data and
+   how long a loaded copy is cached before refreshing.
+=================================================== */
 const MBA_STORAGE_KEY = "musicbusiness-arena-store";
 const MBA_API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8010" : "";
 const MBA_CACHE_TTL = 30000;
@@ -187,6 +214,12 @@ let storeCacheEndpoint = "";
 let storeRequest = null;
 let storeRequestEndpoint = "";
 
+/* ===================================================
+   STORE LOADING AND SAVING
+
+   Loads data from the backend, saves data back to the backend,
+   and notifies other pages when data has changed.
+=================================================== */
 function apiUrl(path) {
   return `${MBA_API_BASE}${path}`;
 }
@@ -297,6 +330,12 @@ async function saveStore(store, options = {}) {
   }
 }
 
+/* ===================================================
+   ANALYTICS HELPERS
+
+   Sends page visit and click increments to the backend so
+   analytics can remain permanently recorded.
+=================================================== */
 async function incrementAnalytics(entityType, entityId, field) {
   const response = await fetch(apiUrl("/api/analytics-increment"), {
     method: "POST",
@@ -308,6 +347,12 @@ async function incrementAnalytics(entityType, entityId, field) {
   return response.json();
 }
 
+/* ===================================================
+   SHARED RELEASE HELPERS
+
+   Creates IDs and returns approved public releases for use
+   across public pages and dashboards.
+=================================================== */
 function uid(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }

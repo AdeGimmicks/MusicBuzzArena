@@ -1,4 +1,23 @@
+/* ===================================================
+   PAID DOWNLOAD PAGE SCRIPT
+
+   CODE OWNER GUIDE
+
+   Controls preview playback, Stripe checkout start, download status, and one-time download button behavior.
+   Used by: download.html.
+   Does not control dashboard editing.
+=================================================== */
+
 (function () {
+  /* ===================================================
+     DOWNLOAD PAGE ELEMENTS AND URL STATE
+
+     Collects the download page, checkout query values, and
+     current preview audio player state.
+
+     Used by:
+     - download.html
+  =================================================== */
   const page = document.getElementById("downloadPage");
   const params = new URLSearchParams(window.location.search);
   const queryReleaseId = params.get("release");
@@ -6,6 +25,12 @@
   const checkoutSessionId = params.get("session_id");
   let previewAudio = null;
 
+  /* ===================================================
+     DOWNLOAD PAGE HELPERS
+
+     Formats safe text, money, release dates, preview times,
+     clean links, and file names.
+  =================================================== */
   function escapeHtml(value) {
     return String(value || "")
       .replaceAll("&", "&amp;")
@@ -89,6 +114,12 @@
     return parts.length >= 3 ? parts[1] : "";
   }
 
+  /* ===================================================
+     RELEASE LOOKUP
+
+     Finds the song or release being purchased from the URL.
+     Supports older query links and newer clean links.
+  =================================================== */
   function selectedRelease(store) {
     const releases = approvedReleases(store);
     const pathReleaseSlug = releaseSlugFromPath();
@@ -167,6 +198,12 @@
     return "Preview the sample, then pay to unlock the download.";
   }
 
+  /* ===================================================
+     PAID DOWNLOAD SCREEN
+
+     Renders artwork, title, price, preview player, Pay Now,
+     streaming links, and post-payment download state.
+  =================================================== */
   function renderPage(store, downloadState = null) {
     const release = selectedRelease(store);
     if (!release) {
@@ -208,6 +245,12 @@
     setupPaidDownload(release);
   }
 
+  /* ===================================================
+     PREVIEW PLAYER
+
+     Controls the sample audio button and makes sure playback
+     follows the saved preview start and stop times.
+  =================================================== */
   function renderPreview(release) {
     if (!release.audioUrl) {
       return `<div class="preview-panel"><p>No preview audio is available for this release yet.</p></div>`;
@@ -335,6 +378,13 @@
     });
   }
 
+  /* ===================================================
+     STRIPE CHECKOUT START
+
+     Starts Stripe checkout when a fan clicks Pay Now.
+     The backend handles payment rules and Stripe Connect payout
+     calculations.
+  =================================================== */
   function setupCheckout(release) {
     const button = document.getElementById("payNowButton");
     const status = document.getElementById("downloadStatus");
@@ -385,6 +435,12 @@
     }
   }
 
+  /* ===================================================
+     ONE-TIME DOWNLOAD CLAIM
+
+     Allows a paid buyer to download the song once, then marks
+     that specific Stripe checkout session as downloaded.
+  =================================================== */
   function setupPaidDownload(release) {
     const button = document.getElementById("downloadFileButton");
     const status = document.getElementById("downloadStatus");
@@ -433,6 +489,12 @@
     });
   }
 
+/* ===================================================
+   DOWNLOAD PAGE STARTUP
+
+   Loads saved website data, checks payment/download status,
+   and displays the correct download page state.
+=================================================== */
 async function init() {
   try {
     const store = await window.MBA.loadStore({ force: true });

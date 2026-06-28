@@ -1,3 +1,12 @@
+<!-- ==================================================
+     ARTIST REGISTRATION PAGE
+
+     CODE OWNER GUIDE
+
+     Lets new artists create an account before uploading.
+     Used by: /artist-register.
+     Does not create Store Manager accounts.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -7,6 +16,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="site-page-body artist-auth-body">
+    <!-- ==================================================
+         PUBLIC HEADER
+
+         Shows the website logo and public navigation above the
+         Artist Registration form.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -18,6 +33,14 @@
         <a href="/upload">Upload</a>
       </nav>
     </header>
+    <!-- ==================================================
+         ARTIST REGISTRATION FORM
+
+         Lets new artists create an account with artist name,
+         email, password, and password confirmation.
+
+         This form does not create Store Manager accounts.
+    ================================================== -->
     <main class="artist-auth-main">
       <section class="artist-auth-card">
         <p class="eyebrow">Artist account</p>
@@ -34,6 +57,7 @@
         <p class="auth-footnote">Already have an account? <a data-login-link href="/artist-login">Login</a></p>
       </section>
     </main>
+    <!-- Artist registration behavior is controlled by artist-auth.js. -->
     <script src="artist-auth.js"></script>
   </body>
 </html>

@@ -1,3 +1,12 @@
+<!-- ==================================================
+     ARTIST LOGIN PAGE
+
+     CODE OWNER GUIDE
+
+     Lets registered artists log in before opening the Artist Dashboard.
+     Used by: /artist-login.
+     Does not log in Store Managers.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -7,6 +16,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="site-page-body artist-auth-body">
+    <!-- ==================================================
+         PUBLIC HEADER
+
+         Shows the website logo and public navigation above the
+         Artist Login form.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -18,6 +33,14 @@
         <a href="/upload">Upload</a>
       </nav>
     </header>
+    <!-- ==================================================
+         ARTIST LOGIN FORM
+
+         Lets existing artists enter email and password.
+         Successful login opens the Artist Dashboard.
+
+         This form does not log in Store Managers.
+    ================================================== -->
     <main class="artist-auth-main">
       <section class="artist-auth-card">
         <p class="eyebrow">Artist login</p>
@@ -33,6 +56,7 @@
         <p class="auth-footnote">New artist? <a data-register-link href="/artist-register">Create Artist Account</a></p>
       </section>
     </main>
+    <!-- Artist authentication behavior is controlled by artist-auth.js. -->
     <script src="artist-auth.js"></script>
   </body>
 </html>

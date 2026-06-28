@@ -1,3 +1,24 @@
+/* ===================================================
+   BACKEND SERVER
+
+   CODE OWNER GUIDE
+
+   Runs the website server, MongoDB persistence, authentication, uploads, downloads, analytics, Stripe payments, Stripe Connect, and clean routes.
+   Used by: the entire deployed MusicBusiness Arena website.
+   Does not control visual styling directly.
+=================================================== */
+
+/* ===================================================
+   SERVER SETUP AND ENVIRONMENT SETTINGS
+
+   Controls the Node.js backend, folder paths, database
+   names, Stripe keys, email settings, and session names.
+
+   Used by:
+   - The entire website backend.
+
+   Editing this section affects backend configuration only.
+=================================================== */
 const http = require("http");
 const crypto = require("crypto");
 const fsSync = require("fs");
@@ -115,6 +136,19 @@ const MIME_TYPES = {
 
 const MEDIA_EXTENSIONS = new Set([".mp3", ".wav", ".m4a", ".aac", ".ogg", ".mp4", ".webm"]);
 
+/* ===================================================
+   DEFAULT WEBSITE DATA
+
+   Provides starter data when MongoDB or the local JSON file
+   does not already have saved website information.
+
+   Used by:
+   - Public pages
+   - Artist Dashboard
+   - Store Manager
+
+   Saved MongoDB data takes priority over these defaults.
+=================================================== */
 function defaultStore() {
   return {
     site: {
@@ -300,6 +334,19 @@ function defaultStore() {
   };
 }
 
+/* ===================================================
+   DATABASE AND FILE STORAGE
+
+   Controls how MusicBusiness Arena reads and saves data.
+   The backend prefers MongoDB when configured, with the
+   local JSON file used as a fallback.
+
+   Used by:
+   - Artist uploads
+   - Analytics
+   - Store Manager
+   - Public pages
+=================================================== */
 async function ensureStorage() {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.mkdir(path.join(UPLOAD_DIR, "images"), { recursive: true });
@@ -320,6 +367,15 @@ async function connectMongo() {
   return storeCollection;
 }
 
+/* ===================================================
+   SAFE DATA MERGING AND PERMANENCE
+
+   Controls how saved website data is protected and merged.
+   This section helps prevent existing releases, artist data,
+   analytics, and payment records from being erased by mistake.
+
+   Used whenever the website saves store data.
+=================================================== */
 function mergeStore(store) {
   return {
     ...defaultStore(),
@@ -700,6 +756,17 @@ function extensionForMime(mimeType, fallback = ".bin") {
   );
 }
 
+/* ===================================================
+   UPLOAD FILE SAVING
+
+   Saves uploaded images and audio files into the uploads
+   folder and returns the public URL used by the website.
+
+   Used by:
+   - Artwork uploads
+   - Song file uploads
+   - Artist profile images
+=================================================== */
 async function saveDataUrl(dataUrl, folder, preferredName) {
   if (!dataUrl || !String(dataUrl).startsWith("data:")) return dataUrl || "";
 
@@ -781,6 +848,17 @@ function validPlatformKey(value) {
   return /^[a-zA-Z0-9_-]{1,64}$/.test(key) && !["__proto__", "constructor", "prototype"].includes(key);
 }
 
+/* ===================================================
+   ANALYTICS RECORDING
+
+   Updates visits, download counts, streaming clicks, and
+   platform-specific click records.
+
+   Used by:
+   - Artist Dashboard analytics
+   - Store Manager analytics
+   - Listen and download pages
+=================================================== */
 async function recordStreamingClick(request, response) {
   const bodyText = await readRequestBody(request);
   const body = bodyText ? JSON.parse(bodyText) : {};
@@ -853,6 +931,14 @@ async function incrementAnalytics(request, response) {
   sendJson(response, 200, { ok: true, entityType, entityId, field, value: result.value });
 }
 
+/* ===================================================
+   AUTHENTICATION, PASSWORDS, AND SESSIONS
+
+   Controls cookies, password hashing, login sessions, and
+   route protection for artists and Store Managers.
+
+   Artist sessions and Store Manager sessions are separate.
+=================================================== */
 function parseCookies(cookieHeader = "") {
   return cookieHeader.split(";").reduce((cookies, part) => {
     const [name, ...valueParts] = part.trim().split("=");
@@ -1315,6 +1401,17 @@ function ensureArtistForAccount(store, artistName, email) {
   return { artist };
 }
 
+/* ===================================================
+   ARTIST ACCOUNT APIS
+
+   Handles artist registration, email verification, login,
+   logout, password reset, and account settings.
+
+   Used by:
+   - Artist Registration
+   - Artist Login
+   - Artist Dashboard
+=================================================== */
 async function createArtistAccount(request, response) {
   const bodyText = await readRequestBody(request);
   const body = bodyText ? JSON.parse(bodyText) : {};
@@ -1575,6 +1672,18 @@ async function updateArtistAccount(request, response) {
   sendJson(response, result.status, result.payload);
 }
 
+/* ===================================================
+   STORE MANAGER ACCOUNT APIS
+
+   Handles Store Manager login, logout, password reset, and
+   session checks.
+
+   Used by:
+   - Store Manager Login
+   - Store Manager Dashboard
+
+   This does not authenticate artist accounts.
+=================================================== */
 async function loginStoreManager(request, response) {
   const bodyText = await readRequestBody(request);
   const body = bodyText ? JSON.parse(bodyText) : {};
@@ -1709,6 +1818,20 @@ async function updateStoreManagerAccount(request, response) {
   sendJson(response, result.status, result.payload);
 }
 
+/* ===================================================
+   ARTIST DASHBOARD DATA APIS
+
+   Sends and saves the website data an artist is allowed to
+   manage from the Artist Dashboard.
+
+   Used by:
+   - Upload Song
+   - Profile
+   - Songs
+   - Videos
+   - Analytics
+   - Earnings
+=================================================== */
 async function sendArtistStore(request, response) {
   const artistSession = getArtistSession(request);
   if (!artistSession) {
@@ -1763,6 +1886,19 @@ async function saveArtistStore(request, response) {
   sendJson(response, 200, artistScopedStore(saved, artistId));
 }
 
+/* ===================================================
+   STRIPE PAYMENTS AND STRIPE CONNECT
+
+   Controls paid downloads, checkout sessions, platform fees,
+   artist payout calculations, and Stripe Connect onboarding.
+
+   Used by:
+   - Download pages
+   - Artist Earnings
+   - Store Manager payout monitoring
+
+   This section should not be changed unless working on payments.
+=================================================== */
 const ZERO_DECIMAL_CURRENCIES = new Set([
   "bif",
   "clp",
@@ -2143,6 +2279,16 @@ async function createCheckoutSession(request, response) {
   sendJson(response, 200, { url: session.url });
 }
 
+/* ===================================================
+   PAID DOWNLOAD ACCESS
+
+   Controls one-time paid download access after a successful
+   Stripe payment.
+
+   Used by:
+   - Download Song File button
+   - Download Count analytics
+=================================================== */
 async function paidDownloadPurchase(sessionId, releaseId) {
   if (!stripe || !hasValidStripeSecretKey) {
     return { status: 503, error: "Stripe is not configured." };
@@ -2331,6 +2477,19 @@ function isPathInsideUploadRoot(filePath) {
   return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
+/* ===================================================
+   PUBLIC ROUTES AND STATIC FILE SERVING
+
+   Maps clean public URLs to the correct HTML files and static
+   assets.
+
+   Used by:
+   - Homepage
+   - Artist pages
+   - Music pages
+   - Video pages
+   - Upload and login pages
+=================================================== */
 const CLEAN_ROUTES = {
   "/dashboard": "/dashboard.html",
   "/home": "/index.html",
@@ -2528,6 +2687,15 @@ async function serveStatic(request, response) {
   }
 }
 
+/* ===================================================
+   API ROUTER
+
+   Decides what should happen for each browser request.
+   This section connects URLs to the correct backend function
+   or public file.
+
+   Used by every page request and every API request.
+=================================================== */
 async function handleRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
 

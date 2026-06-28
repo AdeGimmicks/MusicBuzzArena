@@ -1,3 +1,22 @@
+/* ===================================================
+   ARTIST HOME PAGE SCRIPT
+
+   CODE OWNER GUIDE
+
+   Loads artist profile details, artist songs, search behavior, and public artist navigation.
+   Used by: index.html.
+   Does not control Stripe checkout, artist login, or Store Manager pages.
+=================================================== */
+
+/* ===================================================
+   HOMEPAGE HELPERS
+
+   Shared helpers for writing text, creating slugs, building
+   clean public links, and applying site-wide content.
+
+   Used by:
+   - index.html
+=================================================== */
 function setText(selector, value) {
   document.querySelectorAll(selector).forEach((node) => {
     if (value) node.textContent = value;
@@ -72,6 +91,12 @@ function setArtistNav(artist) {
   `;
 }
 
+/* ===================================================
+   ARTIST HOME PROFILE
+
+   Controls the artist biography card, social icons, artist
+   photo, and video button on the artist home page.
+=================================================== */
 function renderHomeArtist(artist) {
   const name = artist?.name || "Independent Artist";
   const photo = artist?.photo || "Mba Logos/MusicBusiness Logo.png";
@@ -122,6 +147,12 @@ function renderHomeArtist(artist) {
   });
 }
 
+/* ===================================================
+   ARTIST HOME SONG CARDS
+
+   Builds the round release cards and Listen buttons shown
+   under the artist biography.
+=================================================== */
 function releaseCard(release, artist) {
   const card = document.createElement("article");
   card.className = "release-card";
@@ -243,6 +274,12 @@ function renderedSnapshot(store) {
 
 let lastHomeSnapshot = "";
 
+/* ===================================================
+   HOMEPAGE RENDER LOOP
+
+   Loads saved website data, finds the current artist, renders
+   the artist home page, and refreshes when data changes.
+=================================================== */
 async function renderHome(force = false) {
   const store = await window.MBA.loadStore({ force });
   const snapshot = renderedSnapshot(store);

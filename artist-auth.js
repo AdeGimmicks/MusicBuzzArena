@@ -1,9 +1,38 @@
+/* ===================================================
+   ARTIST AUTHENTICATION SCRIPT
+
+   CODE OWNER GUIDE
+
+   Controls artist registration, login, email verification, forgot password, and reset password forms.
+   Used by: artist auth pages.
+   Does not authenticate Store Managers.
+=================================================== */
+
+/* ===================================================
+   ARTIST AUTH PAGE ELEMENTS
+
+   Collects the form and URL information used by artist
+   registration, login, password reset, and email verification.
+
+   Used by:
+   - artist-login.html
+   - artist-register.html
+   - artist-forgot-password.html
+   - artist-reset-password.html
+   - artist-verify.html
+=================================================== */
 const authForm = document.querySelector("[data-auth-form]");
 const authMessage = document.querySelector("[data-auth-message]");
 const selectedUploadCopy = document.querySelector("[data-selected-upload-copy]");
 const params = new URLSearchParams(window.location.search);
 const RELEASE_TYPES = new Set(["Single", "EP", "Album"]);
 
+/* ===================================================
+   RETURN-TO-UPLOAD HELPERS
+
+   Remembers whether the artist originally selected Single,
+   EP, or Album before registration or login.
+=================================================== */
 function cleanReleaseType(value) {
   return RELEASE_TYPES.has(value) ? value : "";
 }
@@ -29,6 +58,12 @@ function setMessage(text, type = "pending") {
   authMessage.className = `form-message ${type}`;
 }
 
+/* ===================================================
+   ARTIST AUTH API REQUESTS
+
+   Sends registration, login, password reset, and verification
+   requests to the backend.
+=================================================== */
 async function postJson(path, body) {
   const response = await fetch(path, {
     method: "POST",
@@ -60,6 +95,12 @@ function wireReturnLinks() {
   document.querySelectorAll("[data-forgot-link]").forEach((link) => link.href = withStart("/artist-forgot-password"));
 }
 
+/* ===================================================
+   ARTIST REGISTRATION, LOGIN, AND PASSWORD RESET
+
+   Controls the submit actions for artist account creation,
+   login, forgot password, reset password, and email verification.
+=================================================== */
 async function handleRegister(form) {
   setMessage("Creating your artist account...", "pending");
   const data = await postJson("/api/artist/register", formValues(form));

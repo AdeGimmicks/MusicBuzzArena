@@ -1,3 +1,12 @@
+<!-- ==================================================
+     ARTIST MUSIC PAGE
+
+     CODE OWNER GUIDE
+
+     Shows the featured release, listen/download buttons, streaming platforms, and more songs from the same artist.
+     Used by: /music and dynamic artist music routes such as /focuzman/music.
+     Does not control upload saving or payment processing.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -8,6 +17,11 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="artist-body site-page-body music-page-body">
+    <!-- ==================================================
+         HEADER AND ARTIST NAVIGATION
+
+         Shows logo and public navigation for the current artist.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -20,6 +34,13 @@
       </nav>
     </header>
 
+    <!-- ==================================================
+         MUSIC PAGE CONTENT
+
+         Displays the featured release, Listen and Download
+         buttons, streaming platforms, and more songs.
+         JavaScript fills this section from saved release data.
+    ================================================== -->
     <main>
       <section class="artist-track-section music-showcase" aria-label="Artist music">
         <div class="artist-track-list" id="artistTrackList" aria-busy="true">
@@ -36,6 +57,11 @@
       </section>
     </main>
 
+    <!-- ==================================================
+         FOOTER
+
+         Shows website social links, legal links, and copyright.
+    ================================================== -->
 <footer class="site-footer">
       <div class="footer-inner">
         <img data-logo class="footer-logo" src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />

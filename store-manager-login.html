@@ -1,3 +1,12 @@
+<!-- ==================================================
+     STORE MANAGER LOGIN PAGE
+
+     CODE OWNER GUIDE
+
+     Lets the platform owner/admin log into the Store Manager Dashboard.
+     Used by: /store-manager-login.
+     Does not log in artist accounts.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -7,6 +16,14 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="manager-login-body">
+    <!-- ==================================================
+         STORE MANAGER LOGIN FORM
+
+         Lets the website owner/admin sign into the Store Manager.
+
+         This login is separate from Artist Login and should only
+         authenticate Store Manager accounts.
+    ================================================== -->
     <main class="manager-login-shell">
       <section class="manager-login-panel" aria-labelledby="managerLoginTitle">
         <img class="manager-login-logo" src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -34,6 +51,7 @@
       </section>
     </main>
 
+    <!-- Store Manager login behavior is controlled by store-manager-login.js. -->
     <script src="store-manager-login.js"></script>
   </body>
 </html>

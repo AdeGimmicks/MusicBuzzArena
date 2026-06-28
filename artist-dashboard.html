@@ -1,3 +1,12 @@
+<!-- ==================================================
+     ARTIST DASHBOARD PAGE
+
+     CODE OWNER GUIDE
+
+     Contains the artist workspace sections: upload song, profile, songs, analytics, earnings, settings, and video management.
+     Used by: /artist-dashboard.
+     Does not control Store Manager administration.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -8,6 +17,11 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="dashboard-body artist-console-body">
+    <!-- ==================================================
+         PUBLIC HEADER
+
+         Top website navigation shown above the Artist Dashboard.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -20,13 +34,26 @@
       </nav>
     </header>
 
+    <!-- ==================================================
+         ARTIST DASHBOARD WORKSPACE
+
+         Contains the artist sidebar and all artist dashboard
+         sections.
+    ================================================== -->
     <main class="artist-console">
+      <!-- ==================================================
+           ARTIST SIDEBAR NAVIGATION
+
+           Lets the artist switch between Upload Song, Profile,
+           Songs, Workspace, Analytics, Overview, Earnings, and
+           Settings.
+      ================================================== -->
       <aside class="artist-console-sidebar" aria-label="Artist dashboard navigation">
         <div class="artist-console-brand">
           <p class="eyebrow">Artist center</p>
           <h1>Artist Center</h1>
         </div>
-        <nav class="artist-console-nav">          
+        <nav class="artist-console-nav">
           <a href="#songEditorSection" data-dashboard-section="songEditorSection">Upload Song</a>
           <a href="#profileSection" data-dashboard-section="profileSection">Profile</a>
           <a href="#songsSection" data-dashboard-section="songsSection">Songs</a>
@@ -44,6 +71,11 @@
       </aside>
 
       <section class="artist-console-main">
+        <!-- ==================================================
+             OVERVIEW SECTION
+
+             Shows summary cards and recent artist activity.
+        ================================================== -->
         <section class="artist-dashboard-section is-active" id="dashboardOverview" data-section-title="Dashboard">
           <div class="artist-section-heading">
             <div>
@@ -86,6 +118,12 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             SONGS SECTION
+
+             Shows saved songs, filters, edit controls, and
+             featured Music page selection.
+        ================================================== -->
         <section class="artist-dashboard-section" id="songsSection" data-section-title="Songs">
           <div class="artist-section-heading">
             <div>
@@ -154,6 +192,13 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             UPLOAD SONG SECTION
+
+             Step-by-step wizard for Single Song, EP, and Album
+             uploads. Includes files, song info, streaming links,
+             videos, and review/publish.
+        ================================================== -->
         <section class="artist-dashboard-section" id="songEditorSection" data-section-title="Upload Song">
           <div class="artist-section-heading">
             <div>
@@ -434,6 +479,20 @@
             </div>
           </section>
 
+        <!-- ==================================================
+             PROFILE SECTION
+
+             Controls the artist's public profile information.
+             This section edits profile photo, banner image, biography,
+             contact details, and social links.
+
+             Used by:
+             • Artist Dashboard > Profile
+             • Public artist home/profile pages after saving
+
+             Editing this HTML only changes the profile form layout.
+             It does not control song uploads or payment logic.
+        ================================================== -->
         <section class="artist-dashboard-section" id="profileSection" data-section-title="Profile">
           <div class="artist-section-heading">
             <div>
@@ -494,6 +553,20 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             VIDEOS SECTION
+
+             Controls the artist video link form.
+             This section lets artists save YouTube, Shorts, TikTok,
+             Instagram Reel, and thumbnail information.
+
+             Used by:
+             • Artist Dashboard > Videos
+             • Upload Wizard video step
+             • Public artist video page after saving
+
+             It does not upload song audio or affect download payments.
+        ================================================== -->
         <section class="artist-dashboard-section upload-wizard-panel" id="videosSection" data-upload-step="5" data-section-title="Videos">
           <div class="artist-section-heading">
             <div>
@@ -557,6 +630,19 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             DOWNLOADS SECTION
+
+             Shows paid download records for the active artist.
+             This section displays totals, top selling song, recent
+             downloads, and the download history table.
+
+             Used by:
+             • Artist Dashboard > Downloads
+
+             It does not create purchases; purchases are handled by
+             Stripe and the backend download APIs.
+        ================================================== -->
         <section class="artist-dashboard-section" id="downloadsSection" data-section-title="Downloads">
           <div class="artist-section-heading">
             <div>
@@ -574,6 +660,18 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             ANALYTICS SECTION
+
+             Shows visits, streaming clicks, download counts, top songs,
+             top videos, and top streaming platforms for the active artist.
+
+             Used by:
+             • Artist Dashboard > Analytics
+
+             Artists can view this information, but analytics totals are
+             recorded by the website and should not be manually edited here.
+        ================================================== -->
         <section class="artist-dashboard-section" id="analyticsSection" data-section-title="Analytics">
           <div class="artist-section-heading">
             <div>
@@ -604,6 +702,18 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             EARNINGS SECTION
+
+             Shows artist money information, Stripe Connect status,
+             earnings breakdown, fees, net earnings, and payout history.
+
+             Used by:
+             • Artist Dashboard > Earnings
+
+             This section displays payment information only. Stripe payment
+             creation and payout transfer logic live in the backend.
+        ================================================== -->
         <section class="artist-dashboard-section" id="earningsSection" data-section-title="Earnings">
           <div class="artist-section-heading">
             <div>
@@ -664,6 +774,17 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             SETTINGS SECTION
+
+             Controls artist account settings such as login email,
+             password changes, and account security fields.
+
+             Used by:
+             • Artist Dashboard > Settings
+
+             This section does not change public song details or analytics.
+        ================================================== -->
         <section class="artist-dashboard-section" id="settingsSection" data-section-title="Settings">
           <div class="artist-section-heading">
             <div>

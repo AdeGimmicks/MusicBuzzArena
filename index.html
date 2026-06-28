@@ -1,3 +1,12 @@
+<!-- ==================================================
+     ARTIST HOME PAGE
+
+     CODE OWNER GUIDE
+
+     Shows the public artist home/profile page, biography area, social links, and artist songs.
+     Used by: /, /home, and dynamic artist home routes such as /focuzman.
+     Does not control checkout, uploads, dashboard logic, or backend data saving.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -8,6 +17,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="site-page-body">
+    <!-- ==================================================
+         HEADER AND NAVIGATION
+
+         Controls the public logo, search box, and page links
+         shown at the top of the artist home page.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -24,8 +39,20 @@
       </nav>
     </header>
 
+    <!-- ==================================================
+         ARTIST HOME CONTENT
+
+         Main public artist profile page.
+         Contains the artist biography area and artist songs.
+    ================================================== -->
     <main>
       <section class="section-shell artist-home-shell" id="artistHome">
+        <!-- ==================================================
+             ARTIST BIOGRAPHY SECTION
+
+             Shows artist image, artist name, social links,
+             biography text, and artist video button.
+        ================================================== -->
         <section class="feature-banner">
           <div class="feature-visual">
             <img id="homeArtistPhoto" src="Mba Logos/MusicBusiness Logo.png" alt="" />
@@ -47,6 +74,12 @@
           <h2 id="homeSongsHeading">Singles by Artist</h2>
         </div>
 
+        <!-- ==================================================
+             ARTIST SONGS SECTION
+
+             Shows the artist's public songs and Listen buttons.
+             The song cards are filled by script.js.
+        ================================================== -->
         <section class="music-shelf" id="latest-songs">
           <div class="release-grid" id="latestSongsGrid" aria-busy="true">
             <div class="home-release-loading" aria-hidden="true"></div>
@@ -59,6 +92,11 @@
 
     </main>
 
+    <!-- ==================================================
+         FOOTER
+
+         Shows website social links, legal links, and copyright.
+    ================================================== -->
     <footer class="site-footer">
       <div class="footer-inner">
         <img data-logo class="footer-logo" src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />

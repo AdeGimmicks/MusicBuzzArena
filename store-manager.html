@@ -1,3 +1,12 @@
+<!-- ==================================================
+     STORE MANAGER DASHBOARD PAGE
+
+     CODE OWNER GUIDE
+
+     Contains platform administration sections for artists, songs, videos, downloads, payouts, analytics, reports, and settings.
+     Used by: /store-manager.
+     Does not control artist-only dashboard forms.
+================================================== -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -7,6 +16,17 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="manager-body manager-console-body">
+    <!-- ==================================================
+         STORE MANAGER HEADER
+
+         Top navigation shown while the owner/admin is inside
+         the Store Manager area.
+
+         Used by:
+         • Store Manager dashboard page
+
+         It does not control artist dashboard navigation.
+    ================================================== -->
     <header class="site-header">
       <a class="brand" href="/home" aria-label="MusicBusiness Arena home">
         <img data-logo src="Mba Logos/MusicBusiness Logo.png" alt="MusicBusiness Arena logo" />
@@ -20,6 +40,18 @@
     </header>
 
     <main class="manager-console">
+      <!-- ==================================================
+           STORE MANAGER SIDEBAR
+
+           Controls the left admin menu used to switch between
+           platform management sections.
+
+           Used by:
+           • Store Manager dashboard
+
+           Editing this section only affects admin navigation labels
+           and links, not public website pages.
+      ================================================== -->
       <aside class="manager-console-sidebar" aria-label="Store Manager navigation">
         <div class="manager-console-brand">
           <p class="eyebrow">Platform admin</p>
@@ -45,6 +77,15 @@
       </aside>
 
       <section class="manager-console-main">
+        <!-- ==================================================
+             STORE MANAGER TOP BAR
+
+             Shows the current admin workspace title and quick links
+             to the public site and artist dashboard.
+
+             Used by:
+             • Store Manager dashboard
+        ================================================== -->
         <section class="manager-console-topbar">
           <div>
             <p class="eyebrow">MusicBusiness Arena</p>
@@ -56,6 +97,17 @@
           </div>
         </section>
 
+        <!-- ==================================================
+             ADMIN OVERVIEW SECTION
+
+             Shows platform-wide summary cards and recent activity.
+
+             Used by:
+             • Store Manager > Dashboard
+
+             This section reads platform data. It does not edit artists,
+             songs, payments, or settings by itself.
+        ================================================== -->
         <section class="manager-dashboard-section is-active" id="managerDashboard" data-section-title="Dashboard">
           <div class="manager-section-heading">
             <div>
@@ -82,6 +134,18 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             ARTIST MANAGEMENT SECTION
+
+             Lets the Store Manager search, filter, review, edit,
+             suspend, or manage artist accounts.
+
+             Used by:
+             • Store Manager > Artists
+
+             It affects artist account records, not the artist's
+             password or payment card information.
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerArtists" data-section-title="Artists">
           <div class="manager-section-heading">
             <div><p class="eyebrow">Artist accounts</p><h2>Artists Management</h2></div>
@@ -109,6 +173,18 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             SONG MANAGEMENT SECTION
+
+             Lets the Store Manager review, search, filter, and edit
+             song/release information when necessary.
+
+             Used by:
+             • Store Manager > Songs
+
+             This is an admin tool. Artists manage their own releases
+             from the Artist Dashboard.
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerSongs" data-section-title="Songs">
           <div class="manager-section-heading">
             <div><p class="eyebrow">Content approval workflow</p><h2>Songs Management</h2></div>
@@ -142,11 +218,31 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             VIDEO MANAGEMENT SECTION
+
+             Shows artist video records so the Store Manager can review
+             public video content across the platform.
+
+             Used by:
+             • Store Manager > Videos
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerVideos" data-section-title="Videos">
           <div class="manager-section-heading"><div><p class="eyebrow">Artist videos</p><h2>Videos Management</h2></div></div>
           <section class="manager-console-card"><div class="manager-table manager-video-table" id="managerVideoTable"></div></section>
         </section>
 
+        <!-- ==================================================
+             DOWNLOAD MANAGEMENT SECTION
+
+             Shows paid download records and export controls.
+
+             Used by:
+             • Store Manager > Downloads
+
+             This section reports purchase/download activity. It does
+             not process Stripe payments directly.
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerDownloads" data-section-title="Downloads">
           <div class="manager-section-heading">
             <div><p class="eyebrow">Purchases</p><h2>Downloads Management</h2></div>
@@ -162,6 +258,18 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             PAYOUT MANAGEMENT SECTION
+
+             Shows Stripe Connect status, pending payouts, completed
+             payouts, and payout records for artists.
+
+             Used by:
+             • Store Manager > Payouts
+
+             The Store Manager can monitor payout status here, but artist
+             bank details are handled securely by Stripe.
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerPayouts" data-section-title="Payouts">
           <div class="manager-section-heading"><div><p class="eyebrow">Artist earnings</p><h2>Payout Management</h2></div><button class="secondary-button" type="button">Export Payout Report</button></div>
           <section class="manager-metric-grid">
@@ -174,6 +282,17 @@
           <section class="manager-console-card"><div class="manager-table manager-payout-table" id="managerPayoutTable"></div></section>
         </section>
 
+        <!-- ==================================================
+             PLATFORM ANALYTICS SECTION
+
+             Shows platform-wide totals, top artists, top songs,
+             top countries, and streaming platform activity.
+
+             Used by:
+             • Store Manager > Analytics
+
+             This does not reset analytics. It only displays recorded data.
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerAnalytics" data-section-title="Analytics">
           <div class="manager-section-heading"><div><p class="eyebrow">Platform growth</p><h2>Analytics</h2></div></div>
           <section class="manager-metric-grid analytics-grid">
@@ -191,16 +310,45 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             SUPPORT SECTION
+
+             Shows support requests or messages that need owner/admin
+             attention.
+
+             Used by:
+             • Store Manager > Support
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerSupport" data-section-title="Support">
           <div class="manager-section-heading"><div><p class="eyebrow">Support center</p><h2>Support Requests</h2></div></div>
           <section class="manager-console-card"><div class="manager-table manager-support-table" id="managerSupportTable"></div></section>
         </section>
 
+        <!-- ==================================================
+             REPORTS SECTION
+
+             Shows exportable reports for artists, releases, downloads,
+             streaming statistics, and other platform data.
+
+             Used by:
+             • Store Manager > Reports
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerReports" data-section-title="Reports">
           <div class="manager-section-heading"><div><p class="eyebrow">Reports center</p><h2>Reports</h2></div></div>
           <section class="manager-console-card"><div class="manager-table manager-report-table" id="managerReportTable"></div></section>
         </section>
 
+        <!-- ==================================================
+             PLATFORM SETTINGS SECTION
+
+             Controls website-level settings such as logo, title,
+             homepage copy, analytics IDs, and support settings.
+
+             Used by:
+             • Store Manager > Platform Settings
+
+             This does not control individual artist release forms.
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerSettings" data-section-title="Platform Settings">
           <div class="manager-section-heading"><div><p class="eyebrow">Platform settings</p><h2>Settings</h2></div></div>
           <section class="manager-console-card">
@@ -231,6 +379,17 @@
           </section>
         </section>
 
+        <!-- ==================================================
+             SECURITY SECTION
+
+             Shows admin login history, failed attempts, artist login
+             activity, audit logs, backups, and admin account settings.
+
+             Used by:
+             • Store Manager > Security
+
+             This section is separate from artist login pages.
+        ================================================== -->
         <section class="manager-dashboard-section" id="managerSecurity" data-section-title="Security">
           <div class="manager-section-heading"><div><p class="eyebrow">Security center</p><h2>Security</h2></div></div>
           <section class="manager-dashboard-grid">

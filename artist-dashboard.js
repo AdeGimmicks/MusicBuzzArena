@@ -1,5 +1,25 @@
+/* ===================================================
+   ARTIST DASHBOARD SCRIPT
+
+   CODE OWNER GUIDE
+
+   Controls artist uploads, edits, profile updates, analytics cards, earnings, Stripe Connect, settings, and dashboard navigation.
+   Used by: artist-dashboard.html.
+   Does not control Store Manager tools.
+=================================================== */
+
 const artistForm = document.querySelector("#artistForm");
 const ARTIST_PAYOUT_PERCENT = 80;
+/* ===================================================
+   DASHBOARD ELEMENTS AND STATE
+
+   Collects the HTML elements used by the Artist Dashboard
+   and stores the current artist, current website data, and
+   upload wizard state.
+
+   Used by:
+   - artist-dashboard.html
+=================================================== */
 const PLATFORM_SERVICE_FEE_PERCENT = 10;
 const PAYMENT_PROCESSING_FEE_PERCENT = 5;
 const PLATFORM_OPERATIONS_FEE_PERCENT = 5;
@@ -103,6 +123,14 @@ const analyticsTopLists = {
   platforms: [],
 };
 
+/* ===================================================
+   SHARED HELPER FUNCTIONS
+
+   Small utilities for formatting money, preview times,
+   messages, links, escaped text, and file uploads.
+
+   These helpers are reused throughout the Artist Dashboard.
+=================================================== */
 function money(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
 }
@@ -207,6 +235,16 @@ function fileToDataUrl(file) {
   });
 }
 
+/* ===================================================
+   RELEASE TYPE AND MULTI-TRACK UPLOADS
+
+   Controls whether a release is a Single, EP, or Album.
+   Also controls track limits, track list display, renaming,
+   ordering, and per-track preview settings.
+
+   Used by:
+   - Upload Song wizard
+=================================================== */
 function releaseTypeValue() {
   const value = releaseForm?.releaseType?.value || "Single";
   return value === "Album" || value === "EP" ? value : "Single";
@@ -363,6 +401,16 @@ async function serializedTracks() {
   return tracks;
 }
 
+/* ===================================================
+   VIDEO LINK HELPERS
+
+   Reads YouTube, Shorts, TikTok, and video links so the
+   dashboard can preview and save artist video information.
+
+   Used by:
+   - Upload wizard Video step
+   - Artist Profile video settings
+=================================================== */
 function youtubeIdFromUrl(value) {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -412,6 +460,16 @@ function formLinks(form, links) {
   }, {});
 }
 
+/* ===================================================
+   UPLOAD WIZARD NAVIGATION
+
+   Controls the numbered upload steps, Back button, Next
+   button, Publish button, step validation, and auto-save
+   while moving through the upload flow.
+
+   Used by:
+   - Upload Song section
+=================================================== */
 function wizardPanels() {
   return [...document.querySelectorAll("[data-upload-step]")];
 }
@@ -656,6 +714,16 @@ async function goToUploadWizardStep(targetStep) {
   setUploadWizardStep(nextStep);
 }
 
+/* ===================================================
+   ACTIVE ARTIST AND PROFILE DATA
+
+   Finds the current artist, fills artist profile forms,
+   prepares country lists, and updates profile previews.
+
+   Used by:
+   - Profile section
+   - Upload wizard artist information
+=================================================== */
 function blankArtist() {
   return {
     id: window.MBA.uid("artist"),
@@ -902,6 +970,16 @@ function populateCountrySelect(selectedValue = "") {
   setSelectValue(select, currentValue);
 }
 
+/* ===================================================
+   RELEASE FORM FILLING AND PREVIEWS
+
+   Loads an existing song into the form for editing and
+   updates the artwork, music, and homepage preview panels.
+
+   Used by:
+   - Editing existing songs
+   - Upload Song section
+=================================================== */
 function fillReleaseForm(release) {
   releaseForm.editingId.value = release.id;
   const releaseType = release.releaseType === "Album" || release.releaseType === "EP" ? release.releaseType : "Single";
@@ -1010,6 +1088,16 @@ function updateFeaturedReleasePreview() {
   }
 }
 
+/* ===================================================
+   SONG LIST AND SONG MANAGEMENT
+
+   Renders the artist's saved songs, search/filter controls,
+   edit buttons, delete buttons, and release status details.
+
+   Used by:
+   - Songs section
+   - Upload Song section
+=================================================== */
 function renderDashboardReleases() {
   const artist = primaryArtist();
   const releases = artistReleases();
@@ -1130,6 +1218,16 @@ function renderActivityList(container, items, emptyText) {
     : emptyLine(emptyText);
 }
 
+/* ===================================================
+   EARNINGS AND STRIPE CONNECT
+
+   Calculates gross sales, platform fees, processing fees,
+   artist net earnings, Stripe Connect status, and payout
+   history shown to the artist.
+
+   Used by:
+   - Earnings section
+=================================================== */
 function transactionGross(transaction) {
   return Number(transaction.grossAmount ?? transaction.amount ?? 0);
 }
@@ -1288,6 +1386,16 @@ async function loadStripePayoutStatus() {
   }
 }
 
+/* ===================================================
+   ANALYTICS CARDS
+
+   Builds the analytics cards for top songs, top videos,
+   top streaming platforms, downloads, visits, and modal
+   detail lists.
+
+   Used by:
+   - Analytics section
+=================================================== */
 function videoEntries(artist) {
   const videos = artist.videos || currentStore.site?.videos || {};
   return [
@@ -1431,6 +1539,21 @@ function renderDownloadsPanel() {
     : emptyLine("Download records will appear here after fans purchase songs.");
 }
 
+/* ===================================================
+   FULL DASHBOARD RENDER
+
+   Refreshes every Artist Dashboard section after data is
+   loaded or saved.
+
+   Used by:
+   - Profile
+   - Songs
+   - Upload Song
+   - Videos
+   - Analytics
+   - Earnings
+   - Settings
+=================================================== */
 function renderArtistConsole() {
   const artist = primaryArtist();
   const releases = artistReleases();
@@ -1526,6 +1649,13 @@ function analyticsListTitle(listKey) {
   return "Top Items";
 }
 
+/* ===================================================
+   ANALYTICS MODAL
+
+   Controls the View All popup that shows top songs, top
+   videos, and top streaming platforms without making the
+   dashboard cards taller.
+=================================================== */
 function openAnalyticsTopModal(listKey) {
   if (!analyticsTopModal || !analyticsTopModalTitle || !analyticsTopModalList) return;
   const items = analyticsTopLists[listKey] || [];
@@ -1707,6 +1837,16 @@ uploadWizardProgress?.addEventListener("keydown", (event) => {
   event.preventDefault();
   goToUploadWizardStep(item.dataset.wizardProgress);
 });
+/* ===================================================
+   SAVE, PUBLISH, AND FORM ACTIONS
+
+   Handles saving releases, publishing releases, deleting
+   releases, saving artist profiles, saving videos, settings,
+   and all dashboard button actions.
+
+   This section changes saved data only when the artist clicks
+   the related save/publish/delete action.
+=================================================== */
 function publishReleaseFromWizard() {
   for (const step of [2, 3]) {
     if (!validateUploadWizardStep(step)) {
@@ -2061,6 +2201,14 @@ document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () 
   message(videoMessage, "Video links removed.", "pending");
 });
 
+/* ===================================================
+   DASHBOARD STARTUP AND LOGIN CHECK
+
+   Loads the logged-in artist session, reads the saved store,
+   applies any requested upload type, and starts the dashboard.
+
+   Used when artist-dashboard.html first opens.
+=================================================== */
 async function getArtistSessionOrRedirect() {
   try {
     const response = await fetch("/api/artist/session", { cache: "no-store", credentials: "same-origin" });
