@@ -951,12 +951,16 @@ function verifyPassword(password, storedHash) {
 
 function artistSessionCookie(sessionId, options = {}) {
   const maxAge = options.clear ? 0 : ARTIST_SESSION_MAX_AGE_SECONDS;
+  const expires = options.clear
+    ? new Date(0)
+    : new Date(Date.now() + ARTIST_SESSION_MAX_AGE_SECONDS * 1000);
   const parts = [
     `${ARTIST_SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId || "")}`,
     "HttpOnly",
     "Path=/",
     "SameSite=Lax",
     `Max-Age=${maxAge}`,
+    `Expires=${expires.toUTCString()}`,
   ];
   if (isProduction) parts.push("Secure");
   return parts.join("; ");
@@ -1447,14 +1451,20 @@ async function sendArtistSession(request, response) {
   const account = (store.artistAccounts || []).find((item) => item.id === artistSession.session.accountId);
   if (!account) {
     artistSessions.delete(artistSession.sessionId);
-    sendJsonWithHeaders(response, 200, { authenticated: false }, noStore);
+    sendJsonWithHeaders(response, 200, { authenticated: false }, {
+      ...noStore,
+      "Set-Cookie": artistSessionCookie("", { clear: true }),
+    });
     return;
   }
   sendJsonWithHeaders(response, 200, {
     authenticated: true,
     artistId: account.artistId,
     account: publicAccount(account),
-  }, noStore);
+  }, {
+    ...noStore,
+    "Set-Cookie": artistSessionCookie(artistSession.sessionId),
+  });
 }
 
 async function forgotArtistPassword(request, response) {
