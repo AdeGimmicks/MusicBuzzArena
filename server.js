@@ -57,9 +57,10 @@ const OWNER_MANAGER_INITIAL_PASSWORD = envValue("OWNER_MANAGER_INITIAL_PASSWORD"
 const SESSION_COOKIE_NAME = "mba_store_manager";
 const ARTIST_SESSION_COOKIE_NAME = "mba_artist_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
-const ARTIST_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 365;
+const ARTIST_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 365 * 10;
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const isProduction = process.env.NODE_ENV === "production";
+const SESSION_SIGNING_SECRET = envValue("SESSION_SECRET", "COOKIE_SECRET") || "musicbusinessarena-stable-session-secret";
 
 let mongoClient;
 let storeCollection;
@@ -957,6 +958,40 @@ function artistSessionCookie(sessionId, options = {}) {
   return parts.join("; ");
 }
 
+function encodeSessionPayload(payload) {
+  return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+function signSessionPayload(encodedPayload) {
+  return crypto
+    .createHmac("sha256", SESSION_SIGNING_SECRET)
+    .update(encodedPayload)
+    .digest("base64url");
+}
+
+function signedArtistSessionToken(session) {
+  const encodedPayload = encodeSessionPayload(session);
+  return `${encodedPayload}.${signSessionPayload(encodedPayload)}`;
+}
+
+function verifySignedArtistSessionToken(token) {
+  const [encodedPayload, signature] = String(token || "").split(".");
+  if (!encodedPayload || !signature) return null;
+  const expectedSignature = signSessionPayload(encodedPayload);
+  const submitted = Buffer.from(signature);
+  const expected = Buffer.from(expectedSignature);
+  if (submitted.length !== expected.length || !crypto.timingSafeEqual(submitted, expected)) return null;
+  try {
+    const session = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+    if (!session || session.role !== "artist") return null;
+    if (!session.accountId || !session.artistId) return null;
+    if (Number(session.expiresAt || 0) <= Date.now()) return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
+
 function cleanupArtistSessions() {
   const now = Date.now();
   for (const [sessionId, session] of artistSessions.entries()) {
@@ -966,13 +1001,15 @@ function cleanupArtistSessions() {
 
 function createArtistSession(account) {
   cleanupArtistSessions();
-  const sessionId = randomToken();
-  artistSessions.set(sessionId, {
+  const session = {
     accountId: account.id,
     artistId: account.artistId,
+    role: "artist",
     createdAt: Date.now(),
     expiresAt: Date.now() + ARTIST_SESSION_TTL_MS,
-  });
+  };
+  const sessionId = signedArtistSessionToken(session);
+  artistSessions.set(sessionId, session);
   return sessionId;
 }
 
@@ -981,12 +1018,13 @@ function getArtistSession(request) {
   const cookies = parseCookies(request.headers.cookie || "");
   const sessionId = cookies[ARTIST_SESSION_COOKIE_NAME];
   if (!sessionId) return null;
-  const session = artistSessions.get(sessionId);
+  const session = artistSessions.get(sessionId) || verifySignedArtistSessionToken(sessionId);
   if (!session) return null;
   if (!session.accountId || !session.artistId || session.role === "store-manager") {
     artistSessions.delete(sessionId);
     return null;
   }
+  artistSessions.set(sessionId, session);
   return { sessionId, session };
 }
 
