@@ -2127,7 +2127,6 @@ async function createCheckoutSession(request, response) {
     sessionParams.payment_intent_data.on_behalf_of = connectedAccountId;
     sessionParams.payment_intent_data.transfer_data = {
       destination: connectedAccountId,
-      amount: artistTransferMinor,
     };
   }
 
