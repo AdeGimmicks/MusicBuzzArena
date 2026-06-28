@@ -2443,8 +2443,12 @@ async function serveStatic(request, response) {
 
   const artistRoute = await artistRouteForPath(requestedPath);
   const cleanReleaseRoute = cleanReleaseRouteForPath(requestedPath);
-  if (artistRoute?.section === "dashboard" && !getArtistSession(request)) {
-    redirect(response, "/artist-login");
+  if (artistRoute?.section === "dashboard") {
+    if (!getArtistSession(request)) {
+      redirect(response, "/artist-login?next=/artist-dashboard");
+      return;
+    }
+    redirect(response, `/artist-dashboard${url.search}`);
     return;
   }
 
