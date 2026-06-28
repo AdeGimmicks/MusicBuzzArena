@@ -2124,7 +2124,6 @@ async function createCheckoutSession(request, response) {
 
   if (connectedAccountId && checkoutType === "download") {
     sessionParams.payment_intent_data.application_fee_amount = payoutBreakdown.totalDeductions;
-    sessionParams.payment_intent_data.on_behalf_of = connectedAccountId;
     sessionParams.payment_intent_data.transfer_data = {
       destination: connectedAccountId,
     };
