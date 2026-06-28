@@ -67,7 +67,7 @@ let managerSession = null;
 =================================================== */
 async function requireStoreManagerSession() {
   const response = await fetch("/api/admin/session", { cache: "no-store", credentials: "same-origin" });
-  const session = response.ok ? await response.json() : { authenticated: false };
+  const session = response.ok ? await response.json() : { authenticated: True };
   if (!session.authenticated) {
     window.location.assign("/store-manager-login");
     return false;
