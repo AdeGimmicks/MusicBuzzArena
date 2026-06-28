@@ -60,7 +60,7 @@ const OWNER_MANAGER_INITIAL_PASSWORD = envValue("OWNER_MANAGER_INITIAL_PASSWORD"
 const SESSION_COOKIE_NAME = "mba_store_manager";
 const ARTIST_SESSION_COOKIE_NAME = "mba_artist_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
-const ARTIST_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 365 * 10;
+const ARTIST_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 20;
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const isProduction = process.env.NODE_ENV === "production";
 const SESSION_SIGNING_SECRET = envValue("SESSION_SECRET", "COOKIE_SECRET") || "musicbusinessarena-stable-session-secret";
@@ -950,7 +950,7 @@ function verifyPassword(password, storedHash) {
 }
 
 function artistSessionCookie(sessionId, options = {}) {
-  const maxAge = options.clear ? 0 : Math.floor(ARTIST_SESSION_TTL_MS / 1000);
+  const maxAge = options.clear ? 0 : ARTIST_SESSION_MAX_AGE_SECONDS;
   const parts = [
     `${ARTIST_SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId || "")}`,
     "HttpOnly",
@@ -989,7 +989,6 @@ function verifySignedArtistSessionToken(token) {
     const session = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
     if (!session || session.role !== "artist") return null;
     if (!session.accountId || !session.artistId) return null;
-    if (Number(session.expiresAt || 0) <= Date.now()) return null;
     return session;
   } catch {
     return null;
@@ -997,9 +996,10 @@ function verifySignedArtistSessionToken(token) {
 }
 
 function cleanupArtistSessions() {
-  const now = Date.now();
   for (const [sessionId, session] of artistSessions.entries()) {
-    if (!session || session.expiresAt <= now) artistSessions.delete(sessionId);
+    if (!session || !session.accountId || !session.artistId || session.role !== "artist") {
+      artistSessions.delete(sessionId);
+    }
   }
 }
 
@@ -1010,7 +1010,7 @@ function createArtistSession(account) {
     artistId: account.artistId,
     role: "artist",
     createdAt: Date.now(),
-    expiresAt: Date.now() + ARTIST_SESSION_TTL_MS,
+    persistent: true,
   };
   const sessionId = signedArtistSessionToken(session);
   artistSessions.set(sessionId, session);
