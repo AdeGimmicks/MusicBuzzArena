@@ -89,7 +89,7 @@ function renderHomeArtist(artist) {
     photoNode.alt = `${name} profile photo`;
   }
   if (nameNode) nameNode.textContent = name;
-  if (songsHeading) songsHeading.textContent = `More from ${name}`;
+  if (songsHeading) songsHeading.textContent = `Singles by ${name}`;
   if (bioNode) {
     bioNode.textContent = bio;
     bioNode.classList.remove("is-expanded");
