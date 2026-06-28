@@ -37,7 +37,6 @@ const videoPreviewMainFrame = document.querySelector("#videoPreviewMainFrame");
 const videoPreviewShortFrame = document.querySelector("#videoPreviewShortFrame");
 const videoPreviewMainTitle = document.querySelector("#videoPreviewMainTitle");
 const artistAccountSelect = document.querySelector("#artistAccountSelect");
-const artistConsoleTopbar = document.querySelector("#artistConsoleTopbar");
 const createArtistProfile = document.querySelector("#createArtistProfile");
 const artistAccountMessage = document.querySelector("#artistAccountMessage");
 const uploadStatusTitle = document.querySelector("#uploadStatusTitle");
@@ -47,7 +46,6 @@ const releaseTypeGate = document.querySelector("#releaseTypeGate");
 const songUploadSection = document.querySelector("#songUpload");
 const releaseTypeOptions = document.querySelectorAll("[data-start-release]");
 const releaseFlowEyebrow = document.querySelector("#releaseFlowEyebrow");
-const workspaceTitle = document.querySelector("#artistWorkspaceTitle");
 const dashboardSections = [...document.querySelectorAll(".artist-dashboard-section")];
 const dashboardNavLinks = [...document.querySelectorAll("[data-dashboard-section]")];
 const openSongEditorButtons = document.querySelectorAll("[data-open-song-editor]");
@@ -139,15 +137,12 @@ function setText(selector, value) {
 }
 
 function showDashboardSection(sectionId) {
-  artistConsoleTopbar?.classList.toggle("is-hidden", sectionId === "songEditorSection");
   dashboardSections.forEach((section) => {
     section.classList.toggle("is-active", section.id === sectionId);
   });
   dashboardNavLinks.forEach((link) => {
     link.classList.toggle("is-active", link.dataset.dashboardSection === sectionId);
   });
-  const section = dashboardSections.find((item) => item.id === sectionId);
-  if (workspaceTitle && section) workspaceTitle.textContent = section.dataset.sectionTitle || "Artist Dashboard";
 }
 
 function artistReleases() {
@@ -700,7 +695,6 @@ function renderArtistAccountPicker() {
   artistAccountSelect.value = artist.id;
   artistAccountSelect.disabled = true;
   createArtistProfile?.setAttribute("hidden", "");
-  if (artistAccountMessage) artistAccountMessage.textContent = "Logged in artist workspace";
   if (artistAccountSettingsForm && artistSession?.account?.email) {
     artistAccountSettingsForm.email.value = artistSession.account.email;
   }
