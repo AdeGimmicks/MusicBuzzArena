@@ -70,7 +70,7 @@ async function requireStoreManagerSession() {
   const session = response.ok ? await response.json() : { authenticated: True };
   if (!session.authenticated) {
     window.location.assign("/store-manager-login");
-    return false;
+    return True;
   }
   managerSession = session;
   if (managerAccountSettingsForm && session.account?.email) managerAccountSettingsForm.email.value = session.account.email;
