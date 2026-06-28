@@ -44,7 +44,10 @@ const STRIPE_SECRET_KEY = envValue(
   "Stripe Secret Key"
 );
 const STRIPE_DEFAULT_CURRENCY = (process.env.STRIPE_DEFAULT_CURRENCY || "usd").toLowerCase();
-const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
+const ARTIST_PAYOUT_PERCENT = 80;
+const PLATFORM_SERVICE_FEE_PERCENT = 10;
+const PAYMENT_PROCESSING_FEE_PERCENT = 5;
+const PLATFORM_OPERATIONS_FEE_PERCENT = 5;
 const STORE_MANAGER_PASSWORD = envValue("STORE_MANAGER_PASSWORD", "ADMIN_PASSWORD");
 const STORE_MANAGER_PASSWORD_HASH = envValue("STORE_MANAGER_PASSWORD_HASH", "ADMIN_PASSWORD_HASH");
 const RESEND_API_KEY = envValue("RESEND_API_KEY");
@@ -1790,6 +1793,37 @@ function toMinorUnits(amount, currency) {
   return ZERO_DECIMAL_CURRENCIES.has(currency) ? Math.round(value) : Math.round(value * 100);
 }
 
+function fromMinorUnits(amount, currency) {
+  const value = Number(amount || 0);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return ZERO_DECIMAL_CURRENCIES.has(currency) ? value : value / 100;
+}
+
+function salePayoutBreakdownMinor(amountMinor) {
+  const amount = Number(amountMinor || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return {
+      artistPayout: 0,
+      platformServiceFee: 0,
+      paymentProcessingFee: 0,
+      platformOperationsFee: 0,
+      totalDeductions: 0,
+    };
+  }
+  const artistPayout = Math.max(0, Math.round(amount * (ARTIST_PAYOUT_PERCENT / 100)));
+  const totalDeductions = Math.max(0, amount - artistPayout);
+  const platformServiceFee = Math.max(0, Math.round(amount * (PLATFORM_SERVICE_FEE_PERCENT / 100)));
+  const paymentProcessingFee = Math.max(0, Math.round(amount * (PAYMENT_PROCESSING_FEE_PERCENT / 100)));
+  const platformOperationsFee = Math.max(0, totalDeductions - platformServiceFee - paymentProcessingFee);
+  return {
+    artistPayout,
+    platformServiceFee,
+    paymentProcessingFee,
+    platformOperationsFee,
+    totalDeductions,
+  };
+}
+
 function cleanCheckoutAmount(value, fallback, minimum) {
   const amount = Number(value || fallback || 0);
   if (!Number.isFinite(amount)) return minimum;
@@ -1848,16 +1882,28 @@ async function refreshArtistStripeStatus(store, artist) {
   return artist;
 }
 
+function transactionGrossAmount(transaction) {
+  return Number(transaction?.grossAmount ?? transaction?.amount ?? 0);
+}
+
+function transactionArtistPayout(transaction) {
+  const gross = transactionGrossAmount(transaction);
+  if (transaction?.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.artistPayout))) {
+    return Number(transaction.artistPayout || 0);
+  }
+  return Math.max(0, gross * (ARTIST_PAYOUT_PERCENT / 100));
+}
+
 function artistPayoutSummary(store, artistId) {
   const transactions = (store.transactions || []).filter((transaction) => String(transaction.artistId) === String(artistId));
   const downloadTransactions = transactions.filter((transaction) => transaction.type === "download");
-  const totalEarnings = downloadTransactions.reduce((sum, transaction) => sum + Number(transaction.artistPayout || 0), 0);
+  const totalEarnings = downloadTransactions.reduce((sum, transaction) => sum + transactionArtistPayout(transaction), 0);
   const totalPaidOut = downloadTransactions
     .filter((transaction) => transaction.payoutStatus === "paid")
-    .reduce((sum, transaction) => sum + Number(transaction.artistPayout || 0), 0);
+    .reduce((sum, transaction) => sum + transactionArtistPayout(transaction), 0);
   const pendingBalance = downloadTransactions
     .filter((transaction) => transaction.payoutStatus === "processing")
-    .reduce((sum, transaction) => sum + Number(transaction.artistPayout || 0), 0);
+    .reduce((sum, transaction) => sum + transactionArtistPayout(transaction), 0);
   const availableBalance = Math.max(0, totalEarnings - totalPaidOut - pendingBalance);
   const payoutHistory = downloadTransactions
     .filter((transaction) => transaction.payoutStatus || transaction.paidOutAt)
@@ -1865,7 +1911,7 @@ function artistPayoutSummary(store, artistId) {
     .sort((a, b) => new Date(b.paidOutAt || b.createdAt || 0) - new Date(a.paidOutAt || a.createdAt || 0))
     .map((transaction) => ({
       id: transaction.id,
-      amount: Number(transaction.artistPayout || 0),
+      amount: transactionArtistPayout(transaction),
       status: transaction.payoutStatus || "pending",
       date: transaction.paidOutAt || transaction.createdAt || "",
       releaseId: transaction.releaseId || "",
@@ -2010,6 +2056,7 @@ async function createCheckoutSession(request, response) {
   }
 
   const artist = (store.artists || []).find((item) => item.id === release.artistId) || {};
+  if (artist.stripeAccountId) await refreshArtistStripeStatus(store, artist);
   const checkoutType = "download";
   const artistLabel = artist.name || release.artistName || "Independent Artist";
   const currency = normalizedCurrency(body.currency || release.currency);
@@ -2023,10 +2070,12 @@ async function createCheckoutSession(request, response) {
   }
 
   const origin = requestOrigin(request);
-  const platformFeePercent = Number.isFinite(PLATFORM_FEE_PERCENT)
-    ? PLATFORM_FEE_PERCENT
-    : Number(store.site?.commissionRate || 10);
-  const connectedAccountId = artist.stripeAccountId || release.stripeAccountId || "";
+  const payoutBreakdown = salePayoutBreakdownMinor(unitAmount);
+  const connectedAccountId =
+    artist.stripeAccountStatus === "connected" && artist.stripeAccountId
+      ? artist.stripeAccountId
+      : "";
+  const artistTransferMinor = connectedAccountId ? payoutBreakdown.artistPayout : 0;
   const productName = `Download ${release.title || "song"} by ${artistLabel}`;
   const metadata = {
     checkoutType,
@@ -2034,7 +2083,17 @@ async function createCheckoutSession(request, response) {
     artistId: release.artistId || "",
     artistName: artistLabel,
     releaseTitle: release.title || "",
-    platformFeePercent: String(platformFeePercent),
+    artistPayoutPercent: String(ARTIST_PAYOUT_PERCENT),
+    platformFeePercent: String(PLATFORM_SERVICE_FEE_PERCENT),
+    paymentProcessingFeePercent: String(PAYMENT_PROCESSING_FEE_PERCENT),
+    platformOperationsFeePercent: String(PLATFORM_OPERATIONS_FEE_PERCENT),
+    platformFeeMinor: String(payoutBreakdown.platformServiceFee),
+    paymentProcessingFeeMinor: String(payoutBreakdown.paymentProcessingFee),
+    platformOperationsFeeMinor: String(payoutBreakdown.platformOperationsFee),
+    totalDeductionMinor: String(payoutBreakdown.totalDeductions),
+    artistTransferMinor: String(artistTransferMinor),
+    stripeTransferDestination: connectedAccountId,
+    stripeTransferMode: connectedAccountId ? "automatic_destination" : "pending_connect",
   };
   const productData = {
     name: productName,
@@ -2064,8 +2123,12 @@ async function createCheckoutSession(request, response) {
   };
 
   if (connectedAccountId && checkoutType === "download") {
-    sessionParams.payment_intent_data.application_fee_amount = Math.round(unitAmount * (platformFeePercent / 100));
-    sessionParams.payment_intent_data.transfer_data = { destination: connectedAccountId };
+    sessionParams.payment_intent_data.application_fee_amount = payoutBreakdown.totalDeductions;
+    sessionParams.payment_intent_data.on_behalf_of = connectedAccountId;
+    sessionParams.payment_intent_data.transfer_data = {
+      destination: connectedAccountId,
+      amount: artistTransferMinor,
+    };
   }
 
   const session = await stripe.checkout.sessions.create(sessionParams);
@@ -2109,13 +2172,34 @@ async function paidDownloadPurchase(sessionId, releaseId) {
   );
 
   if (!transaction) {
-    const amount = Number(session.amount_total || 0) / 100;
-    const platformFeePercent = Number(session.metadata?.platformFeePercent || store.site?.commissionRate || 10);
+    const currency = normalizedCurrency(session.currency || release.currency || "usd");
+    const amountMinor = Number(session.amount_total || 0);
+    const amount = fromMinorUnits(amountMinor, currency);
     const paymentIntent = typeof session.payment_intent === "string" ? null : session.payment_intent;
     const balanceTransaction = paymentIntent?.latest_charge?.balance_transaction;
-    const paymentProcessingFee = Number(balanceTransaction?.fee || 0) / 100;
-    const platformFee = amount * (platformFeePercent / 100);
-    const artistPayout = Math.max(0, amount - platformFee - paymentProcessingFee);
+    const stripeActualFee = fromMinorUnits(Number(balanceTransaction?.fee || 0), currency);
+    const payoutBreakdown = salePayoutBreakdownMinor(amountMinor);
+    const platformFee = fromMinorUnits(
+      Number(session.metadata?.platformFeeMinor || payoutBreakdown.platformServiceFee),
+      currency
+    );
+    const paymentProcessingFee = fromMinorUnits(
+      Number(session.metadata?.paymentProcessingFeeMinor || payoutBreakdown.paymentProcessingFee),
+      currency
+    );
+    const platformOperationsFee = fromMinorUnits(
+      Number(session.metadata?.platformOperationsFeeMinor || payoutBreakdown.platformOperationsFee),
+      currency
+    );
+    const totalDeductions = fromMinorUnits(
+      Number(session.metadata?.totalDeductionMinor || payoutBreakdown.totalDeductions),
+      currency
+    );
+    const artistPayout = fromMinorUnits(
+      Number(session.metadata?.artistTransferMinor || payoutBreakdown.artistPayout),
+      currency
+    );
+    const stripeTransferDestination = session.metadata?.stripeTransferDestination || "";
     transaction = {
       id: `txn-${session.id}`,
       releaseId: release.id,
@@ -2125,14 +2209,26 @@ async function paidDownloadPurchase(sessionId, releaseId) {
       grossAmount: amount,
       paymentProcessingFee,
       platformFee,
+      platformOperationsFee,
+      totalDeductions,
       artistPayout,
-      currency: session.currency || release.currency || "usd",
+      artistPayoutPercent: ARTIST_PAYOUT_PERCENT,
+      platformFeePercent: PLATFORM_SERVICE_FEE_PERCENT,
+      paymentProcessingFeePercent: PAYMENT_PROCESSING_FEE_PERCENT,
+      platformOperationsFeePercent: PLATFORM_OPERATIONS_FEE_PERCENT,
+      stripeActualFee,
+      stripeApplicationFeeAmount: totalDeductions,
+      stripeTransferAmount: artistPayout,
+      stripeTransferDestination,
+      stripeTransferMode: session.metadata?.stripeTransferMode || (stripeTransferDestination ? "automatic_destination" : "pending_connect"),
+      currency,
       checkoutSessionId: session.id,
       paymentIntentId,
       paymentStatus: "paid",
       downloaded: false,
       downloadedAt: "",
-      payoutStatus: "pending",
+      payoutStatus: stripeTransferDestination ? "processing" : "pending",
+      payoutModel: "mba_80_20",
       createdAt: new Date((session.created || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
     };
     store.transactions.push(transaction);

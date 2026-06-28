@@ -1,4 +1,8 @@
 const artistForm = document.querySelector("#artistForm");
+const ARTIST_PAYOUT_PERCENT = 80;
+const PLATFORM_SERVICE_FEE_PERCENT = 10;
+const PAYMENT_PROCESSING_FEE_PERCENT = 5;
+const PLATFORM_OPERATIONS_FEE_PERCENT = 5;
 const releaseForm = document.querySelector("#releaseForm");
 const videoForm = document.querySelector("#videoForm");
 const socialFields = document.querySelector("#socialFields");
@@ -1137,16 +1141,31 @@ function transactionGross(transaction) {
 }
 
 function transactionProcessorFee(transaction) {
-  return Number(transaction.paymentProcessingFee || 0);
+  if (transaction.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.paymentProcessingFee))) {
+    return Number(transaction.paymentProcessingFee || 0);
+  }
+  return transactionGross(transaction) * (PAYMENT_PROCESSING_FEE_PERCENT / 100);
 }
 
 function transactionPlatformFee(transaction) {
-  return Number(transaction.platformFee || 0);
+  if (transaction.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.platformFee))) {
+    return Number(transaction.platformFee || 0);
+  }
+  return transactionGross(transaction) * (PLATFORM_SERVICE_FEE_PERCENT / 100);
+}
+
+function transactionOperationsFee(transaction) {
+  if (transaction.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.platformOperationsFee))) {
+    return Number(transaction.platformOperationsFee || 0);
+  }
+  return transactionGross(transaction) * (PLATFORM_OPERATIONS_FEE_PERCENT / 100);
 }
 
 function transactionNet(transaction) {
-  if (Number.isFinite(Number(transaction.artistPayout))) return Number(transaction.artistPayout || 0);
-  return Math.max(0, transactionGross(transaction) - transactionProcessorFee(transaction) - transactionPlatformFee(transaction));
+  if (transaction.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.artistPayout))) {
+    return Number(transaction.artistPayout || 0);
+  }
+  return Math.max(0, transactionGross(transaction) * (ARTIST_PAYOUT_PERCENT / 100));
 }
 
 function renderEarningsBreakdown() {
@@ -1159,19 +1178,21 @@ function renderEarningsBreakdown() {
   const grossSales = transactions.reduce((sum, transaction) => sum + transactionGross(transaction), 0);
   const processorFees = transactions.reduce((sum, transaction) => sum + transactionProcessorFee(transaction), 0);
   const platformFees = transactions.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0);
+  const operationsFees = transactions.reduce((sum, transaction) => sum + transactionOperationsFee(transaction), 0);
   const netEarnings = transactions.reduce((sum, transaction) => sum + transactionNet(transaction), 0);
 
   setText("#breakdownTotalDownloads", String(transactions.length));
   setText("#breakdownGrossSales", money(grossSales));
   setText("#breakdownProcessorFees", money(processorFees));
   setText("#breakdownPlatformFees", money(platformFees));
+  setText("#breakdownOperationsFees", money(operationsFees));
   setText("#breakdownNetEarnings", money(netEarnings));
 
   if (!earningsBreakdownTable) return;
   earningsBreakdownTable.innerHTML = transactions.length
     ? `
       <div class="earnings-table-header">
-        <span>Release</span><span>Price</span><span>Processor Fee</span><span>Platform Fee</span><span>Artist Net</span><span>Date</span>
+        <span>Release</span><span>Price</span><span>Processing</span><span>Service</span><span>Operations</span><span>Artist Net</span><span>Date</span>
       </div>
       ${transactions.map((transaction) => {
         const release = releaseById.get(String(transaction.releaseId)) || {};
@@ -1181,6 +1202,7 @@ function renderEarningsBreakdown() {
             <span>${money(transactionGross(transaction))}</span>
             <span>${money(transactionProcessorFee(transaction))}</span>
             <span>${money(transactionPlatformFee(transaction))}</span>
+            <span>${money(transactionOperationsFee(transaction))}</span>
             <span>${money(transactionNet(transaction))}</span>
             <span>${escapeText(formatReleaseDate(String(transaction.downloadedAt || transaction.createdAt || "").slice(0, 10)))}</span>
           </article>
@@ -1424,7 +1446,10 @@ function renderArtistConsole() {
   const verifiedTransactions = artistTransactions().filter((transaction) => transaction.type === "download");
   const totalRevenue = verifiedTransactions.reduce((sum, transaction) => sum + transactionGross(transaction), 0);
   const streamingClicks = historicalReleases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
-  const platformFee = verifiedTransactions.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0);
+  const totalDeductions = verifiedTransactions.reduce(
+    (sum, transaction) => sum + transactionPlatformFee(transaction) + transactionProcessorFee(transaction) + transactionOperationsFee(transaction),
+    0
+  );
   const netRevenue = verifiedTransactions.reduce((sum, transaction) => sum + transactionNet(transaction), 0);
 
   setText("#artistTotalSongs", String(releases.length));
@@ -1472,7 +1497,7 @@ function renderArtistConsole() {
   setText("#earningsTotalRevenue", money(totalRevenue));
   setText("#earningsAvailableBalance", money(netRevenue));
   setText("#earningsPendingBalance", money(0));
-  setText("#earningsPlatformFees", money(platformFee));
+  setText("#earningsPlatformFees", money(totalDeductions));
   setText("#earningsNetRevenue", money(netRevenue));
   setText("#earningsDownloadRevenue", money(totalRevenue));
   setText("#earningsTotalPaidOut", money(0));

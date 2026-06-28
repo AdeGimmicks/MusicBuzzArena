@@ -44,7 +44,6 @@ PUBLIC_SITE_URL=https://musicbusinessarena.com
 STORE_MANAGER_PASSWORD=replace_with_a_strong_private_password
 STRIPE_SECRET_KEY=sk_live_your_private_key
 STRIPE_DEFAULT_CURRENCY=usd
-PLATFORM_FEE_PERCENT=10
 ```
 
 Do not commit `.env` to GitHub. Stripe keys and the Store Manager password must be added only in Render environment variables, never inside the source code.
@@ -95,10 +94,9 @@ Recommended Render values:
 ```text
 PUBLIC_SITE_URL=https://musicbusinessarena.com
 STRIPE_DEFAULT_CURRENCY=usd
-PLATFORM_FEE_PERCENT=10
 ```
 
-Stripe can show cards, Apple Pay, Google Pay, and supported international payment methods depending on your Stripe account settings, domain verification, visitor device, and country. Artist payouts through Stripe Connect require storing each artist's connected account ID before automatic split payouts can be enabled.
+Stripe can show cards, Apple Pay, Google Pay, and supported international payment methods depending on your Stripe account settings, domain verification, visitor device, and country. Paid downloads use Stripe Connect destination charges when an artist has connected Stripe: MusicBusiness Arena keeps 20% total deductions and transfers 80% to the artist's connected Stripe Express account.
 
 ## Custom Domain
 
@@ -136,12 +134,8 @@ Then connect that GitHub repo to Render.
 
 ## Important Production Notes
 
-The current website is ready for Render hosting, MongoDB storage, and persistent uploads. Before accepting public artists and payments, the next production pieces should be added:
+The current website is ready for Render hosting, MongoDB storage, persistent uploads, artist accounts, Store Manager access, and Stripe Connect onboarding. Before accepting large public traffic, the next production pieces should be reviewed:
 
-- Artist login and private dashboard access
-- Store manager/admin login
-- Stripe Connect onboarding for each artist payout account
-- Fulfillment after successful checkout, so paid downloads unlock only after Stripe confirms payment
 - Stronger file validation for uploads
 - Cloud storage such as S3, Cloudinary, or Backblaze when the platform grows
 

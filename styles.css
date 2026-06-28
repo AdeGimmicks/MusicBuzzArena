@@ -1167,7 +1167,7 @@ h3 {
 .earnings-table-row {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(180px, 1.3fr) 90px 120px 110px 110px 130px;
+  grid-template-columns: minmax(180px, 1.3fr) 90px 110px 100px 110px 110px 130px;
 }
 
 .song-table-header,
@@ -1512,7 +1512,7 @@ h3 {
 }
 
 .payout-columns {
-  grid-template-columns: minmax(130px, 1fr) 110px 80px 100px 110px 100px 110px 100px 110px minmax(220px, 1.3fr);
+  grid-template-columns: minmax(130px, 1fr) 110px 80px 100px 110px 100px 110px 100px 100px 110px minmax(220px, 1.3fr);
 }
 
 .manager-table-header {

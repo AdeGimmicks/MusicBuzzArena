@@ -1,4 +1,8 @@
 const siteForm = document.querySelector("#siteForm");
+const ARTIST_PAYOUT_PERCENT = 80;
+const PLATFORM_SERVICE_FEE_PERCENT = 10;
+const PAYMENT_PROCESSING_FEE_PERCENT = 5;
+const PLATFORM_OPERATIONS_FEE_PERCENT = 5;
 const siteMessage = document.querySelector("#siteMessage");
 const storeManagerLogout = document.querySelector("#storeManagerLogout");
 const storeManagerSidebarLogout = document.querySelector("#storeManagerSidebarLogout");
@@ -181,9 +185,32 @@ function transactionGross(transaction) {
   return Number(transaction.grossAmount ?? transaction.amount ?? 0);
 }
 
+function transactionProcessorFee(transaction) {
+  if (transaction.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.paymentProcessingFee))) {
+    return Number(transaction.paymentProcessingFee || 0);
+  }
+  return transactionGross(transaction) * (PAYMENT_PROCESSING_FEE_PERCENT / 100);
+}
+
+function transactionPlatformFee(transaction) {
+  if (transaction.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.platformFee))) {
+    return Number(transaction.platformFee || 0);
+  }
+  return transactionGross(transaction) * (PLATFORM_SERVICE_FEE_PERCENT / 100);
+}
+
+function transactionOperationsFee(transaction) {
+  if (transaction.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.platformOperationsFee))) {
+    return Number(transaction.platformOperationsFee || 0);
+  }
+  return transactionGross(transaction) * (PLATFORM_OPERATIONS_FEE_PERCENT / 100);
+}
+
 function transactionNet(transaction) {
-  if (Number.isFinite(Number(transaction.artistPayout))) return Number(transaction.artistPayout || 0);
-  return Math.max(0, transactionGross(transaction) - Number(transaction.platformFee || 0) - Number(transaction.paymentProcessingFee || 0));
+  if (transaction.payoutModel === "mba_80_20" && Number.isFinite(Number(transaction.artistPayout))) {
+    return Number(transaction.artistPayout || 0);
+  }
+  return Math.max(0, transactionGross(transaction) * (ARTIST_PAYOUT_PERCENT / 100));
 }
 
 function stripeStatusLabel(status) {
@@ -469,19 +496,24 @@ function renderPayouts() {
 
   managerPayoutTable.innerHTML = artists.length
     ? `
-      <div class="manager-table-header payout-columns"><span>Artist</span><span>Stripe</span><span>Downloads</span><span>Gross Sales</span><span>Processor Fee</span><span>Platform Fee</span><span>Net Earnings</span><span>Available</span><span>Payout Status</span><span>Actions</span></div>
+      <div class="manager-table-header payout-columns"><span>Artist</span><span>Stripe</span><span>Downloads</span><span>Gross Sales</span><span>Processing 5%</span><span>Service 10%</span><span>Operations 5%</span><span>Net 80%</span><span>Available</span><span>Payout Status</span><span>Actions</span></div>
       ${artists.map((artist) => {
         const artistTxns = artistTransactions(artist.id);
         const grossSales = artistTxns.length
           ? artistTxns.reduce((sum, transaction) => sum + transactionGross(transaction), 0)
           : artistRevenue(artist.id);
-        const processorFees = artistTxns.reduce((sum, transaction) => sum + Number(transaction.paymentProcessingFee || 0), 0);
+        const processorFees = artistTxns.length
+          ? artistTxns.reduce((sum, transaction) => sum + transactionProcessorFee(transaction), 0)
+          : grossSales * (PAYMENT_PROCESSING_FEE_PERCENT / 100);
         const platformFees = artistTxns.length
-          ? artistTxns.reduce((sum, transaction) => sum + Number(transaction.platformFee || 0), 0)
-          : grossSales * Number(currentStore.site?.commissionRate || 10) / 100;
+          ? artistTxns.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0)
+          : grossSales * (PLATFORM_SERVICE_FEE_PERCENT / 100);
+        const operationsFees = artistTxns.length
+          ? artistTxns.reduce((sum, transaction) => sum + transactionOperationsFee(transaction), 0)
+          : grossSales * (PLATFORM_OPERATIONS_FEE_PERCENT / 100);
         const netEarnings = artistTxns.length
           ? artistTxns.reduce((sum, transaction) => sum + transactionNet(transaction), 0)
-          : Math.max(0, grossSales - platformFees);
+          : grossSales * (ARTIST_PAYOUT_PERCENT / 100);
         const availableBalance = artistTxns
           .filter((transaction) => transaction.payoutStatus !== "paid" && transaction.payoutStatus !== "processing")
           .reduce((sum, transaction) => sum + transactionNet(transaction), 0) || netEarnings;
@@ -496,6 +528,7 @@ function renderPayouts() {
             <span>${money(grossSales)}</span>
             <span>${money(processorFees)}</span>
             <span>${money(platformFees)}</span>
+            <span>${money(operationsFees)}</span>
             <span>${money(netEarnings)}</span>
             <span>${money(availableBalance)}</span>
             <mark>${escapeText(payoutStatus)}</mark>
@@ -721,8 +754,27 @@ managerNavLinks.forEach((link) => {
 
 document.querySelector("#exportDownloadsCsv")?.addEventListener("click", () => {
   const rows = filteredDownloads();
-  const header = ["Song", "Artist", "Country", "Amount", "Downloads", "Status"];
-  const lines = rows.map((release) => [release.title, release.artistName, release.country, releaseRevenue(release), release.downloads, "complete"].map((value) => `"${String(value || "").replace(/"/g, '""')}"`).join(","));
+  const header = ["Song", "Artist", "Country", "Gross Sales", "Processing Fee 5%", "Service Fee 10%", "Operations Fee 5%", "Artist Net 80%", "Downloads", "Status"];
+  const lines = rows.map((release) => {
+    const txns = (currentStore.transactions || []).filter((transaction) => String(transaction.releaseId) === String(release.id));
+    const grossSales = txns.length ? txns.reduce((sum, transaction) => sum + transactionGross(transaction), 0) : releaseRevenue(release);
+    const processingFees = txns.length ? txns.reduce((sum, transaction) => sum + transactionProcessorFee(transaction), 0) : grossSales * (PAYMENT_PROCESSING_FEE_PERCENT / 100);
+    const serviceFees = txns.length ? txns.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0) : grossSales * (PLATFORM_SERVICE_FEE_PERCENT / 100);
+    const operationsFees = txns.length ? txns.reduce((sum, transaction) => sum + transactionOperationsFee(transaction), 0) : grossSales * (PLATFORM_OPERATIONS_FEE_PERCENT / 100);
+    const artistNet = txns.length ? txns.reduce((sum, transaction) => sum + transactionNet(transaction), 0) : grossSales * (ARTIST_PAYOUT_PERCENT / 100);
+    return [
+      release.title,
+      release.artistName,
+      release.country,
+      grossSales,
+      processingFees,
+      serviceFees,
+      operationsFees,
+      artistNet,
+      release.downloads,
+      "complete",
+    ].map((value) => `"${String(value || "").replace(/"/g, '""')}"`).join(",");
+  });
   const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
