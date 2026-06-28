@@ -1208,7 +1208,8 @@ function stripeStatusDetails(payload) {
     return "Stripe Connect is not configured yet. Add a valid Stripe secret key in Render to enable artist onboarding.";
   }
   if (payload.status === "connected") {
-    return "Stripe Account Connected. Payouts can be processed securely through Stripe Connect.";
+    const modeText = payload.stripeMode === "live" ? " Live payouts can be processed securely through Stripe Connect." : " Payouts can be processed securely through Stripe Connect.";
+    return `Stripe Account Connected.${modeText}`;
   }
   if (payload.status === "pending_verification") {
     return "Stripe is still reviewing or needs more information. Continue onboarding to finish verification.";
@@ -1237,9 +1238,13 @@ function renderStripePayoutStatus(payload = {}) {
   }
 
   if (connectStripeAccount) {
-    connectStripeAccount.hidden = payload.status === "connected";
+    connectStripeAccount.hidden = false;
     connectStripeAccount.disabled = !payload.stripeConfigured;
-    connectStripeAccount.textContent = payload.status === "pending_verification" ? "Continue Stripe Setup" : "Connect Stripe Account";
+    connectStripeAccount.textContent = payload.status === "connected"
+      ? "Open Stripe Dashboard"
+      : payload.status === "pending_verification"
+        ? "Continue Stripe Setup"
+        : "Connect Stripe Account";
   }
 
   if (Number.isFinite(Number(payload.availableBalance))) setText("#earningsAvailableBalance", money(payload.availableBalance));

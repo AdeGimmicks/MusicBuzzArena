@@ -71,6 +71,7 @@ const artistSessions = new Map();
 const stripe = STRIPE_SECRET_KEY && Stripe ? Stripe(STRIPE_SECRET_KEY) : null;
 const hasValidStripeSecretKey = /^sk_(test|live)_/.test(STRIPE_SECRET_KEY);
 const stripeConnectReady = Boolean(stripe && hasValidStripeSecretKey);
+const stripeApiMode = STRIPE_SECRET_KEY.startsWith("sk_live_") ? "live" : STRIPE_SECRET_KEY.startsWith("sk_test_") ? "test" : "";
 
 const PROTECTED_ANALYTICS_FIELDS = new Set([
   "artistPageVisits",
@@ -1811,6 +1812,14 @@ function stripeAccountStatus(account = {}) {
   return "not_connected";
 }
 
+function stripeConnectErrorMessage(error, fallback = "Unable to open Stripe Connect onboarding.") {
+  const message = String(error?.message || "");
+  if (/dashboard\.stripe\.com\/connect|signed up for Connect|create new accounts/i.test(message)) {
+    return "Stripe Connect is enabled, but Stripe rejected connected account creation for the configured API key. Confirm Render is using the live secret key from this Stripe Connect platform account.";
+  }
+  return message || fallback;
+}
+
 function saveArtistStripeSnapshot(artist, account = {}) {
   if (!artist || !account?.id) return artist;
   artist.stripeAccountId = account.id;
@@ -1887,6 +1896,7 @@ async function sendArtistStripeStatus(request, response) {
   sendJson(response, 200, {
     ok: true,
     stripeConfigured: stripeConnectReady,
+    stripeMode: stripeApiMode,
     status: artist.stripeAccountStatus || (artist.stripeAccountId ? "pending_verification" : "not_connected"),
     accountId: artist.stripeAccountId || "",
     chargesEnabled: Boolean(artist.stripeChargesEnabled),
@@ -1939,7 +1949,7 @@ async function createArtistStripeAccountLink(request, response) {
       });
     } catch (error) {
       sendJson(response, 400, {
-        error: error?.message || "Unable to create a Stripe Connect Express account.",
+        error: stripeConnectErrorMessage(error, "Unable to create a Stripe Connect Express account."),
       });
       return;
     }
@@ -1952,7 +1962,7 @@ async function createArtistStripeAccountLink(request, response) {
         const loginLink = await stripe.accounts.createLoginLink(artist.stripeAccountId);
         sendJson(response, 200, { ok: true, url: loginLink.url, mode: "dashboard" });
       } catch (error) {
-        sendJson(response, 400, { error: error?.message || "Unable to open Stripe Express Dashboard." });
+        sendJson(response, 400, { error: stripeConnectErrorMessage(error, "Unable to open Stripe Express Dashboard.") });
       }
       return;
     }
@@ -1968,7 +1978,7 @@ async function createArtistStripeAccountLink(request, response) {
       type: "account_onboarding",
     });
   } catch (error) {
-    sendJson(response, 400, { error: error?.message || "Unable to open Stripe Connect onboarding." });
+    sendJson(response, 400, { error: stripeConnectErrorMessage(error, "Unable to open Stripe Connect onboarding.") });
     return;
   }
   sendJson(response, 200, { ok: true, url: accountLink.url });
