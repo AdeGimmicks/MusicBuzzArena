@@ -2643,7 +2643,8 @@ async function serveStatic(request, response) {
   const requestedPath = decodeURIComponent(url.pathname);
 
   if (requestedPath === "/") {
-    return serveFile(request, response, "/main dashboard.html");
+    redirect(response, "/dashboard");
+    return;
   }
 
   if ((requestedPath === "/upload" || requestedPath === "/upload.html") && getArtistSession(request)) {
