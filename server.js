@@ -729,6 +729,15 @@ function readRequestBody(request) {
   });
 }
 
+function parseRequestBody(bodyText, request) {
+  const contentType = String(request.headers["content-type"] || "").toLowerCase();
+  if (!bodyText) return {};
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    return Object.fromEntries(new URLSearchParams(bodyText).entries());
+  }
+  return JSON.parse(bodyText);
+}
+
 function slugify(value) {
   return String(value || "musicbusiness")
     .toLowerCase()
@@ -1536,20 +1545,39 @@ async function verifyArtistEmail(request, response) {
 
 async function loginArtist(request, response) {
   const bodyText = await readRequestBody(request);
-  const body = bodyText ? JSON.parse(bodyText) : {};
-  const email = normalizeEmail(body.email);
-  const password = String(body.password || "");
+  const body = parseRequestBody(bodyText, request);
+  const email = normalizeEmail(body.email || body.artistEmail);
+  const password = String(body.password || body.artistPassword || "");
+  const wantsHtml = String(request.headers.accept || "").includes("text/html");
+  const next = String(body.next || "").startsWith("/artist-dashboard") ? String(body.next) : "/artist-dashboard";
   const store = await readStore();
   const account = accountByEmail(store, email);
   if (!account || !(await verifyPassword(password, account.passwordHash))) {
+    if (wantsHtml) {
+      redirect(response, "/artist-login?error=invalid");
+      return;
+    }
     sendJson(response, 401, { error: "Incorrect email or password." });
     return;
   }
   if (!account.emailVerified) {
+    if (wantsHtml) {
+      redirect(response, "/artist-login?error=verify");
+      return;
+    }
     sendJson(response, 403, { error: "Verify your email address before logging in." });
     return;
   }
   const sessionId = createArtistSession(account);
+  if (wantsHtml) {
+    response.writeHead(302, {
+      "Cache-Control": "no-store",
+      Location: next,
+      "Set-Cookie": artistSessionCookie(sessionId),
+    });
+    response.end();
+    return;
+  }
   sendJsonWithHeaders(response, 200, { ok: true, artistId: account.artistId, account: publicAccount(account) }, {
     "Set-Cookie": artistSessionCookie(sessionId),
   });
@@ -2538,8 +2566,11 @@ const CLEAN_ROUTES = {
 
 const LEGACY_REDIRECTS = Object.fromEntries(Object.entries(CLEAN_ROUTES).map(([clean, file]) => [file, clean]));
 
-function redirect(response, location) {
-  response.writeHead(301, { Location: location });
+function redirect(response, location, status = 302) {
+  response.writeHead(status, {
+    Location: location,
+    "Cache-Control": "no-store",
+  });
   response.end();
 }
 
@@ -2610,6 +2641,16 @@ function cacheControlFor(ext, pathname) {
 async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const requestedPath = decodeURIComponent(url.pathname);
+
+  if ((requestedPath === "/upload" || requestedPath === "/upload.html") && getArtistSession(request)) {
+    redirect(response, "/artist-dashboard");
+    return;
+  }
+
+  if ((requestedPath === "/artist-login" || requestedPath === "/artist-login.html") && getArtistSession(request)) {
+    redirect(response, "/artist-dashboard");
+    return;
+  }
 
   if (LEGACY_REDIRECTS[requestedPath]) {
     redirect(response, `${LEGACY_REDIRECTS[requestedPath]}${url.search}`);
@@ -2764,6 +2805,11 @@ async function handleRequest(request, response) {
     }
 
     if (url.pathname === "/api/artist/login" && request.method === "POST") {
+      await loginArtist(request, response);
+      return;
+    }
+
+    if ((url.pathname === "/artist-login" || url.pathname === "/artist-login.html") && request.method === "POST") {
       await loginArtist(request, response);
       return;
     }
