@@ -2642,6 +2642,11 @@ async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const requestedPath = decodeURIComponent(url.pathname);
 
+  if (requestedPath === "/") {
+    redirect(response, "/dashboard");
+    return;
+  }
+
   if ((requestedPath === "/upload" || requestedPath === "/upload.html") && getArtistSession(request)) {
     redirect(response, "/artist-dashboard");
     return;
@@ -2673,10 +2678,7 @@ async function serveStatic(request, response) {
     return;
   }
 
-  const pathname =
-    requestedPath === "/"
-      ? "/index.html"
-      : cleanReleaseRoute?.file || artistRoute?.file || CLEAN_ROUTES[requestedPath] || requestedPath;
+  const pathname = cleanReleaseRoute?.file || artistRoute?.file || CLEAN_ROUTES[requestedPath] || requestedPath;
   const filePath = pathname.startsWith("/uploads/")
     ? path.join(UPLOAD_DIR, pathname.replace(/^\/uploads\//, ""))
     : path.join(ROOT, pathname);
