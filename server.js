@@ -2643,9 +2643,9 @@ async function serveStatic(request, response) {
   const requestedPath = decodeURIComponent(url.pathname);
 
   if (requestedPath === "/") {
-    redirect(response, "/dashboard");
+    redirect(response, "/THIS_IS_A_TEST");
     return;
-  }
+}
 
   if ((requestedPath === "/upload" || requestedPath === "/upload.html") && getArtistSession(request)) {
     redirect(response, "/artist-dashboard");
