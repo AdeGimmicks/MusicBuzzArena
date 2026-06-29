@@ -70,6 +70,9 @@ const dashboardSections = [...document.querySelectorAll(".artist-dashboard-secti
 const dashboardNavLinks = [...document.querySelectorAll("[data-dashboard-section]")];
 const openSongEditorButtons = document.querySelectorAll("[data-open-song-editor]");
 const artistLogoutButtons = document.querySelectorAll("[data-artist-logout]");
+const dashboardSiteNav = document.querySelector(".site-header .site-nav");
+const dashboardBrandLink = document.querySelector(".site-header .brand");
+const artistConsoleLinks = document.querySelector(".artist-console-links");
 const songSearchInput = document.querySelector("#songSearchInput");
 const songGenreFilter = document.querySelector("#songGenreFilter");
 const songStatusFilter = document.querySelector("#songStatusFilter");
@@ -157,6 +160,28 @@ function parsePreviewTime(value, fallbackSeconds = 0) {
 
   const seconds = Number(text);
   return Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : NaN;
+}
+
+function slugify(value) {
+  return String(value || "artist")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function artistSlug(artist) {
+  return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id);
+}
+
+function artistPublicUrls(artist = primaryArtist()) {
+  const slug = artistSlug(artist);
+  return {
+    home: `/${slug}`,
+    music: `/${slug}/music`,
+    videos: `/${slug}/videos`,
+    dashboard: `/${slug}-dashboard`,
+  };
 }
 
 function setText(selector, value) {
@@ -758,6 +783,7 @@ function artistLabel(artist) {
 function renderArtistAccountPicker() {
   if (!artistAccountSelect) return;
   const artist = primaryArtist();
+  updateArtistPublicLinks(artist);
   artistAccountSelect.replaceChildren();
   artistAccountSelect.append(new Option(artistLabel(artist), artist.id));
   artistAccountSelect.value = artist.id;
@@ -768,8 +794,43 @@ function renderArtistAccountPicker() {
   }
 }
 
+function updateArtistPublicLinks(artist = primaryArtist()) {
+  if (!artist) return;
+  const urls = artistPublicUrls(artist);
+
+  if (dashboardBrandLink) dashboardBrandLink.href = urls.home;
+  if (dashboardSiteNav) {
+    dashboardSiteNav.innerHTML = `
+      <a href="${urls.home}">Home</a>
+      <a href="${urls.music}">Music</a>
+      <a href="${urls.videos}">Video</a>
+      <a href="${urls.dashboard}">Upload</a>
+    `;
+  }
+
+  if (artistConsoleLinks) {
+    const links = artistConsoleLinks.querySelectorAll("a");
+    if (links[0]) links[0].href = urls.home;
+    if (links[1]) links[1].href = urls.home;
+  }
+
+  document.querySelectorAll('a[href="/music"]').forEach((link) => {
+    link.href = urls.music;
+  });
+  document.querySelectorAll('a[href="/home"]').forEach((link) => {
+    link.href = urls.home;
+  });
+  document.querySelectorAll('a[href="/video"]').forEach((link) => {
+    link.href = urls.videos;
+  });
+  document.querySelectorAll('a[href="/artist-dashboard"]').forEach((link) => {
+    link.href = urls.dashboard;
+  });
+}
+
 function fillArtistForm() {
   const artist = primaryArtist();
+  updateArtistPublicLinks(artist);
   artistForm.name.value = artist.name || "";
   artistForm.handle.value = artist.handle || "";
   artistForm.bio.value = artist.bio || "";
@@ -1156,6 +1217,7 @@ function renderSongTable() {
   if (!artistSongTable) return;
   const artist = primaryArtist();
   const releases = filteredArtistReleases();
+  const urls = artistPublicUrls(artist);
 
   if (!releases.length) {
     artistSongTable.innerHTML = `<p class="empty-state">No songs match the current filters.</p>`;
@@ -1186,7 +1248,7 @@ function renderSongTable() {
             <span>${formatReleaseDate((release.createdAt || "").slice(0, 10) || release.releaseDate)}</span>
             <div class="song-row-actions">
               <button type="button" data-edit-release="${release.id}">Edit</button>
-              <a href="/music" target="_blank" rel="noreferrer">Preview</a>
+              <a href="${urls.music}" target="_blank" rel="noreferrer">Preview</a>
               <button type="button" data-delete-release="${release.id}">Delete</button>
               <button type="button" data-feature-release="${release.id}">${artist.featuredReleaseId === release.id ? "Featured" : "Feature"}</button>
               <button type="button" data-duplicate-release="${release.id}">Duplicate</button>

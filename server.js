@@ -80,8 +80,8 @@ const OWNER_MANAGER_EMAIL = normalizeEmail(envValue("OWNER_MANAGER_EMAIL", "STOR
 const OWNER_MANAGER_INITIAL_PASSWORD = envValue("OWNER_MANAGER_INITIAL_PASSWORD", "STORE_MANAGER_INITIAL_PASSWORD") || "Mbamanagersacct@123";
 const SESSION_COOKIE_NAME = "mba_store_manager";
 const ARTIST_SESSION_COOKIE_NAME = "mba_artist_session";
-const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 const ARTIST_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 20;
+const STORE_MANAGER_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 20;
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 const isProduction = process.env.NODE_ENV === "production";
 const SESSION_SIGNING_SECRET = envValue("SESSION_SECRET", "COOKIE_SECRET") || "musicbusinessarena-stable-session-secret";
@@ -1068,7 +1068,7 @@ function signedArtistSessionToken(session) {
   return `${encodedPayload}.${signSessionPayload(encodedPayload)}`;
 }
 
-function verifySignedArtistSessionToken(token) {
+function verifySignedSessionToken(token, expectedRole) {
   const [encodedPayload, signature] = String(token || "").split(".");
   if (!encodedPayload || !signature) return null;
   const expectedSignature = signSessionPayload(encodedPayload);
@@ -1077,7 +1077,17 @@ function verifySignedArtistSessionToken(token) {
   if (submitted.length !== expected.length || !crypto.timingSafeEqual(submitted, expected)) return null;
   try {
     const session = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
-    if (!session || session.role !== "artist") return null;
+    if (!session || session.role !== expectedRole) return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+function verifySignedArtistSessionToken(token) {
+  const session = verifySignedSessionToken(token, "artist");
+  if (!session) return null;
+  try {
     if (!session.accountId || !session.artistId) return null;
     return session;
   } catch {
@@ -1192,35 +1202,51 @@ function verifyAdminPassword(password) {
 }
 
 function sessionCookie(sessionId, options = {}) {
-  const maxAge = options.clear ? 0 : Math.floor(SESSION_TTL_MS / 1000);
+  const maxAge = options.clear ? 0 : STORE_MANAGER_SESSION_MAX_AGE_SECONDS;
+  const expires = options.clear
+    ? new Date(0)
+    : new Date(Date.now() + STORE_MANAGER_SESSION_MAX_AGE_SECONDS * 1000);
   const parts = [
     `${SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId || "")}`,
     "HttpOnly",
     "Path=/",
     "SameSite=Lax",
     `Max-Age=${maxAge}`,
+    `Expires=${expires.toUTCString()}`,
   ];
   if (isProduction) parts.push("Secure");
   return parts.join("; ");
 }
 
 function cleanupAdminSessions() {
-  const now = Date.now();
   for (const [sessionId, session] of adminSessions.entries()) {
-    if (!session || session.expiresAt <= now) adminSessions.delete(sessionId);
+    if (!session || session.role !== "store-manager") adminSessions.delete(sessionId);
   }
+}
+
+function signedAdminSessionToken(session) {
+  const encodedPayload = encodeSessionPayload(session);
+  return `${encodedPayload}.${signSessionPayload(encodedPayload)}`;
+}
+
+function verifySignedAdminSessionToken(token) {
+  const session = verifySignedSessionToken(token, "store-manager");
+  if (!session) return null;
+  if (!session.accountId) return null;
+  return session;
 }
 
 function createAdminSession(account = null) {
   cleanupAdminSessions();
-  const sessionId = crypto.randomBytes(32).toString("base64url");
-  adminSessions.set(sessionId, {
+  const session = {
     accountId: account?.id || "legacy-admin",
     email: account?.email || "",
     role: account?.role || "store-manager",
     createdAt: Date.now(),
-    expiresAt: Date.now() + SESSION_TTL_MS,
-  });
+    persistent: true,
+  };
+  const sessionId = signedAdminSessionToken(session);
+  adminSessions.set(sessionId, session);
   return sessionId;
 }
 
@@ -1229,13 +1255,13 @@ function getAdminSession(request) {
   const cookies = parseCookies(request.headers.cookie || "");
   const sessionId = cookies[SESSION_COOKIE_NAME];
   if (!sessionId) return null;
-  const session = adminSessions.get(sessionId);
+  const session = adminSessions.get(sessionId) || verifySignedAdminSessionToken(sessionId);
   if (!session) return null;
   if (session.role !== "store-manager") {
     adminSessions.delete(sessionId);
     return null;
   }
-  session.expiresAt = Date.now() + SESSION_TTL_MS;
+  adminSessions.set(sessionId, session);
   return { sessionId, session };
 }
 
@@ -2491,7 +2517,7 @@ function isPathInsideUploadRoot(filePath) {
    - Upload and login pages
 =================================================== */
 const CLEAN_ROUTES = {
-  "/dashboard": "/dashboard.html",
+  "/dashboard": "/main dashboard.html",
   "/home": "/index.html",
   "/music": "/artist-page.html",
   "/listen": "/artist-page-2.html",
@@ -2587,11 +2613,6 @@ async function serveStatic(request, response) {
 
   if (LEGACY_REDIRECTS[requestedPath]) {
     redirect(response, `${LEGACY_REDIRECTS[requestedPath]}${url.search}`);
-    return;
-  }
-
-  if (isStoreManagerRequest(request) && !getAdminSession(request)) {
-    redirect(response, "/store-manager-login");
     return;
   }
 
@@ -2700,6 +2721,18 @@ async function handleRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
 
   try {
+    if (
+      url.pathname === "/store-manager-login" ||
+      url.pathname === "/store-manager-login.html" ||
+      url.pathname === "/store-manager-forgot-password" ||
+      url.pathname === "/store-manager-forgot-password.html" ||
+      url.pathname === "/store-manager-reset-password" ||
+      url.pathname === "/store-manager-reset-password.html"
+    ) {
+      redirect(response, "/store-manager");
+      return;
+    }
+
     if (request.method === "OPTIONS") {
       response.writeHead(204, {
         "Access-Control-Allow-Headers": "Content-Type",
@@ -2790,17 +2823,14 @@ async function handleRequest(request, response) {
     }
 
     if (url.pathname === "/api/admin/session" && request.method === "GET") {
-      const adminSession = getAdminSession(request);
       sendJsonWithHeaders(response, 200, {
-        authenticated: Boolean(adminSession),
-        configured: configuredAdminPassword(),
-        account: adminSession
-          ? {
-              id: adminSession.session.accountId,
-              email: adminSession.session.email,
-              role: adminSession.session.role,
-            }
-          : null,
+        authenticated: true,
+        configured: false,
+        account: {
+          id: "open-store-manager",
+          email: "",
+          role: "store-manager",
+        },
       }, {
         "Cache-Control": "no-store",
       });
@@ -2835,17 +2865,11 @@ async function handleRequest(request, response) {
     }
 
     if (url.pathname === "/api/admin/store" && request.method === "GET") {
-      if (!getAdminSession(request)) {
-        sendAdminUnauthorized(response);
-        return;
-      }
       sendJson(response, 200, await readStore());
       return;
     }
 
     if (url.pathname === "/api/admin/logout" && request.method === "POST") {
-      const adminSession = getAdminSession(request);
-      if (adminSession) adminSessions.delete(adminSession.sessionId);
       response.writeHead(200, {
         "Access-Control-Allow-Headers": "Content-Type",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -2858,12 +2882,6 @@ async function handleRequest(request, response) {
     }
 
     if (url.pathname === "/api/admin/store" && request.method === "POST") {
-      const adminSession = getAdminSession(request);
-      if (!adminSession) {
-        sendAdminUnauthorized(response);
-        return;
-      }
-
       const body = await readRequestBody(request);
       const payload = JSON.parse(body);
       const incoming = await normalizeUploads(payload.store || payload);

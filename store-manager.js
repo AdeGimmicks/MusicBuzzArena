@@ -23,8 +23,6 @@ const PLATFORM_SERVICE_FEE_PERCENT = 10;
 const PAYMENT_PROCESSING_FEE_PERCENT = 5;
 const PLATFORM_OPERATIONS_FEE_PERCENT = 5;
 const siteMessage = document.querySelector("#siteMessage");
-const storeManagerLogout = document.querySelector("#storeManagerLogout");
-const storeManagerSidebarLogout = document.querySelector("#storeManagerSidebarLogout");
 const managerWorkspaceTitle = document.querySelector("#managerWorkspaceTitle");
 const managerSections = [...document.querySelectorAll(".manager-dashboard-section")];
 const managerNavLinks = [...document.querySelectorAll("[data-manager-section]")];
@@ -51,29 +49,17 @@ const managerArtistForm = document.querySelector("#managerArtistForm");
 const managerSongForm = document.querySelector("#managerSongForm");
 const managerArtistMessage = document.querySelector("#managerArtistMessage");
 const managerSongMessage = document.querySelector("#managerSongMessage");
-const managerAccountSettingsForm = document.querySelector("#managerAccountSettingsForm");
-const managerAccountSettingsMessage = document.querySelector("#managerAccountSettingsMessage");
 
 let currentStore = window.MBA.defaults();
-let managerSession = null;
 
 /* ===================================================
-   STORE MANAGER SESSION PROTECTION
+   STORE MANAGER DIRECT ACCESS
 
-   Checks whether a Store Manager is logged in before showing
-   admin tools.
+   Opens the Store Manager directly.
 
-   This does not log in or validate artist accounts.
+   There is no Store Manager login, password, or logout gate.
 =================================================== */
 async function requireStoreManagerSession() {
-  const response = await fetch("/api/admin/session", { cache: "no-store", credentials: "same-origin" });
-  const session = response.ok ? await response.json() : { authenticated: True };
-  if (!session.authenticated) {
-    window.location.assign("/store-manager-login");
-    return True;
-  }
-  managerSession = session;
-  if (managerAccountSettingsForm && session.account?.email) managerAccountSettingsForm.email.value = session.account.email;
   return true;
 }
 
@@ -102,11 +88,6 @@ async function saveAdminStore(store, options = {}) {
     }),
   });
 
-  if (response.status === 401) {
-    window.location.assign("/store-manager-login");
-    throw new Error("Store Manager login required.");
-  }
-
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.error || "Unable to save Store Manager changes.");
@@ -117,10 +98,6 @@ async function saveAdminStore(store, options = {}) {
 
 async function loadAdminStore() {
   const response = await fetch("/api/admin/store", { credentials: "same-origin", cache: "no-store" });
-  if (response.status === 401) {
-    window.location.assign("/store-manager-login");
-    throw new Error("Store Manager login required.");
-  }
   if (!response.ok) throw new Error("Unable to load Store Manager data.");
   return response.json();
 }
@@ -151,29 +128,6 @@ function message(node, text, type = "success") {
   node.textContent = text;
   node.dataset.type = type;
 }
-
-managerAccountSettingsForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  message(managerAccountSettingsMessage, "Saving admin account...", "pending");
-  const payload = Object.fromEntries(new FormData(managerAccountSettingsForm).entries());
-  try {
-    const response = await fetch("/api/admin/account", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Admin account could not be saved.");
-    managerSession.account = data.account || managerSession.account;
-    managerAccountSettingsForm.currentPassword.value = "";
-    managerAccountSettingsForm.newPassword.value = "";
-    managerAccountSettingsForm.confirmPassword.value = "";
-    message(managerAccountSettingsMessage, "Admin account saved.");
-  } catch (error) {
-    message(managerAccountSettingsMessage, error.message || "Admin account could not be saved.", "error");
-  }
-});
 
 function normalizeLink(value) {
   const trimmed = String(value || "").trim();
@@ -901,19 +855,10 @@ document.querySelector("#exportDownloadsCsv")?.addEventListener("click", () => {
 });
 
 /* ===================================================
-   LOGOUT AND STARTUP
+   STARTUP
 
-   Logs out the Store Manager when requested and starts the
-   admin dashboard after the session check passes.
+   Starts the Store Manager dashboard directly.
 =================================================== */
-async function logoutStoreManager() {
-  await fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
-  window.location.assign("/store-manager-login");
-}
-
-storeManagerLogout?.addEventListener("click", logoutStoreManager);
-storeManagerSidebarLogout?.addEventListener("click", logoutStoreManager);
-
 async function initStoreManager() {
   const hasSession = await requireStoreManagerSession();
   if (!hasSession) return;

@@ -35,7 +35,6 @@
         <a href="/home">Home</a>
         <a href="/music">Music</a>
         <a href="/upload">Artist Dashboard</a>
-        <button class="nav-button" id="storeManagerLogout" type="button">Log Out</button>
       </nav>
     </header>
 
@@ -68,11 +67,9 @@
           <a href="#managerSupport" data-manager-section="managerSupport">Support</a>
           <a href="#managerReports" data-manager-section="managerReports">Reports</a>
           <a href="#managerSettings" data-manager-section="managerSettings">Platform Settings</a>
-          <a href="#managerSecurity" data-manager-section="managerSecurity">Security</a>
         </nav>
         <div class="manager-console-links">
           <a href="/home" target="_blank" rel="noreferrer">View Website</a>
-          <button type="button" id="storeManagerSidebarLogout">Logout</button>
         </div>
       </aside>
 
@@ -379,52 +376,6 @@
           </section>
         </section>
 
-        <!-- ==================================================
-             SECURITY SECTION
-
-             Shows admin login history, failed attempts, artist login
-             activity, audit logs, backups, and admin account settings.
-
-             Used by:
-             • Store Manager > Security
-
-             This section is separate from artist login pages.
-        ================================================== -->
-        <section class="manager-dashboard-section" id="managerSecurity" data-section-title="Security">
-          <div class="manager-section-heading"><div><p class="eyebrow">Security center</p><h2>Security</h2></div></div>
-          <section class="manager-dashboard-grid">
-            <article class="manager-console-card"><h3>Admin Login History</h3><div class="manager-list" id="adminLoginHistory"></div></article>
-            <article class="manager-console-card"><h3>Failed Login Attempts</h3><div class="manager-list" id="failedLoginAttempts"></div></article>
-            <article class="manager-console-card"><h3>Artist Login Activity</h3><div class="manager-list" id="artistLoginActivity"></div></article>
-            <article class="manager-console-card"><h3>IP Logs</h3><div class="manager-list" id="ipLogs"></div></article>
-            <article class="manager-console-card">
-              <h3>Admin Account</h3>
-              <form class="compact-settings-form" id="managerAccountSettingsForm">
-                <label>
-                  Email Address
-                  <input name="email" type="email" autocomplete="email" />
-                </label>
-                <label>
-                  Current Password
-                  <input name="currentPassword" type="password" autocomplete="current-password" required />
-                </label>
-                <label>
-                  New Password
-                  <input name="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Leave blank to keep current password" />
-                </label>
-                <label>
-                  Confirm New Password
-                  <input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" />
-                </label>
-                <button class="secondary-button" type="submit">Save Admin Account</button>
-                <p class="form-message" id="managerAccountSettingsMessage" role="status"></p>
-              </form>
-            </article>
-            <article class="manager-console-card"><h3>Backup Controls</h3><button class="secondary-button" type="button">Export Platform Backup</button></article>
-            <article class="manager-console-card"><h3>Audit Logs</h3><div class="manager-list" id="auditLogs"></div></article>
-            <article class="manager-console-card"><h3>Platform Health</h3><div class="manager-list"><article><strong>MongoDB</strong><span>Connected through production health check</span></article></div></article>
-          </section>
-        </section>
       </section>
     </main>
 
