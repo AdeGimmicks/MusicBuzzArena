@@ -44,12 +44,25 @@ function embedUrl(videoId) {
 
 function applyFrame(frame, url) {
   const videoId = youtubeIdFromUrl(url);
-  if (!frame || !videoId) return;
+  if (!frame) return;
+  const card = frame.closest("article");
+  if (!videoId) {
+    frame.removeAttribute("src");
+    if (card) card.hidden = true;
+    return;
+  }
+  if (card) card.hidden = false;
   frame.src = embedUrl(videoId);
 }
 
 function applyLink(link, href) {
-  if (!link || !href) return;
+  if (!link) return;
+  if (!href) {
+    link.hidden = true;
+    link.removeAttribute("href");
+    return;
+  }
+  link.hidden = false;
   link.href = href;
 }
 
@@ -96,13 +109,17 @@ function artistForVideoPage(store) {
   const pathSlug = artistSlugFromPath();
   const release = releaseId ? (store.releases || []).find((item) => item.id === releaseId) : null;
 
-  return (
-    store.artists?.find((artist) => artist.id === release?.artistId) ||
-    store.artists?.find((artist) => artistSlug(artist) === pathSlug) ||
-    store.artists?.find((artist) => artist.id === artistId) ||
-    store.artists?.find((artist) => artist.id === store.site?.featuredArtistId) ||
-    store.artists?.[0]
-  );
+  const releaseArtist = store.artists?.find((artist) => artist.id === release?.artistId);
+  if (releaseArtist) return releaseArtist;
+
+  if (pathSlug) {
+    return store.artists?.find((artist) => artistSlug(artist) === pathSlug) || null;
+  }
+
+  const queryArtist = artistId ? store.artists?.find((artist) => artist.id === artistId) : null;
+  if (queryArtist) return queryArtist;
+
+  return store.artists?.find((artist) => artist.id === store.site?.featuredArtistId) || store.artists?.[0] || null;
 }
 
 /* ===================================================
@@ -125,18 +142,18 @@ async function renderVideos() {
     if (result) artist.videoPageVisits = result.value;
   }
 
-  const videos = artist?.videos || store.site?.videos || {};
-  const artistName = artist?.name || "Focuzman";
+  const videos = artist?.videos || {};
+  const artistName = artist?.name || "Artist";
 
-  applyFrame(document.querySelector("#mainVideoFrame"), videos.mainVideoUrl || "https://www.youtube.com/watch?v=5-YcPo7bsqs");
-  applyFrame(document.querySelector("#shortVideoFrame"), videos.shortVideoUrl || "https://www.youtube.com/shorts/07x9uu4EQiA");
+  applyFrame(document.querySelector("#mainVideoFrame"), videos.mainVideoUrl);
+  applyFrame(document.querySelector("#shortVideoFrame"), videos.shortVideoUrl);
 
   const title = document.querySelector("#mainVideoTitle");
   if (title) title.textContent = videos.mainVideoTitle || `${artistName} Video`;
 
-  applyLink(document.querySelector("#mainVideoLink"), videos.mainVideoUrl || "https://www.youtube.com/watch?v=5-YcPo7bsqs");
-  applyLink(document.querySelector("#moreVideosLink"), videos.moreVideosUrl || `https://www.youtube.com/@${artistName}/videos`);
-  applyLink(document.querySelector("#moreShortsLink"), videos.moreShortsUrl || `https://www.youtube.com/@${artistName}/shorts`);
+  applyLink(document.querySelector("#mainVideoLink"), videos.mainVideoUrl);
+  applyLink(document.querySelector("#moreVideosLink"), videos.moreVideosUrl);
+  applyLink(document.querySelector("#moreShortsLink"), videos.moreShortsUrl);
 
   const moreVideos = document.querySelector("#moreVideosLink");
   const moreShorts = document.querySelector("#moreShortsLink");

@@ -78,6 +78,11 @@ function artistFromPath(store) {
   return (store.artists || []).find((artist) => artistSlug(artist) === slug) || null;
 }
 
+function hasArtistSlugInPath() {
+  const slug = window.location.pathname.split("/").filter(Boolean)[0];
+  return Boolean(slug && slug !== "home");
+}
+
 function setArtistNav(artist) {
   const nav = document.querySelector("#siteNav");
   if (!nav) return;
@@ -297,7 +302,8 @@ async function renderHome(force = false) {
     .filter((release) => approvedArtists.has(release.artistId))
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-  const pageArtist = artistFromPath(store) || featuredArtist;
+  const pathArtist = artistFromPath(store);
+  const pageArtist = pathArtist || (hasArtistSlugInPath() ? null : featuredArtist);
   const artistHome = document.querySelector("#artistHome");
 
   if (artistHome) artistHome.hidden = false;

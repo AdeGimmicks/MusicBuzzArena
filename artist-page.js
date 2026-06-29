@@ -166,13 +166,17 @@ function artistForPage(store, approvedReleases) {
     (releaseId ? approvedReleases.find((item) => item.id === releaseId) : null) ||
     releaseFromPath(store, approvedReleases);
 
-  return (
-    store.artists.find((artist) => artist.id === release?.artistId) ||
-    store.artists.find((artist) => artistSlug(artist) === pathSlug) ||
-    store.artists.find((artist) => artist.id === artistId) ||
-    store.artists.find((artist) => artist.id === store.site?.featuredArtistId) ||
-    store.artists[0]
-  );
+  const releaseArtist = store.artists.find((artist) => artist.id === release?.artistId);
+  if (releaseArtist) return releaseArtist;
+
+  if (pathSlug) {
+    return store.artists.find((artist) => artistSlug(artist) === pathSlug) || null;
+  }
+
+  const queryArtist = artistId ? store.artists.find((artist) => artist.id === artistId) : null;
+  if (queryArtist) return queryArtist;
+
+  return store.artists.find((artist) => artist.id === store.site?.featuredArtistId) || store.artists[0] || null;
 }
 
 function formattedReleaseDate(release) {

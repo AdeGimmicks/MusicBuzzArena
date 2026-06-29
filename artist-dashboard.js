@@ -689,12 +689,9 @@ async function autoSaveVideoLinks() {
   Object.entries(nextVideos).forEach(([key, value]) => {
   artist.videos[key] = value || "";
 });
-  currentStore.site = currentStore.site || {};
-  currentStore.site.videos = { ...artist.videos };
   currentStore = await window.MBA.saveStore(currentStore, {
     clears: [
       { collection: "artists", id: artist.id, fields: ["videos"], value: artist.videos },
-      { collection: "site", fields: ["videos"], value: currentStore.site.videos },
     ],
   });
   message(videoMessage, "Video links auto-saved.", "pending");
@@ -843,13 +840,13 @@ function fillArtistForm() {
 
 function fillVideoForm() {
   const artist = primaryArtist();
-  const videos = artist.videos || currentStore.site?.videos || {};
-  videoForm.mainVideoUrl.value = videos.mainVideoUrl || "https://www.youtube.com/watch?v=5-YcPo7bsqs";
-  videoForm.mainVideoTitle.value = videos.mainVideoTitle || "Focuzman Video";
-  videoForm.shortVideoUrl.value = videos.shortVideoUrl || "https://www.youtube.com/shorts/07x9uu4EQiA";
+  const videos = artist.videos || {};
+  videoForm.mainVideoUrl.value = videos.mainVideoUrl || "";
+  videoForm.mainVideoTitle.value = videos.mainVideoTitle || "";
+  videoForm.shortVideoUrl.value = videos.shortVideoUrl || "";
   videoForm.tiktokUrl.value = videos.tiktokUrl || "";
-  videoForm.moreVideosUrl.value = videos.moreVideosUrl || "https://www.youtube.com/@Focuzman/videos";
-  videoForm.moreShortsUrl.value = videos.moreShortsUrl || "https://www.youtube.com/@Focuzman/shorts";
+  videoForm.moreVideosUrl.value = videos.moreVideosUrl || "";
+  videoForm.moreShortsUrl.value = videos.moreShortsUrl || "";
   updateVideoPreview();
 }
 
@@ -1923,8 +1920,8 @@ uploadWizardPublish?.addEventListener("click", publishReleaseFromWizard);
 
 function updateVideoPreview() {
   const artistName = primaryArtist().name || "artist";
-  setFrameFromUrl(videoPreviewMainFrame, videoForm.mainVideoUrl.value || "https://www.youtube.com/watch?v=5-YcPo7bsqs");
-  setFrameFromUrl(videoPreviewShortFrame, videoForm.shortVideoUrl.value || "https://www.youtube.com/shorts/07x9uu4EQiA");
+  setFrameFromUrl(videoPreviewMainFrame, videoForm.mainVideoUrl.value);
+  setFrameFromUrl(videoPreviewShortFrame, videoForm.shortVideoUrl.value);
   if (videoPreviewMainTitle) videoPreviewMainTitle.textContent = videoForm.mainVideoTitle.value.trim() || `${artistName} Video`;
   document.querySelectorAll(".dashboard-video-preview .video-more-link").forEach((link, index) => {
     link.textContent = index === 0 ? `Watch more videos from ${artistName}` : `Watch more shorts from ${artistName}`;
@@ -2220,9 +2217,6 @@ videoForm.addEventListener("submit", async (event) => {
       moreShortsUrl: normalizeLink(videoForm.moreShortsUrl.value),
     };
 
-    currentStore.site = currentStore.site || {};
-    currentStore.site.videos = artist.videos;
-
     currentStore = await window.MBA.saveStore(currentStore);
     fillVideoForm();
     message(videoMessage, "Video page saved. The Video page will update from this.");
@@ -2250,12 +2244,9 @@ document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () 
     moreVideosUrl: "",
     moreShortsUrl: "",
   };
-  currentStore.site = currentStore.site || {};
-  currentStore.site.videos = artist.videos;
   currentStore = await window.MBA.saveStore(currentStore, {
     clears: [
       { collection: "artists", id: artist.id, fields: ["videos"], value: {} },
-      { collection: "site", fields: ["videos"], value: {} },
     ],
   });
   fillVideoForm();
