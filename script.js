@@ -89,7 +89,7 @@ function setArtistNav(artist) {
   if (!artist) return;
   const slug = artistSlug(artist);
   nav.innerHTML = `
-    <a href="/${slug}">Dashboard</a>
+    <a href="/${slug}/dashboard">Dashboard</a>
     <a href="/${slug}">Home</a>
     <a href="/${slug}/music">Music</a>
     <a href="/${slug}/videos">Videos</a>
