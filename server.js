@@ -2642,10 +2642,10 @@ async function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const requestedPath = decodeURIComponent(url.pathname);
 
-  if (requestedPath === "/") {
-    redirect(response, "/dashboard");
-    return;
-  }
+  if (requestedPath === "/" || requestedPath === "/home") {
+  redirect(response, "/dashboard");
+  return;
+}
 
   if ((requestedPath === "/upload" || requestedPath === "/upload.html") && getArtistSession(request)) {
     redirect(response, "/artist-dashboard");
