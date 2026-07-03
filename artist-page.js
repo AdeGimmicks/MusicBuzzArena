@@ -56,7 +56,12 @@ function artistSlugFromPath() {
 function setArtistNav(artist) {
   const nav = document.querySelector("#siteNav");
   if (!nav || !artist) return;
+
   const slug = artistSlug(artist);
+
+  console.log("Artist:", artist);
+  console.log("Slug:", slug);
+
   nav.innerHTML = `
     <a href="/${slug}">Home</a>
     <a href="/${slug}/music">Music</a>
