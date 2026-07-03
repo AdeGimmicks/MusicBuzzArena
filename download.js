@@ -501,6 +501,23 @@ async function init() {
 
     const release = selectedRelease(store);
     const artist = selectedArtist(store, release);
+    const slug = artistSlug(artist);
+
+    document.querySelectorAll('a[href="/home"]').forEach((link) => {
+      link.href = `/${slug}`;
+    });
+
+    document.querySelectorAll('a[href="/music"]').forEach((link) => {
+      link.href = `/${slug}/music`;
+    });
+
+    document.querySelectorAll('a[href="/video"]').forEach((link) => {
+      link.href = `/${slug}/videos`;
+    });
+
+    document.querySelectorAll('a[href="/upload"]').forEach((link) => {
+      link.href = "/artist-dashboard";
+    });
 
     if (artist) {
       const result = await window.MBA.incrementAnalytics(
