@@ -308,6 +308,11 @@ async function renderHome(force = false) {
 
   if (artistHome) artistHome.hidden = false;
   setArtistNav(pageArtist);
+    const brand = document.querySelector(".brand");
+
+  if (brand && pageArtist) {
+    brand.href = `/${artistSlug(pageArtist)}`;
+  }
   renderHomeArtist(pageArtist);
 
   const artistReleases = approved.filter((release) => release.artistId === pageArtist?.id);
