@@ -523,4 +523,23 @@ async function init() {
       const result = await window.MBA.incrementAnalytics(
         "artist",
         artist.id,
-        "dow
+        "downloadPageVisits"
+      );
+      if (result) artist.downloadPageVisits = result.value;
+    }
+
+    const downloadState = await loadDownloadState(release?.id);
+    renderPage(store, downloadState);
+  } catch (error) {
+      page.innerHTML = `
+        <div class="download-empty">
+          <p class="download-eyebrow">Download</p>
+          <h1>Unable to load this release</h1>
+          <p>${escapeHtml(error.message || "Please try again.")}</p>
+        </div>
+      `;
+    }
+  }
+
+  init();
+})();
