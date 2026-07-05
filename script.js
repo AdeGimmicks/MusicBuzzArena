@@ -84,16 +84,8 @@ function hasArtistSlugInPath() {
 }
 
 function setArtistNav(artist) {
-  const nav = document.querySelector("#siteNav");
-  if (!nav) return;
   if (!artist) return;
-  const slug = artistSlug(artist);
-  nav.innerHTML = `
-    <a href="/${slug}">Home</a>
-    <a href="/${slug}/music">Music</a>
-    <a href="/${slug}/videos">Videos</a>
-    <a href="/artist-dashboard">Upload</a>
-  `;
+  window.MBAPublicContext?.applyPublicArtistNavigation(artist);
 }
 
 /* ===================================================
@@ -295,15 +287,13 @@ async function renderHome(force = false) {
 
   const approvedArtistList = store.artists.filter((artist) => (artist.status || "approved") === "approved");
   const approvedArtists = new Set(approvedArtistList.map((artist) => artist.id));
-  const featuredArtist =
-    approvedArtistList.find((artist) => artist.id === store.site?.featuredArtistId) || approvedArtistList[0] || store.artists[0];
   const approved = window.MBA
     .approvedReleases(store)
     .filter((release) => approvedArtists.has(release.artistId))
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
   const pathArtist = artistFromPath(store);
-  const pageArtist = pathArtist || (hasArtistSlugInPath() ? null : featuredArtist);
+  const pageArtist = pathArtist || null;
   const artistHome = document.querySelector("#artistHome");
 
   if (artistHome) artistHome.hidden = false;

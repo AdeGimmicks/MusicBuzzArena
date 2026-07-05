@@ -91,15 +91,8 @@ function artistSlugFromPath() {
 }
 
 function setArtistNav(artist) {
-  const nav = document.querySelector("#siteNav");
-  if (!nav || !artist) return;
-  const slug = artistSlug(artist);
-  nav.innerHTML = `
-    <a href="/${slug}">Home</a>
-    <a href="/${slug}/music">Music</a>
-    <a href="/${slug}/videos">Videos</a>
-    <a href="/artist-dashboard">Upload</a>
-  `;
+  if (!artist) return;
+  window.MBAPublicContext?.applyPublicArtistNavigation(artist);
 }
 
 function artistForVideoPage(store) {
@@ -119,7 +112,7 @@ function artistForVideoPage(store) {
   const queryArtist = artistId ? store.artists?.find((artist) => artist.id === artistId) : null;
   if (queryArtist) return queryArtist;
 
-  return store.artists?.find((artist) => artist.id === store.site?.featuredArtistId) || store.artists?.[0] || null;
+  return null;
 }
 
 /* ===================================================
