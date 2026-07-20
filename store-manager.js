@@ -71,7 +71,7 @@ async function requireStoreManagerSession() {
 
    Used by:
    - Artist management
-   - Song management
+   - Release management
    - Reports
    - Platform settings
 =================================================== */
@@ -136,6 +136,39 @@ function normalizeLink(value) {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
   return trimmed;
+}
+
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/^@/, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function artistSlug(artist) {
+  return slugify(artist?.slug || artist?.handle || artist?.name || artist?.id || "artist");
+}
+
+function isDownloadOnlyRelease(release) {
+  return release?.downloadOnly === true || release?.releaseType === "Beat / Instrumental";
+}
+
+function catalogLabelForArtist(artist, releases = currentStore.releases || []) {
+  const approvedReleases = releases.filter((release) => release.artistId === artist?.id && (release.status || "approved") === "approved");
+  if (approvedReleases.length && approvedReleases.every(isDownloadOnlyRelease)) return "Beats";
+  return "Music";
+}
+
+function artistCatalogPath(artist) {
+  const slug = artistSlug(artist);
+  const label = catalogLabelForArtist(artist);
+  return label === "Beats" ? `/${slug}/beats` : `/${slug}/music`;
+}
+
+function releaseCatalogPath(release) {
+  const artist = (currentStore.artists || []).find((item) => item.id === release.artistId);
+  return artist ? artistCatalogPath(artist) : "/music";
 }
 
 function fileToDataUrl(file) {
@@ -313,7 +346,7 @@ function renderList(containerId, items, emptyText) {
    DASHBOARD OVERVIEW
 
    Renders the Store Manager homepage cards and recent activity
-   lists for total artists, songs, videos, downloads, revenue,
+   lists for total artists, releases, videos, downloads, revenue,
    payouts, and newest records.
 =================================================== */
 function renderDashboard() {
@@ -333,10 +366,10 @@ function renderDashboard() {
   setText("#managerPendingReviews", String(pendingReviews));
   setText("#managerOpenTickets", String((currentStore.supportTickets || []).filter((ticket) => ticket.status !== "closed").length));
 
-  renderList("#managerRecentActivity", releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: `${release.status || "pending"} | ${formatDate(release.updatedAt || release.createdAt)}` })), "Recent activity will appear here.");
+  renderList("#managerRecentActivity", releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled release", meta: `${release.status || "pending"} | ${formatDate(release.updatedAt || release.createdAt)}` })), "Recent activity will appear here.");
   renderList("#managerNewestArtists", artists.slice(-5).reverse().map((artist) => ({ title: artist.name || artist.handle || "Untitled artist", meta: formatDate(artist.createdAt) })), "Newest artists will appear here.");
-  renderList("#managerNewestSongs", releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: release.artistName || "Artist" })), "Newest songs will appear here.");
-  renderList("#managerNewestDownloads", releases.filter((release) => Number(release.downloads || 0) > 0).slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: `${release.downloads} downloads` })), "Newest downloads will appear here.");
+  renderList("#managerNewestSongs", releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled release", meta: release.artistName || "Artist" })), "Newest releases will appear here.");
+  renderList("#managerNewestDownloads", releases.filter((release) => Number(release.downloads || 0) > 0).slice(0, 5).map((release) => ({ title: release.title || "Untitled release", meta: `${release.downloads} downloads` })), "Newest downloads will appear here.");
   renderList("#managerNewestSupport", currentStore.supportTickets || [], "Newest support requests will appear here.");
 }
 
@@ -369,7 +402,7 @@ function renderArtists() {
   managerArtistTable.innerHTML = artists.length
     ? `
       <div class="manager-table-header artist-columns">
-        <span>Artist Name</span><span>Join Date</span><span>Songs</span><span>Videos</span><span>Downloads</span><span>Revenue</span><span>Status</span><span>Actions</span>
+        <span>Artist Name</span><span>Join Date</span><span>Releases</span><span>Videos</span><span>Downloads</span><span>Revenue</span><span>Status</span><span>Actions</span>
       </div>
       ${artists.map((artist) => `
         <article class="manager-table-row artist-columns" data-id="${artist.id}">
@@ -381,7 +414,7 @@ function renderArtists() {
           <span>${money(artistRevenue(artist.id))}</span>
           <mark>${escapeText(artist.status || "approved")}</mark>
           <div class="manager-row-actions">
-            <a href="/music" target="_blank" rel="noreferrer">View Artist</a>
+            <a href="${escapeAttr(artistCatalogPath(artist))}" target="_blank" rel="noreferrer">View Artist</a>
             <a href="/upload" target="_blank" rel="noreferrer">Open Dashboard</a>
             <button type="button" data-edit-artist="${artist.id}">Edit Artist</button>
             <button type="button" data-artist-status="suspended">Suspend Artist</button>
@@ -422,20 +455,21 @@ function renderSongs() {
   managerSongTable.innerHTML = releases.length
     ? `
       <div class="manager-table-header song-columns">
-        <span>Artwork</span><span>Song Title</span><span>Artist</span><span>Price</span><span>Downloads</span><span>Revenue</span><span>Status</span><span>Date</span><span>Actions</span>
+        <span>Artwork</span><span>Release Title</span><span>Artist</span><span>Type</span><span>Price</span><span>Downloads</span><span>Revenue</span><span>Status</span><span>Date</span><span>Actions</span>
       </div>
       ${releases.map((release) => `
         <article class="manager-table-row song-columns" data-id="${release.id}">
           <img src="${escapeAttr(release.cover || "Mba Logos/MusicBusiness Logo.png")}" alt="">
-          <strong>${escapeText(release.title || "Untitled song")}</strong>
+          <strong>${escapeText(release.title || "Untitled release")}</strong>
           <span>${escapeText(release.artistName || "Artist")}</span>
+          <span>${escapeText(release.releaseType || "Single")}</span>
           <span>${money(release.price || 0)}</span>
           <span>${Number(release.downloads || 0)}</span>
           <span>${money(releaseRevenue(release))}</span>
           <mark>${escapeText(release.status || "pending")}</mark>
           <span>${formatDate(release.createdAt || release.releaseDate)}</span>
           <div class="manager-row-actions">
-            <a href="/music" target="_blank" rel="noreferrer">View</a>
+            <a href="${escapeAttr(releaseCatalogPath(release))}" target="_blank" rel="noreferrer">View</a>
             <button type="button" data-edit-song="${release.id}">Edit</button>
             <button type="button" data-song-status="approved">Approve</button>
             <button type="button" data-song-status="denied">Reject</button>
@@ -446,7 +480,7 @@ function renderSongs() {
         </article>
       `).join("")}
     `
-    : emptyState("No songs match the current filters.");
+    : emptyState("No releases match the current filters.");
 }
 
 /* ===================================================
@@ -480,7 +514,7 @@ function renderVideos() {
    DOWNLOAD ANALYTICS
 
    Shows download records, download filters, recent downloads,
-   and artist/song download totals.
+   and artist/release download totals.
 =================================================== */
 function filteredDownloads() {
   const query = String(downloadSearchInput?.value || "").toLowerCase();
@@ -496,10 +530,10 @@ function renderDownloads() {
   const rows = filteredDownloads();
   managerDownloadTable.innerHTML = rows.length
     ? `
-      <div class="manager-table-header download-columns"><span>Song</span><span>Artist</span><span>Customer</span><span>Country</span><span>Amount</span><span>Date</span><span>Status</span><span>Actions</span></div>
+      <div class="manager-table-header download-columns"><span>Release</span><span>Artist</span><span>Customer</span><span>Country</span><span>Amount</span><span>Date</span><span>Status</span><span>Actions</span></div>
       ${rows.map((release) => `
         <article class="manager-table-row download-columns">
-          <strong>${escapeText(release.title || "Untitled song")}</strong>
+          <strong>${escapeText(release.title || "Untitled release")}</strong>
           <span>${escapeText(release.artistName || "Artist")}</span>
           <span>Fan purchase</span>
           <span>${escapeText(release.country || "United States")}</span>
@@ -787,7 +821,7 @@ managerSongForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const release = currentStore.releases.find((item) => item.id === managerSongForm.id.value);
   if (!release) {
-    message(managerSongMessage, "Choose a song to edit first.", "error");
+    message(managerSongMessage, "Choose a release to edit first.", "error");
     return;
   }
   release.title = managerSongForm.title.value.trim();
@@ -798,7 +832,7 @@ managerSongForm?.addEventListener("submit", async (event) => {
   release.songBio = managerSongForm.songBio.value.trim();
   release.updatedAt = new Date().toISOString();
   await saveAndRender();
-  message(managerSongMessage, "Song saved.");
+  message(managerSongMessage, "Release saved.");
 });
 
 [artistSearchInput, artistStatusFilter, artistSortSelect].forEach((control) => {
@@ -825,7 +859,7 @@ managerNavLinks.forEach((link) => {
 
 document.querySelector("#exportDownloadsCsv")?.addEventListener("click", () => {
   const rows = filteredDownloads();
-  const header = ["Song", "Artist", "Country", "Gross Sales", "Processing Fee 5%", "Service Fee 10%", "Operations Fee 5%", "Artist Net 80%", "Downloads", "Status"];
+  const header = ["Release", "Artist", "Country", "Gross Sales", "Processing Fee 5%", "Service Fee 10%", "Operations Fee 5%", "Artist Net 80%", "Downloads", "Status"];
   const lines = rows.map((release) => {
     const txns = (currentStore.transactions || []).filter((transaction) => String(transaction.releaseId) === String(release.id));
     const grossSales = txns.length ? txns.reduce((sum, transaction) => sum + transactionGross(transaction), 0) : releaseRevenue(release);

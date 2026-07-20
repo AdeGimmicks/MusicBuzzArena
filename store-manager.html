@@ -3,7 +3,7 @@
 
      CODE OWNER GUIDE
 
-     Contains platform administration sections for artists, songs, videos, downloads, payouts, analytics, reports, and settings.
+     Contains platform administration sections for artists, releases, videos, downloads, payouts, analytics, reports, and settings.
      Used by: /store-manager.
      Does not control artist-only dashboard forms.
 ================================================== -->
@@ -60,7 +60,7 @@
         <nav class="manager-console-nav">
           <a class="is-active" href="#managerDashboard" data-manager-section="managerDashboard">Dashboard</a>
           <a href="#managerArtists" data-manager-section="managerArtists">Artists</a>
-          <a href="#managerSongs" data-manager-section="managerSongs">Songs</a>
+          <a href="#managerSongs" data-manager-section="managerSongs">Releases</a>
           <a href="#managerVideos" data-manager-section="managerVideos">Videos</a>
           <a href="#managerDownloads" data-manager-section="managerDownloads">Downloads</a>
           <a href="#managerPayouts" data-manager-section="managerPayouts">Payouts</a>
@@ -104,7 +104,7 @@
              • Store Manager > Dashboard
 
              This section reads platform data. It does not edit artists,
-             songs, payments, or settings by itself.
+             releases, payments, or settings by itself.
         ================================================== -->
         <section class="manager-dashboard-section is-active" id="managerDashboard" data-section-title="Dashboard">
           <div class="manager-section-heading">
@@ -115,7 +115,7 @@
           </div>
           <section class="manager-metric-grid">
             <article><span>Total Artists</span><strong id="managerTotalArtists">0</strong></article>
-            <article><span>Total Songs</span><strong id="managerTotalSongs">0</strong></article>
+            <article><span>Total Releases</span><strong id="managerTotalSongs">0</strong></article>
             <article><span>Total Videos</span><strong id="managerTotalVideos">0</strong></article>
             <article><span>Total Downloads</span><strong id="managerTotalDownloads">0</strong></article>
             <article><span>Total Revenue</span><strong id="managerTotalRevenue">$0.00</strong></article>
@@ -126,7 +126,7 @@
           <section class="manager-dashboard-grid">
             <article class="manager-console-card"><h3>Recent Activity</h3><div class="manager-list" id="managerRecentActivity"></div></article>
             <article class="manager-console-card"><h3>Newest Artists</h3><div class="manager-list" id="managerNewestArtists"></div></article>
-            <article class="manager-console-card"><h3>Newest Songs</h3><div class="manager-list" id="managerNewestSongs"></div></article>
+            <article class="manager-console-card"><h3>Newest Releases</h3><div class="manager-list" id="managerNewestSongs"></div></article>
             <article class="manager-console-card"><h3>Newest Downloads</h3><div class="manager-list" id="managerNewestDownloads"></div></article>
             <article class="manager-console-card"><h3>Newest Support Requests</h3><div class="manager-list" id="managerNewestSupport"></div></article>
           </section>
@@ -172,24 +172,24 @@
         </section>
 
         <!-- ==================================================
-             SONG MANAGEMENT SECTION
+             RELEASE MANAGEMENT SECTION
 
              Lets the Store Manager review, search, filter, and edit
-             song/release information when necessary.
+             release information when necessary.
 
              Used by:
-             • Store Manager > Songs
+             • Store Manager > Releases
 
              This is an admin tool. Artists manage their own releases
              from the Artist Dashboard.
         ================================================== -->
-        <section class="manager-dashboard-section" id="managerSongs" data-section-title="Songs">
+        <section class="manager-dashboard-section" id="managerSongs" data-section-title="Releases">
           <div class="manager-section-heading">
-            <div><p class="eyebrow">Content approval workflow</p><h2>Songs Management</h2></div>
+            <div><p class="eyebrow">Content approval workflow</p><h2>Releases Management</h2></div>
           </div>
           <section class="manager-console-card">
             <div class="manager-tools">
-              <label>Search Songs <input id="songSearchInput" type="search" placeholder="Title, artist, genre" /></label>
+              <label>Search Releases <input id="songSearchInput" type="search" placeholder="Title, artist, genre" /></label>
               <label>Filter by Artist <select id="songArtistFilter"><option value="">All artists</option></select></label>
               <label>Filter by Status <select id="songStatusFilter"><option value="">All statuses</option><option>approved</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
               <label>Filter by Genre <select id="songGenreFilter"><option value="">All genres</option></select></label>
@@ -197,11 +197,11 @@
             <div class="manager-table manager-song-table" id="managerSongTable"></div>
           </section>
           <section class="manager-console-card">
-            <h3>Edit Song</h3>
+            <h3>Edit Release</h3>
             <form id="managerSongForm" class="manager-edit-form">
               <input name="id" type="hidden" />
               <div class="form-row">
-                <label>Song Title <input name="title" type="text" /></label>
+                <label>Release Title <input name="title" type="text" /></label>
                 <label>Artist <input name="artistName" type="text" /></label>
               </div>
               <div class="form-row">
@@ -210,7 +210,7 @@
               </div>
               <label>Status <select name="status"><option>approved</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
               <label>Description <textarea name="songBio" rows="4"></textarea></label>
-              <button class="primary-button" type="submit">Save Song</button>
+              <button class="primary-button" type="submit">Save Release</button>
               <p class="form-message" id="managerSongMessage" role="status"></p>
             </form>
           </section>
@@ -248,7 +248,7 @@
           </div>
           <section class="manager-console-card">
             <div class="manager-tools">
-              <label>Search Downloads <input id="downloadSearchInput" type="search" placeholder="Song, artist, country" /></label>
+              <label>Search Downloads <input id="downloadSearchInput" type="search" placeholder="Release, artist, country" /></label>
               <label>Filter by Artist <select id="downloadArtistFilter"><option value="">All artists</option></select></label>
               <label>Filter by Country <select id="downloadCountryFilter"><option value="">All countries</option></select></label>
             </div>
@@ -283,7 +283,7 @@
         <!-- ==================================================
              PLATFORM ANALYTICS SECTION
 
-             Shows platform-wide totals, top artists, top songs,
+             Shows platform-wide totals, top artists, top releases,
              top countries, and streaming platform activity.
 
              Used by:
@@ -295,11 +295,11 @@
           <div class="manager-section-heading"><div><p class="eyebrow">Platform growth</p><h2>Analytics</h2></div></div>
           <section class="manager-metric-grid analytics-grid">
             <article><span>Total Artists</span><strong id="analyticsTotalArtists">0</strong></article>
-            <article><span>Total Songs</span><strong id="analyticsTotalSongs">0</strong></article>
+            <article><span>Total Releases</span><strong id="analyticsTotalSongs">0</strong></article>
             <article><span>Total Downloads</span><strong id="analyticsTotalDownloads">0</strong></article>
             <article><span>Total Revenue</span><strong id="analyticsTotalRevenue">$0.00</strong></article>
             <article><span>Top Artists</span><strong id="analyticsTopArtist">None</strong></article>
-            <article><span>Top Songs</span><strong id="analyticsTopSong">None</strong></article>
+            <article><span>Top Releases</span><strong id="analyticsTopSong">None</strong></article>
             <article><span>Top Download Countries</span><strong id="analyticsTopCountry">None</strong></article>
             <article><span>Most Clicked Streaming Platforms</span><strong id="analyticsTopPlatform">None</strong></article>
             <article><span>Traffic Sources</span><strong>Direct</strong></article>

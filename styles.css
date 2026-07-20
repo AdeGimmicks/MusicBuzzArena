@@ -1600,7 +1600,7 @@ h3 {
 }
 
 .song-columns {
-  grid-template-columns: 58px minmax(150px, 1.2fr) minmax(120px, 0.9fr) 78px 90px 100px 90px 100px minmax(380px, 2.2fr);
+  grid-template-columns: 58px minmax(150px, 1.2fr) minmax(120px, 0.9fr) 120px 78px 90px 100px 90px 100px minmax(380px, 2.2fr);
 }
 
 .video-columns {
