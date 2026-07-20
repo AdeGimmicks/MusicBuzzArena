@@ -52,9 +52,15 @@ function isDownloadOnlyRelease(release) {
 
 function artistSlugFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
-  if (parts.length >= 2 && parts[1] === "music") return parts[0];
+  if (parts.length >= 2 && ["music", "beats"].includes(parts[1])) return parts[0];
   if ((parts[0] === "listen" || parts[0] === "download") && parts.length >= 3) return parts[1];
   return "";
+}
+
+function artistCatalogPath(artist) {
+  const slug = artistSlug(artist);
+  const label = artist?.publicCatalogLabel || "Music";
+  return window.MBAPublicContext?.catalogPathForLabel?.(slug, label) || `/${slug}/music`;
 }
 
 function setArtistNav(artist) {
@@ -311,7 +317,7 @@ function trackRow(release, artist, artistReleases = []) {
               ${otherReleases
                 .map(
                   (item) => `
-                    <a class="music-more-card" href="/${artistSlug(artist)}/music?release=${encodeURIComponent(item.id)}" data-release-id="${item.id}">
+                    <a class="music-more-card" href="${artistCatalogPath(artist)}?release=${encodeURIComponent(item.id)}" data-release-id="${item.id}">
                       <img src="${item.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${item.title || "Song"} cover" loading="lazy" decoding="async">
                       <strong>${item.title || "Untitled track"}</strong>
                       <span>${releaseYear(item)}</span>
@@ -831,7 +837,7 @@ async function renderArtistPage(force = false) {
     );
     if (result) artist.artistPageVisits = result.value;
 
-    if ((window.location.pathname === "/music" || window.location.pathname.endsWith("/music")) && !musicPageVisitRecorded) {
+    if ((window.location.pathname === "/music" || window.location.pathname.endsWith("/music") || window.location.pathname.endsWith("/beats")) && !musicPageVisitRecorded) {
       musicPageVisitRecorded = true;
       const musicResult = await window.MBA.incrementAnalytics(
         "artist",

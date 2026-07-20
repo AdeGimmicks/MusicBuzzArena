@@ -101,6 +101,10 @@
     return "Music";
   }
 
+  function catalogPathForLabel(slug, catalogLabel) {
+    return catalogLabel === "Beats" ? `/${slug}/beats` : `/${slug}/music`;
+  }
+
   function applyPublicArtistNavigation(artist, options = {}) {
     const slug = artistSlug(artist);
     if (!slug) return;
@@ -108,7 +112,7 @@
     const catalogLabel = options.catalogLabel || artist.publicCatalogLabel || "Music";
     const urls = {
       home: `/${slug}`,
-      music: `/${slug}/music`,
+      music: catalogPathForLabel(slug, catalogLabel),
       videos: `/${slug}/videos`,
       upload: uploadUrl(slug, authenticated),
     };
@@ -157,6 +161,7 @@
     applyPublicArtistNavigation,
     artistSlug,
     catalogLabelForArtist,
+    catalogPathForLabel,
     findArtist,
     init: initPublicArtistContext,
   };

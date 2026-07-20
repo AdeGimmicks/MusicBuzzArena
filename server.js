@@ -2612,10 +2612,11 @@ async function artistRouteForPath(pathname) {
     slug = slug.replace(/-dashboard$/i, "");
     section = "dashboard";
   }
-  if (!["profile", "music", "videos", "video", "dashboard"].includes(section)) return null;
+  if (!["profile", "music", "beats", "videos", "video", "dashboard"].includes(section)) return null;
   const store = await readStore();
   const artist = artistBySlug(store, slug);
   if (!artist) return null;
+  if (section === "beats") section = "music";
   const normalizedSection = section === "video" ? "videos" : section;
   const file =
     normalizedSection === "music"
