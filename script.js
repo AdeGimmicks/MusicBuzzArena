@@ -72,6 +72,10 @@ function releasePublicUrl(type, release, artist) {
   return artistPart ? `/${type}/${artistPart}/${releasePart}` : `/${type}/${releasePart}`;
 }
 
+function isDownloadOnlyRelease(release) {
+  return release?.downloadOnly === true || release?.releaseType === "Beat / Instrumental";
+}
+
 function artistFromPath(store) {
   const slug = window.location.pathname.split("/").filter(Boolean)[0];
   if (!slug || slug === "home") return null;
@@ -153,7 +157,8 @@ function renderHomeArtist(artist) {
 function releaseCard(release, artist) {
   const card = document.createElement("article");
   card.className = "release-card";
-  const listenUrl = releasePublicUrl("listen", release, artist);
+  const actionUrl = releasePublicUrl(isDownloadOnlyRelease(release) ? "download" : "listen", release, artist);
+  const actionLabel = isDownloadOnlyRelease(release) ? "Download" : "Listen";
   card.dataset.search = [
     release.title,
     artist?.name || release.artistName,
@@ -164,10 +169,10 @@ function releaseCard(release, artist) {
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-  card.dataset.href = listenUrl;
+  card.dataset.href = actionUrl;
   card.tabIndex = 0;
   card.setAttribute("role", "link");
-  card.setAttribute("aria-label", `Open Listen page for ${release.title || "Untitled release"}`);
+  card.setAttribute("aria-label", `Open ${actionLabel} page for ${release.title || "Untitled release"}`);
   card.innerHTML = `
     <div class="release-cover-frame">
       <img class="release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover" loading="lazy" decoding="async" />
@@ -177,18 +182,18 @@ function releaseCard(release, artist) {
       <h3>${release.title || "Untitled release"}</h3>
       <span>${artist?.name || release.artistName || "Independent Artist"}</span>
       <div class="mini-actions">
-        <a class="listen-action" href="${listenUrl}">Listen</a>
+        <a class="listen-action" href="${actionUrl}">${actionLabel}</a>
       </div>
     </div>
   `;
   card.addEventListener("click", (event) => {
     if (event.target.closest("a")) return;
-    window.location.href = listenUrl;
+    window.location.href = actionUrl;
   });
   card.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    window.location.href = listenUrl;
+    window.location.href = actionUrl;
   });
   return card;
 }
@@ -297,6 +302,9 @@ async function renderHome(force = false) {
   const artistHome = document.querySelector("#artistHome");
 
   if (artistHome) artistHome.hidden = false;
+  if (pageArtist) {
+    pageArtist.publicCatalogLabel = window.MBAPublicContext?.catalogLabelForArtist(pageArtist, approved) || "Music";
+  }
   setArtistNav(pageArtist);
     const brand = document.querySelector(".brand");
 

@@ -46,6 +46,10 @@ function releasePublicUrl(type, release, artist) {
   return artistPart ? `/${type}/${artistPart}/${releasePart}` : `/${type}/${releasePart}`;
 }
 
+function isDownloadOnlyRelease(release) {
+  return release?.downloadOnly === true || release?.releaseType === "Beat / Instrumental";
+}
+
 function artistSlugFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (parts.length >= 2 && parts[1] === "music") return parts[0];
@@ -249,6 +253,8 @@ function trackRow(release, artist, artistReleases = []) {
   const otherReleases = artistReleases.filter((item) => item.id !== release.id).slice(0, 8);
   const platformLinks = releasePlatformLinks(release);
   const tracks = releaseTracks(release);
+  const downloadUrl = releasePublicUrl("download", release, artist);
+  const listenUrl = isDownloadOnlyRelease(release) ? downloadUrl : releasePublicUrl("listen", release, artist);
   const trackList = tracks.length > 1
     ? `<div class="music-track-list">
         <p>Track List</p>
@@ -283,8 +289,8 @@ function trackRow(release, artist, artistReleases = []) {
           ${moods[1] ? `<div><dt>Mood 2</dt><dd>${moods[1]}</dd></div>` : ""}
         </dl>
         <div class="music-release-actions" aria-label="${title} actions">
-          <a class="music-capsule music-capsule-listen" href="${releasePublicUrl("listen", release, artist)}">Listen</a>
-          <a class="music-capsule music-capsule-download" href="${releasePublicUrl("download", release, artist)}">Download</a>
+          <a class="music-capsule music-capsule-listen" href="${listenUrl}">Listen</a>
+          <a class="music-capsule music-capsule-download" href="${downloadUrl}">Download</a>
         </div>
         ${trackList}
         ${
@@ -440,6 +446,10 @@ function releasePanel(release) {
    artist's streaming platform links.
 =================================================== */
 function linkHubPage(release, artist) {
+  if (isDownloadOnlyRelease(release) && window.location.pathname.split("/").filter(Boolean)[0] === "listen") {
+    window.location.replace(releasePublicUrl("download", release, artist));
+    return document.createElement("article");
+  }
   const wrap = document.createElement("article");
   wrap.className = "link-hub-card";
   const pageMode = window.location.hash === "#download" ? "download" : "listen";
@@ -808,6 +818,9 @@ async function renderArtistPage(force = false) {
 
   const approvedReleases = (store.releases || []).filter((release) => release.status === "approved");
   const artist = artistForPage(store, approvedReleases);
+  if (artist) {
+    artist.publicCatalogLabel = window.MBAPublicContext?.catalogLabelForArtist(artist, approvedReleases) || "Music";
+  }
   setArtistNav(artist);
 
   if (artist) {

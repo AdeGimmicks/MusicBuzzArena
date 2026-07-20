@@ -45,8 +45,8 @@
       <!-- ==================================================
            ARTIST SIDEBAR NAVIGATION
 
-           Lets the artist switch between Upload Song, Profile,
-           Songs, Workspace, Analytics, Overview, Earnings, and
+           Lets the artist switch between Upload Audio, Profile,
+           Audio, Workspace, Analytics, Overview, Earnings, and
            Settings.
       ================================================== -->
       <aside class="artist-console-sidebar" aria-label="Artist dashboard navigation">
@@ -55,9 +55,9 @@
           <h1>Artist Center</h1>
         </div>
         <nav class="artist-console-nav">
-          <a href="#songEditorSection" data-dashboard-section="songEditorSection">Upload Song</a>
+          <a href="#songEditorSection" data-dashboard-section="songEditorSection">Upload Audio</a>
           <a href="#profileSection" data-dashboard-section="profileSection">Profile</a>
-          <a href="#songsSection" data-dashboard-section="songsSection">Songs</a>
+          <a href="#songsSection" data-dashboard-section="songsSection">Audio</a>
           <a href="#downloadsSection" data-dashboard-section="downloadsSection">Workspace</a>
           <a href="#analyticsSection" data-dashboard-section="analyticsSection">Analytics</a>
           <a class="is-active" href="#dashboardOverview" data-dashboard-section="dashboardOverview">Overview</a>
@@ -86,7 +86,7 @@
           </div>
 
           <section class="artist-metric-grid">
-            <article><span>Total Songs</span><strong id="artistTotalSongs">0</strong></article>
+            <article><span>Total Audio</span><strong id="artistTotalSongs">0</strong></article>
             <article><span>Total Videos</span><strong id="artistTotalVideos">0</strong></article>
             <article><span>Total Downloads</span><strong id="artistTotalDownloads">0</strong></article>
             <article><span>Total Revenue</span><strong id="artistTotalRevenue">$0.00</strong></article>
@@ -112,7 +112,7 @@
             <article class="artist-console-card">
               <div class="artist-card-heading">
                 <p class="eyebrow">Recent uploads</p>
-                <h3>Newest songs</h3>
+                <h3>Newest audio</h3>
               </div>
               <div class="compact-activity-list" id="recentUploadsList"></div>
             </article>
@@ -123,21 +123,21 @@
              SONGS SECTION
 
              Shows saved songs, filters, edit controls, and
-             featured Music page selection.
+             featured public page selection.
         ================================================== -->
-        <section class="artist-dashboard-section" id="songsSection" data-section-title="Songs">
+        <section class="artist-dashboard-section" id="songsSection" data-section-title="Audio">
           <div class="artist-section-heading">
             <div>
               <p class="eyebrow">Catalog</p>
-              <h2>Songs</h2>
+              <h2>Audio</h2>
             </div>
-            <button class="primary-button" type="button" data-open-song-editor>Create New Song</button>
+            <button class="primary-button" type="button" data-open-song-editor>Create New Audio</button>
           </div>
 
           <section class="artist-console-card">
             <div class="song-tools">
               <label>
-                Search Songs
+                Search Audio
                 <input id="songSearchInput" type="search" placeholder="Search by title or genre" />
               </label>
               <label>
@@ -168,26 +168,26 @@
 
           <section class="artist-console-card">
             <div class="artist-card-heading">
-              <p class="eyebrow">Music page control</p>
-              <h3>Featured hero song</h3>
+              <p class="eyebrow">Audio page control</p>
+              <h3>Featured hero audio</h3>
             </div>
-            <section class="mini-landing-preview" aria-label="Selected Music page song">
+            <section class="mini-landing-preview" aria-label="Selected Audio page track">
               <img id="musicPreviewCover" src="Mba Logos/MusicBusiness Logo.png" alt="" />
               <div>
                 <p id="musicPreviewArtist">Artist name</p>
-                <strong id="musicPreviewTitle">Song title</strong>
+                <strong id="musicPreviewTitle">Track title</strong>
                 <span id="musicPreviewDate">Release Date: choose a date by Artist name</span>
                 <div class="track-tags" id="musicPreviewTags"></div>
               </div>
             </section>
             <div class="form-row dashboard-feature-picker">
               <label>
-                Featured music page song
+                Featured audio page track
                 <select id="featuredReleaseSelect">
-                  <option value="">Use newest approved song</option>
+                  <option value="">Use newest approved audio</option>
                 </select>
               </label>
-              <button class="primary-button" id="saveFeaturedRelease" type="button">Save Music Page Song</button>
+              <button class="primary-button" id="saveFeaturedRelease" type="button">Save Audio Page Track</button>
             </div>
             <p class="form-message" id="featuredReleaseMessage" role="status"></p>
           </section>
@@ -196,20 +196,20 @@
         <!-- ==================================================
              UPLOAD SONG SECTION
 
-             Step-by-step wizard for Single Song, EP, and Album
-             uploads. Includes files, song info, streaming links,
+             Step-by-step wizard for Single Song, Beat / Instrumental, EP, and Album
+             uploads. Includes files, track info, streaming links,
              videos, and review/publish.
         ================================================== -->
-        <section class="artist-dashboard-section" id="songEditorSection" data-section-title="Upload Song">
+        <section class="artist-dashboard-section" id="songEditorSection" data-section-title="Upload Audio">
           <div class="artist-section-heading">
             <div>
-              <p class="eyebrow">Song upload</p>
-              <h2 id="uploadStatusTitle">Upload Song</h2>
+              <p class="eyebrow">Audio upload</p>
+              <h2 id="uploadStatusTitle">Upload Audio</h2>
               <p id="uploadStatusText">Ready to upload</p>
             </div>
             <div class="file-editor-actions">
               <a class="secondary-button" id="previewPublicSong" href="/music" target="_blank" rel="noreferrer">Preview Public Page</a>
-              <button class="secondary-button" type="button" data-clear-release>New Song</button>
+              <button class="secondary-button" type="button" data-clear-release>New Audio</button>
             </div>
           </div>
 
@@ -217,7 +217,7 @@
             <ol>
               <li data-wizard-progress="1" role="button" tabindex="0"><span>1</span><strong>Release Type</strong></li>
               <li data-wizard-progress="2" role="button" tabindex="0"><span>2</span><strong>Files</strong></li>
-              <li data-wizard-progress="3" role="button" tabindex="0"><span>3</span><strong>Song Info</strong></li>
+              <li data-wizard-progress="3" role="button" tabindex="0"><span>3</span><strong>Track Info</strong></li>
               <li data-wizard-progress="4" role="button" tabindex="0"><span>4</span><strong>Streaming</strong></li>
               <li data-wizard-progress="5" role="button" tabindex="0"><span>5</span><strong>Video</strong></li>
               <li data-wizard-progress="6" role="button" tabindex="0"><span>6</span><strong>Review</strong></li>
@@ -245,6 +245,11 @@
                 <strong>Album</strong>
                 <small>Seven to seventeen tracks</small>
               </button>
+              <button class="release-type-option" type="button" data-start-release="Beat / Instrumental" role="listitem">
+                <span class="release-type-icon">▥</span>
+                <strong>Beat / Instrumental</strong>
+                <small>Download-first audio</small>
+              </button>
             </div>
           </section>
 
@@ -264,7 +269,7 @@
                         <h3 id="songFilesHeading">Upload files</h3>
                       </div>
                       <label class="audio-picker upload-file-box">
-                        <span>Upload song file</span>
+                        <span>Upload audio file</span>
                         <small id="audioUploadHelp">Supported files: MP3, WAV.</small>
                         <input name="audio" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" required />
                       </label>
@@ -287,11 +292,11 @@
                       <section class="upload-form-group upload-wizard-panel" data-upload-step="3">
                     <div class="artist-card-heading">
                       <p class="eyebrow">Track details</p>
-                      <h3>Basic song details</h3>
+                      <h3>Basic track details</h3>
                     </div>
                     <div class="form-row">
                       <label>
-                        Song title
+                        Track title
                         <input name="title" type="text" required />
                       </label>
                       <label>
@@ -306,6 +311,7 @@
                           <option>Single</option>
                           <option>EP</option>
                           <option>Album</option>
+                          <option>Beat / Instrumental</option>
                         </select>
                       </label>
                       <label>
@@ -332,6 +338,27 @@
                           <option>Electronic</option>
                           <option>Rock</option>
                           <option>Instrumental</option>
+                          <option>Trap Beats</option>
+                          <option>Drill Beats</option>
+                          <option>Hip Hop Beats</option>
+                          <option>Boom Bap Beats</option>
+                          <option>R&B Beats</option>
+                          <option>Pop Beats</option>
+                          <option>Afrobeats Instrumental</option>
+                          <option>Afro Drill Beats</option>
+                          <option>Amapiano Beats</option>
+                          <option>Dancehall Beats</option>
+                          <option>Reggaeton Beats</option>
+                          <option>Latin Trap Beats</option>
+                          <option>Lo-Fi Beats</option>
+                          <option>EDM Beats</option>
+                          <option>Jersey Club Beats</option>
+                          <option>UK Drill Beats</option>
+                          <option>West Coast Beats</option>
+                          <option>East Coast Beats</option>
+                          <option>Dark Trap Beats</option>
+                          <option>Melodic Trap Beats</option>
+                          <option>Emotional Trap Beats</option>
                         </select>
                       </label>
                       <label>
@@ -355,12 +382,33 @@
                           <option>Electronic</option>
                           <option>Rock</option>
                           <option>Instrumental</option>
+                          <option>Trap Beats</option>
+                          <option>Drill Beats</option>
+                          <option>Hip Hop Beats</option>
+                          <option>Boom Bap Beats</option>
+                          <option>R&B Beats</option>
+                          <option>Pop Beats</option>
+                          <option>Afrobeats Instrumental</option>
+                          <option>Afro Drill Beats</option>
+                          <option>Amapiano Beats</option>
+                          <option>Dancehall Beats</option>
+                          <option>Reggaeton Beats</option>
+                          <option>Latin Trap Beats</option>
+                          <option>Lo-Fi Beats</option>
+                          <option>EDM Beats</option>
+                          <option>Jersey Club Beats</option>
+                          <option>UK Drill Beats</option>
+                          <option>West Coast Beats</option>
+                          <option>East Coast Beats</option>
+                          <option>Dark Trap Beats</option>
+                          <option>Melodic Trap Beats</option>
+                          <option>Emotional Trap Beats</option>
                         </select>
                       </label>
                     </div>
                     <label>
                       Description
-                      <textarea name="songBio" maxlength="280" rows="4" placeholder="Short meaning or story behind the song." required></textarea>
+                      <textarea name="songBio" maxlength="280" rows="4" placeholder="Short meaning, story, or usage note for this audio." required></textarea>
                       <span class="field-note"><span id="songBioCount">0</span>/280 characters</span>
                     </label>
                     <div class="form-row">
@@ -460,9 +508,9 @@
                   <div class="upload-form-footer upload-form-group upload-wizard-panel" data-upload-step="6">
                     <div>
                       <p class="eyebrow">Review</p>
-                      <h3>Save song</h3>
+                      <h3>Save audio</h3>
                       <p id="homePreviewMeta">Single | Music</p>
-                      <strong id="homePreviewSong">Song title</strong>
+                      <strong id="homePreviewSong">Track title</strong>
                       <span id="homePreviewArtist">Artist name</span>
                     </div>
                     <div class="file-editor-actions">
@@ -688,7 +736,7 @@
             <article><span>Streaming Link Clicks</span><strong id="analyticsStreamingClicks">0</strong></article>
             <article><span>Download Page Visits</span><strong id="analyticsDownloadVisits">0</strong></article>
             <article><span>Download Count</span><strong id="analyticsDownloadCount">0</strong></article>
-            <article class="analytics-expand-card"><span>Top Songs</span><div id="analyticsTopSongs"></div></article>
+            <article class="analytics-expand-card"><span>Top Audio</span><div id="analyticsTopSongs"></div></article>
             <article class="analytics-expand-card"><span>Top Videos</span><div id="analyticsTopVideos"></div></article>
             <article class="analytics-expand-card"><span>Top Streaming Platforms</span><div id="analyticsTopPlatforms"></div></article>
             <article><span>Traffic Sources</span><strong id="analyticsTrafficSources">Direct</strong></article>

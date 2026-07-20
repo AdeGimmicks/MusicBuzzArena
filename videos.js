@@ -124,6 +124,9 @@ function artistForVideoPage(store) {
 async function renderVideos() {
   const store = await window.MBA.loadStore({ force: true });
   const artist = artistForVideoPage(store);
+  if (artist) {
+    artist.publicCatalogLabel = window.MBAPublicContext?.catalogLabelForArtist(artist, store.releases || []) || "Music";
+  }
   setArtistNav(artist);
 
   if (artist) {

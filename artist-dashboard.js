@@ -114,9 +114,12 @@ const DEFAULT_PREVIEW_START = 0;
 const DEFAULT_PREVIEW_END = 60;
 const RELEASE_TRACK_LIMITS = {
   Single: { min: 1, max: 1 },
+  "Beat / Instrumental": { min: 1, max: 1 },
   EP: { min: 2, max: 6 },
   Album: { min: 7, max: 17 },
 };
+const RELEASE_TYPES = new Set(["Single", "Beat / Instrumental", "EP", "Album"]);
+const DOWNLOAD_ONLY_RELEASE_TYPES = new Set(["Beat / Instrumental"]);
 const COUNTRY_CODES = [
   "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ", "BS", "BH", "BD", "BB", "BY", "BE", "BZ", "BJ", "BM", "BT", "BO", "BQ", "BA", "BW", "BV", "BR", "IO", "BN", "BG", "BF", "BI", "CV", "KH", "CM", "CA", "KY", "CF", "TD", "CL", "CN", "CX", "CC", "CO", "KM", "CG", "CD", "CK", "CR", "CI", "HR", "CU", "CW", "CY", "CZ", "DK", "DJ", "DM", "DO", "EC", "EG", "SV", "GQ", "ER", "EE", "SZ", "ET", "FK", "FO", "FJ", "FI", "FR", "GF", "PF", "TF", "GA", "GM", "GE", "DE", "GH", "GI", "GR", "GL", "GD", "GP", "GU", "GT", "GG", "GN", "GW", "GY", "HT", "HM", "VA", "HN", "HK", "HU", "IS", "IN", "ID", "IR", "IQ", "IE", "IM", "IL", "IT", "JM", "JP", "JE", "JO", "KZ", "KE", "KI", "KP", "KR", "KW", "KG", "LA", "LV", "LB", "LS", "LR", "LY", "LI", "LT", "LU", "MO", "MG", "MW", "MY", "MV", "ML", "MT", "MH", "MQ", "MR", "MU", "YT", "MX", "FM", "MD", "MC", "MN", "ME", "MS", "MA", "MZ", "MM", "NA", "NR", "NP", "NL", "NC", "NZ", "NI", "NE", "NG", "NU", "NF", "MK", "MP", "NO", "OM", "PK", "PW", "PS", "PA", "PG", "PY", "PE", "PH", "PN", "PL", "PT", "PR", "QA", "RE", "RO", "RU", "RW", "BL", "SH", "KN", "LC", "MF", "PM", "VC", "WS", "SM", "ST", "SA", "SN", "RS", "SC", "SL", "SG", "SX", "SK", "SI", "SB", "SO", "ZA", "GS", "SS", "ES", "LK", "SD", "SR", "SJ", "SE", "CH", "SY", "TW", "TJ", "TZ", "TH", "TL", "TG", "TK", "TO", "TT", "TN", "TR", "TM", "TC", "TV", "UG", "UA", "AE", "GB", "US", "UM", "UY", "UZ", "VU", "VE", "VN", "VG", "VI", "WF", "EH", "YE", "ZM", "ZW",
 ];
@@ -263,16 +266,20 @@ function fileToDataUrl(file) {
 /* ===================================================
    RELEASE TYPE AND MULTI-TRACK UPLOADS
 
-   Controls whether a release is a Single, EP, or Album.
+   Controls whether a release is a Single, Beat / Instrumental, EP, or Album.
    Also controls track limits, track list display, renaming,
    ordering, and per-track preview settings.
 
    Used by:
-   - Upload Song wizard
+   - Upload Audio wizard
 =================================================== */
 function releaseTypeValue() {
   const value = releaseForm?.releaseType?.value || "Single";
-  return value === "Album" || value === "EP" ? value : "Single";
+  return RELEASE_TYPES.has(value) ? value : "Single";
+}
+
+function isDownloadOnlyReleaseType(type = releaseTypeValue()) {
+  return DOWNLOAD_ONLY_RELEASE_TYPES.has(type);
 }
 
 function isMultiTrackRelease(type = releaseTypeValue()) {
@@ -493,7 +500,7 @@ function formLinks(form, links) {
    while moving through the upload flow.
 
    Used by:
-   - Upload Song section
+   - Upload Audio section
 =================================================== */
 function wizardPanels() {
   return [...document.querySelectorAll("[data-upload-step]")];
@@ -530,7 +537,7 @@ function setUploadWizardStep(step) {
     uploadWizardPublish.style.display = uploadWizardStep === 6 ? "inline-flex" : "none";
   }
   if (releaseFlowEyebrow) releaseFlowEyebrow.textContent = `Step ${uploadWizardStep} of 6`;
-  const titles = ["Release Type", "Upload Audio & Artwork", "Song Information", "Streaming Links", "Video (Optional)", "Review & Publish"];
+  const titles = ["Release Type", "Upload Audio & Artwork", "Track Information", "Streaming Links", "Video (Optional)", "Review & Publish"];
   const flowTitle = document.querySelector("#releaseFlowTitle");
   if (flowTitle) flowTitle.textContent = titles[uploadWizardStep - 1];
   if (uploadWizardStep === 6) updateWizardReview();
@@ -557,7 +564,7 @@ function visibleStepFields(step) {
 
 function validateUploadWizardStep(step) {
   if (step === 1 && !document.querySelector("[data-start-release].is-selected")) {
-    message(releaseMessage, "Choose Single Song, EP, or Album to continue.", "error");
+    message(releaseMessage, "Choose Single Song, Beat / Instrumental, EP, or Album to continue.", "error");
     return false;
   }
   if (step === 2 && !validateTrackList()) return false;
@@ -589,6 +596,7 @@ async function autoSaveReleaseDraft() {
     title: releaseForm.title.value.trim(),
     artistName: releaseForm.artistName.value.trim(),
     releaseType: type,
+    downloadOnly: isDownloadOnlyReleaseType(type),
     genre: releaseForm.genre.value,
     secondaryGenre: releaseForm.secondaryGenre.value,
     songBio: releaseForm.songBio.value.trim(),
@@ -856,7 +864,7 @@ function showReleaseTypeChoice() {
 }
 
 function showReleaseForm(releaseType = "Single") {
-  const selectedType = releaseType === "Album" || releaseType === "EP" ? releaseType : "Single";
+  const selectedType = RELEASE_TYPES.has(releaseType) ? releaseType : "Single";
   songUploadSection?.classList.remove("is-hidden");
   setSelectValue(releaseForm.releaseType, selectedType);
   releaseTypeOptions.forEach((button) => {
@@ -892,7 +900,7 @@ function updateHomePreview(coverSrc = "") {
   const genre = releaseForm.genre.value || "Music";
   const artworkSrc = String(coverSrc || "").includes("Mba Logos/MusicBusiness Logo.png") ? "" : coverSrc;
   if (homePreviewMeta) homePreviewMeta.textContent = `${releaseType} | ${genre}`;
-  if (homePreviewSong) homePreviewSong.textContent = releaseForm.title.value.trim() || "Song title";
+  if (homePreviewSong) homePreviewSong.textContent = releaseForm.title.value.trim() || "Track title";
   if (homePreviewArtist) homePreviewArtist.textContent = releaseForm.artistName.value.trim() || artist.name || "Artist name";
   if (homePreviewCover) {
     homePreviewCover.closest(".upload-dropzone")?.classList.toggle("has-artwork", Boolean(artworkSrc));
@@ -922,7 +930,7 @@ function updateMusicPreview(coverSrc = "") {
   if (!musicPreviewTitle) return;
   const artist = primaryArtist();
   const artistName = releaseForm.artistName.value.trim() || artist.name || "Artist name";
-  const title = releaseForm.title.value.trim() || "Song title";
+  const title = releaseForm.title.value.trim() || "Track title";
   const cityState = releaseForm.cityState.value.trim();
   const country = releaseForm.country.value;
   const tags = tagList([
@@ -947,7 +955,7 @@ function updateUploadStatus() {
   if (!uploadStatusTitle || !uploadStatusText) return;
   const title = releaseForm.title.value.trim();
   const editing = Boolean(releaseForm.editingId.value);
-  uploadStatusTitle.textContent = editing ? "Edit Song" : "Upload Song";
+  uploadStatusTitle.textContent = editing ? "Edit Audio" : "Upload Audio";
   uploadStatusText.textContent = editing ? "Edit mode" : title ? "Draft in progress" : "Ready to upload";
 }
 
@@ -1040,7 +1048,7 @@ function populateCountrySelect(selectedValue = "") {
 =================================================== */
 function fillReleaseForm(release) {
   releaseForm.editingId.value = release.id;
-  const releaseType = release.releaseType === "Album" || release.releaseType === "EP" ? release.releaseType : "Single";
+  const releaseType = RELEASE_TYPES.has(release.releaseType) ? release.releaseType : "Single";
   showReleaseForm(releaseType);
   releaseForm.title.value = release.title || "";
   releaseForm.artistName.value = release.artistName || primaryArtist().name || "";
@@ -1084,7 +1092,7 @@ function fillReleaseForm(release) {
   updateHomePreview(release.cover || "");
   renderDashboardReleases();
   updateUploadStatus();
-  message(releaseMessage, "Editing artist song. Save when your changes are ready.", "pending");
+  message(releaseMessage, "Editing artist audio. Save when your changes are ready.", "pending");
   releaseForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1099,7 +1107,7 @@ function releaseSummary(release) {
     <div>
       <p>${release.releaseType || "Single"} | ${release.genre || "Music"}</p>
       <h3>${release.title || "Untitled release"}</h3>
-      <span>${isFeatured ? "Music page landing song" : release.audioName || "Audio saved"}</span>
+      <span>${isFeatured ? "Public page landing audio" : release.audioName || "Audio saved"}</span>
     </div>
     <div class="item-actions">
       <button type="button" data-edit-release="${release.id}">${releaseForm.editingId.value === release.id ? "Editing" : "Edit"}</button>
@@ -1113,7 +1121,7 @@ function renderFeaturedReleasePicker() {
   if (!featuredReleaseSelect) return;
   const artist = primaryArtist();
   const releases = currentStore.releases.filter((release) => release.artistId === artist.id);
-  featuredReleaseSelect.replaceChildren(new Option("Use newest approved song", ""));
+  featuredReleaseSelect.replaceChildren(new Option("Use newest approved audio", ""));
   releases.forEach((release) => {
     const option = new Option(`${release.title || "Untitled release"} - ${release.genre || "Music"}`, release.id);
     featuredReleaseSelect.append(option);
@@ -1134,7 +1142,7 @@ function updateFeaturedReleasePreview() {
   }
   if (musicPreviewCover) musicPreviewCover.src = release.cover || "Mba Logos/MusicBusiness Logo.png";
   if (musicPreviewArtist) musicPreviewArtist.textContent = release.artistName || artist.name || "Artist name";
-  if (musicPreviewTitle) musicPreviewTitle.textContent = release.title || "Song title";
+  if (musicPreviewTitle) musicPreviewTitle.textContent = release.title || "Track title";
   if (musicPreviewDate) {
     const artistName = release.artistName || artist.name || "Artist name";
     musicPreviewDate.textContent = `Release Date: ${formatReleaseDate(release.releaseDate)} by ${artistName}`;
@@ -1153,8 +1161,8 @@ function updateFeaturedReleasePreview() {
    edit buttons, delete buttons, and release status details.
 
    Used by:
-   - Songs section
-   - Upload Song section
+   - Audio section
+   - Upload Audio section
 =================================================== */
 function renderDashboardReleases() {
   const artist = primaryArtist();
@@ -1217,14 +1225,14 @@ function renderSongTable() {
   const urls = artistPublicUrls(artist);
 
   if (!releases.length) {
-    artistSongTable.innerHTML = `<p class="empty-state">No songs match the current filters.</p>`;
+    artistSongTable.innerHTML = `<p class="empty-state">No audio matches the current filters.</p>`;
     return;
   }
 
   artistSongTable.innerHTML = `
     <div class="song-table-header">
       <span>Artwork</span>
-      <span>Song Title</span>
+      <span>Title</span>
       <span>Genre</span>
       <span>Price</span>
       <span>Downloads</span>
@@ -1237,7 +1245,7 @@ function renderSongTable() {
         (release) => `
           <article class="song-table-row">
             <img src="${escapeAttr(release.cover || "Mba Logos/MusicBusiness Logo.png")}" alt="">
-            <strong>${escapeText(release.title || "Untitled song")}</strong>
+            <strong>${escapeText(release.title || "Untitled audio")}</strong>
             <span>${escapeText(release.genre || "Music")}</span>
             <span>${money(release.price || 0)}</span>
             <span>${Number(release.downloads || 0)}</span>
@@ -1578,13 +1586,13 @@ function renderDownloadsPanel() {
   artistDownloadTable.innerHTML = rows.length
     ? `
       <div class="download-table-header">
-        <span>Song Name</span><span>Price</span><span>Downloads</span><span>Revenue</span><span>Purchase Date</span><span>Country</span>
+        <span>Audio Name</span><span>Price</span><span>Downloads</span><span>Revenue</span><span>Purchase Date</span><span>Country</span>
       </div>
       ${rows
         .map(
           (release) => `
             <article class="download-table-row">
-              <strong>${escapeText(release.title || "Untitled song")}</strong>
+              <strong>${escapeText(release.title || "Untitled audio")}</strong>
               <span>${money(release.price || 0)}</span>
               <span>${Number(release.downloads || 0)}</span>
               <span>${money(releaseRevenue(release))}</span>
@@ -1595,7 +1603,7 @@ function renderDownloadsPanel() {
         )
         .join("")}
     `
-    : emptyLine("Download records will appear here after fans purchase songs.");
+    : emptyLine("Download records will appear here after fans purchase audio.");
 }
 
 /* ===================================================
@@ -1606,8 +1614,8 @@ function renderDownloadsPanel() {
 
    Used by:
    - Profile
-   - Songs
-   - Upload Song
+   - Audio
+   - Upload Audio
    - Videos
    - Analytics
    - Earnings
@@ -1681,17 +1689,17 @@ function renderArtistConsole() {
 
   renderActivityList(
     recentActivityList,
-    releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: `${release.status || "pending"} | ${formatReleaseDate((release.updatedAt || release.createdAt || "").slice(0, 10))}` })),
-    "Recent activity will appear after songs are saved."
+    releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled audio", meta: `${release.status || "pending"} | ${formatReleaseDate((release.updatedAt || release.createdAt || "").slice(0, 10))}` })),
+    "Recent activity will appear after audio is saved."
   );
   renderActivityList(
     recentDownloadsList,
-    releases.filter((release) => Number(release.downloads || 0) > 0).slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: `${release.downloads} downloads | ${money(releaseRevenue(release))}` })),
+    releases.filter((release) => Number(release.downloads || 0) > 0).slice(0, 5).map((release) => ({ title: release.title || "Untitled audio", meta: `${release.downloads} downloads | ${money(releaseRevenue(release))}` })),
     "Recent downloads will appear after purchases."
   );
   renderActivityList(
     recentUploadsList,
-    releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled song", meta: formatReleaseDate((release.createdAt || "").slice(0, 10) || release.releaseDate) })),
+    releases.slice(0, 5).map((release) => ({ title: release.title || "Untitled audio", meta: formatReleaseDate((release.createdAt || "").slice(0, 10) || release.releaseDate) })),
     "Recent uploads will appear here."
   );
   renderActivityList(payoutHistoryList, [], "Payout history will appear after payouts are processed.");
@@ -1702,7 +1710,7 @@ function renderArtistConsole() {
 }
 
 function analyticsListTitle(listKey) {
-  if (listKey === "songs") return "Top Songs";
+  if (listKey === "songs") return "Top Audio";
   if (listKey === "videos") return "Top Videos";
   if (listKey === "platforms") return "Top Streaming Platforms";
   return "Top Items";
@@ -1958,6 +1966,7 @@ releaseForm.addEventListener("submit", async (event) => {
     release.title = releaseForm.title.value.trim();
     release.artistName = releaseForm.artistName.value.trim() || artist.name;
     release.releaseType = type;
+    release.downloadOnly = isDownloadOnlyReleaseType(type);
     release.genre = releaseForm.genre.value;
     release.secondaryGenre = releaseForm.secondaryGenre.value;
     release.mood = [releaseForm.moodPrimary.value, releaseForm.moodSecondary.value].filter(Boolean);
@@ -2021,8 +2030,8 @@ releaseForm.addEventListener("submit", async (event) => {
     message(
       releaseMessage,
       existingIndex >= 0
-        ? "Artist song updated. Home, Music, Listen, and Download will reflect the change."
-        : "Artist song saved. It will now show on Home and can be selected for the Music page."
+        ? "Artist audio updated. Home, Music, Listen, and Download will reflect the change."
+        : "Artist audio saved. It will now show on Home and can be selected for the public page."
     );
   } catch (error) {
     message(releaseMessage, error.message || "Release did not save. Use the localhost website URL.", "error");
@@ -2193,7 +2202,7 @@ async function selectFeaturedRelease(releaseId) {
   currentStore = await window.MBA.saveStore(currentStore);
   renderFeaturedReleasePicker();
   renderDashboardReleases();
-  message(featuredReleaseMessage, releaseId ? "Music page landing song updated." : "Music page will use the newest approved song.");
+  message(featuredReleaseMessage, releaseId ? "Public page landing track updated." : "Public page will use the newest approved audio.");
 }
 
 saveFeaturedRelease?.addEventListener("click", () => {

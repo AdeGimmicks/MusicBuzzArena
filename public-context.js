@@ -91,10 +91,21 @@
     });
   }
 
+  function isDownloadOnlyRelease(release) {
+    return release?.downloadOnly === true || release?.releaseType === "Beat / Instrumental";
+  }
+
+  function catalogLabelForArtist(artist, releases = []) {
+    const artistReleases = releases.filter((release) => release.artistId === artist?.id && (release.status || "approved") === "approved");
+    if (artistReleases.length && artistReleases.every(isDownloadOnlyRelease)) return "Beats";
+    return "Music";
+  }
+
   function applyPublicArtistNavigation(artist, options = {}) {
     const slug = artistSlug(artist);
     if (!slug) return;
     const authenticated = Boolean(options.authenticated);
+    const catalogLabel = options.catalogLabel || artist.publicCatalogLabel || "Music";
     const urls = {
       home: `/${slug}`,
       music: `/${slug}/music`,
@@ -109,7 +120,7 @@
     document.querySelectorAll(".site-nav").forEach((nav) => {
       nav.innerHTML = `
         <a href="${urls.home}">Home</a>
-        <a href="${urls.music}">Music</a>
+        <a href="${urls.music}">${catalogLabel}</a>
         <a href="${urls.videos}">Videos</a>
         <a href="${urls.upload}">Upload</a>
       `;
@@ -136,14 +147,16 @@
     const store = await window.MBA.loadStore({ force: false });
     const artist = findArtist(store, artistTokenFromPath()) || findArtist(store, artistTokenFromQuery());
     if (!artist) return;
-    applyPublicArtistNavigation(artist, { authenticated: false });
+    artist.publicCatalogLabel = catalogLabelForArtist(artist, store.releases || []);
+    applyPublicArtistNavigation(artist, { authenticated: false, catalogLabel: artist.publicCatalogLabel });
     const authenticated = await artistSessionAuthenticated();
-    applyPublicArtistNavigation(artist, { authenticated });
+    applyPublicArtistNavigation(artist, { authenticated, catalogLabel: artist.publicCatalogLabel });
   }
 
   window.MBAPublicContext = {
     applyPublicArtistNavigation,
     artistSlug,
+    catalogLabelForArtist,
     findArtist,
     init: initPublicArtistContext,
   };
