@@ -438,9 +438,12 @@ function showManagerSection(sectionId) {
 }
 
 function applyLogo() {
+  document.title = `Store Manager | ${currentStore.site?.title || "MusicBusiness Arena"}`;
   document.querySelectorAll("[data-logo]").forEach((img) => {
     img.src = currentStore.site?.logo || "Mba Logos/MusicBusiness Logo.png";
   });
+  const favicon = document.querySelector('link[rel~="icon"]');
+  if (favicon) favicon.href = currentStore.site?.favicon || "Mba Logos/MBA Favicon.png";
 }
 
 function fillSiteForm() {
@@ -450,7 +453,16 @@ function fillSiteForm() {
   siteForm.intro.value = site.intro || "";
   siteForm.primaryCta.value = site.primaryCta || "";
   siteForm.secondaryCta.value = site.secondaryCta || "";
+  siteForm.footerTagline.value = site.footerTagline || "";
+  siteForm.footerDescription.value = site.footerDescription || "";
+  siteForm.copyrightText.value = site.copyrightText || "";
   siteForm.commissionRate.value = site.commissionRate ?? 10;
+  if (siteForm.socialX) siteForm.socialX.value = site.socials?.x || "";
+  if (siteForm.socialFacebook) siteForm.socialFacebook.value = site.socials?.facebook || "";
+  if (siteForm.socialInstagram) siteForm.socialInstagram.value = site.socials?.instagram || "";
+  if (siteForm.socialYoutube) siteForm.socialYoutube.value = site.socials?.youtube || "";
+  if (siteForm.socialTiktok) siteForm.socialTiktok.value = site.socials?.tiktok || "";
+  if (siteForm.socialTwitch) siteForm.socialTwitch.value = site.socials?.twitch || "";
   if (siteForm.googleAnalytics) siteForm.googleAnalytics.value = site.googleAnalytics || "";
   if (siteForm.facebookPixel) siteForm.facebookPixel.value = site.facebookPixel || "";
   if (siteForm.stripeSettings) siteForm.stripeSettings.value = site.stripeSettings || "";
@@ -931,6 +943,7 @@ siteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   message(siteMessage, "Saving platform settings...", "pending");
   const logo = await fileToDataUrl(siteForm.logo.files[0]);
+  const favicon = await fileToDataUrl(siteForm.favicon.files[0]);
   currentStore.site = {
     ...(currentStore.site || {}),
     title: siteForm.title.value.trim(),
@@ -938,6 +951,18 @@ siteForm.addEventListener("submit", async (event) => {
     intro: siteForm.intro.value.trim(),
     primaryCta: siteForm.primaryCta.value.trim(),
     secondaryCta: siteForm.secondaryCta.value.trim(),
+    footerTagline: siteForm.footerTagline.value.trim(),
+    footerDescription: siteForm.footerDescription.value.trim(),
+    copyrightText: siteForm.copyrightText.value.trim(),
+    socials: {
+      ...(currentStore.site?.socials || {}),
+      x: normalizeLink(siteForm.socialX?.value || ""),
+      facebook: normalizeLink(siteForm.socialFacebook?.value || ""),
+      instagram: normalizeLink(siteForm.socialInstagram?.value || ""),
+      youtube: normalizeLink(siteForm.socialYoutube?.value || ""),
+      tiktok: normalizeLink(siteForm.socialTiktok?.value || ""),
+      twitch: normalizeLink(siteForm.socialTwitch?.value || ""),
+    },
     commissionRate: Number(siteForm.commissionRate.value || 10),
     googleAnalytics: siteForm.googleAnalytics?.value.trim() || "",
     facebookPixel: siteForm.facebookPixel?.value.trim() || "",
@@ -945,10 +970,12 @@ siteForm.addEventListener("submit", async (event) => {
     emailSettings: siteForm.emailSettings?.value.trim() || "",
   };
   if (logo) currentStore.site.logo = logo;
+  if (favicon) currentStore.site.favicon = favicon;
   currentStore = await saveAdminStore(currentStore);
   applyLogo();
   fillSiteForm();
   siteForm.logo.value = "";
+  siteForm.favicon.value = "";
   message(siteMessage, "Platform settings saved.");
 });
 

@@ -17,6 +17,38 @@
     "privacy.html",
     "terms.html",
   ]);
+  const DEFAULT_SITE = {
+    logo: "Mba Logos/MusicBusiness Logo.png",
+    title: "MusicBusiness Arena",
+    footerTagline: "Artist Profiles. Music Downloads. Streaming Links.",
+    footerDescription: "MusicBusiness Arena is a platform for artists to showcase their music, share streaming links, and sell downloadable songs directly to fans.",
+    copyrightText: "© 2026 MusicBusiness Arena. All rights reserved.",
+    favicon: "Mba Logos/MBA Favicon.png",
+    socials: {},
+  };
+  const SOCIAL_LABELS = {
+    x: "X",
+    facebook: "Facebook",
+    instagram: "Instagram",
+    youtube: "YouTube",
+    tiktok: "TikTok",
+    twitch: "Twitch",
+  };
+  const RESERVED_ROUTES = new Set([
+    "artist-dashboard",
+    "artist-forgot-password",
+    "artist-login",
+    "artist-register",
+    "artist-reset-password",
+    "artist-verify",
+    "dashboard",
+    "home",
+    "music",
+    "store-manager",
+    "upload",
+    "video",
+    "videos",
+  ]);
 
   function slugify(value) {
     return String(value || "")
@@ -40,7 +72,7 @@
     if (!parts.length) return "";
     if (["listen", "download"].includes(parts[0])) return parts.length >= 3 ? parts[1] : "";
     if (parts.length >= 2 && ["music", "video", "videos"].includes(parts[1])) return parts[0];
-    if (parts.length === 1 && !parts[0].includes(".") && !["home", "music", "video", "videos", "upload", "dashboard"].includes(parts[0])) {
+    if (parts.length === 1 && !parts[0].includes(".") && !RESERVED_ROUTES.has(parts[0])) {
       return parts[0];
     }
     return "";
@@ -78,6 +110,54 @@
   function setHref(selector, href) {
     document.querySelectorAll(selector).forEach((link) => {
       link.href = href;
+    });
+  }
+
+  function setText(selector, value) {
+    if (!value) return;
+    document.querySelectorAll(selector).forEach((node) => {
+      node.textContent = value;
+    });
+  }
+
+  function faviconElement() {
+    let link = document.querySelector('link[rel~="icon"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.append(link);
+    }
+    return link;
+  }
+
+  function applySiteChrome(store = {}) {
+    const site = { ...DEFAULT_SITE, ...(store.site || {}) };
+    const title = site.title || DEFAULT_SITE.title;
+    document.title = document.title.includes("|")
+      ? document.title.replace(/[^|]+$/, title)
+      : title;
+    document.querySelectorAll("[data-logo]").forEach((img) => {
+      img.src = site.logo || DEFAULT_SITE.logo;
+      img.alt = `${title} logo`;
+    });
+    faviconElement().href = site.favicon || DEFAULT_SITE.favicon;
+    setText('[data-site="title"]', title);
+    setText('[data-site="tagline"]', site.tagline);
+    setText('[data-site="intro"]', site.intro);
+    setText(".footer-tagline", site.footerTagline || DEFAULT_SITE.footerTagline);
+    setText(".footer-description", site.footerDescription || DEFAULT_SITE.footerDescription);
+    setText(".footer-copy", site.copyrightText || DEFAULT_SITE.copyrightText);
+
+    document.querySelectorAll(".footer-socials").forEach((container) => {
+      Object.entries(SOCIAL_LABELS).forEach(([key, label]) => {
+        const link = container.querySelector(`a[aria-label="${label}"]`);
+        if (!link) return;
+        const href = site.socials?.[key] || "";
+        if (href) {
+          link.hidden = false;
+          link.href = href;
+        }
+      });
     });
   }
 
@@ -149,6 +229,7 @@
   async function initPublicArtistContext() {
     if (!window.MBA?.loadStore) return;
     const store = await window.MBA.loadStore({ force: false });
+    applySiteChrome(store);
     const artist = findArtist(store, artistTokenFromPath()) || findArtist(store, artistTokenFromQuery());
     if (!artist) return;
     artist.publicCatalogLabel = catalogLabelForArtist(artist, store.releases || []);
@@ -159,6 +240,7 @@
 
   window.MBAPublicContext = {
     applyPublicArtistNavigation,
+    applySiteChrome,
     artistSlug,
     catalogLabelForArtist,
     catalogPathForLabel,

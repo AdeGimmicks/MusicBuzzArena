@@ -27,6 +27,18 @@ const MBA_DEFAULT_STORE = {
     intro: "Discover releases from independent artists.",
     primaryCta: "Browse Music",
     secondaryCta: "Upload",
+    footerTagline: "Artist Profiles. Music Downloads. Streaming Links.",
+    footerDescription: "MusicBusiness Arena is a platform for artists to showcase their music, share streaming links, and sell downloadable songs directly to fans.",
+    copyrightText: "© 2026 MusicBusiness Arena. All rights reserved.",
+    favicon: "Mba Logos/MBA Favicon.png",
+    socials: {
+      x: "",
+      facebook: "",
+      instagram: "",
+      youtube: "",
+      tiktok: "",
+      twitch: "",
+    },
     featuredArtistId: "artist-focuzman",
     commissionRate: 15,
     videos: {

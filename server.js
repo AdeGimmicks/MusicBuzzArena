@@ -158,6 +158,18 @@ function defaultStore() {
       intro: "Discover releases from independent artists.",
       primaryCta: "Browse Music",
       secondaryCta: "Upload",
+      footerTagline: "Artist Profiles. Music Downloads. Streaming Links.",
+      footerDescription: "MusicBusiness Arena is a platform for artists to showcase their music, share streaming links, and sell downloadable songs directly to fans.",
+      copyrightText: "© 2026 MusicBusiness Arena. All rights reserved.",
+      favicon: "Mba Logos/MBA Favicon.png",
+      socials: {
+        x: "",
+        facebook: "",
+        instagram: "",
+        youtube: "",
+        tiktok: "",
+        twitch: "",
+      },
       featuredArtistId: "artist-focuzman",
       commissionRate: 10,
       videos: {
@@ -809,6 +821,7 @@ async function normalizeUploads(store) {
   };
 
   normalized.site.logo = await saveDataUrl(normalized.site.logo, "images", "musicbusiness-logo.png");
+  normalized.site.favicon = await saveDataUrl(normalized.site.favicon, "images", "mba-favicon.png");
 
   for (const artist of normalized.artists) {
     artist.photo = await saveDataUrl(artist.photo, "images", `${artist.name || "artist"}-photo.jpg`);
