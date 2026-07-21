@@ -53,6 +53,17 @@ const managerSongMessage = document.querySelector("#managerSongMessage");
 const managerPayoutMessage = document.querySelector("#managerPayoutMessage");
 
 let currentStore = window.MBA.defaults();
+const LEGAL_EDITOR_FIELDS = [
+  ["privacy", "legalPrivacy"],
+  ["terms", "legalTerms"],
+  ["copyright", "legalCopyright"],
+  ["dmca", "legalDmca"],
+  ["contact", "legalContact"],
+  ["artistAgreement", "legalArtistAgreement"],
+  ["payoutPolicy", "legalPayoutPolicy"],
+  ["noRefundPolicy", "legalNoRefundPolicy"],
+  ["about", "legalAbout"],
+];
 
 /* ===================================================
    STORE MANAGER DIRECT ACCESS
@@ -138,6 +149,62 @@ function normalizeLink(value) {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   if (trimmed.includes(".") && !trimmed.includes(" ")) return `https://${trimmed}`;
   return trimmed;
+}
+
+function textFromLegalElement(node) {
+  if (!node) return "";
+  const lines = [];
+  const walk = (element) => {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = element.tagName.toLowerCase();
+    if (["script", "style", "form", "footer", "nav"].includes(tag)) return;
+    const text = element.textContent.trim().replace(/\s+/g, " ");
+    if (!text) return;
+    if (tag === "h1") {
+      lines.push(`# ${text}`);
+      return;
+    }
+    if (tag === "h2") {
+      if (text.toLowerCase() === "contact form") return;
+      lines.push(`## ${text}`);
+      return;
+    }
+    if (tag === "li") {
+      lines.push(`- ${text}`);
+      return;
+    }
+    if (tag === "p") {
+      lines.push(text);
+      return;
+    }
+    [...element.children].forEach(walk);
+  };
+  [...node.children].forEach(walk);
+  return lines.join("\n\n");
+}
+
+async function loadDefaultLegalEditorContent(textarea) {
+  const page = textarea.dataset.defaultLegalPage;
+  if (!page || textarea.value.trim()) return;
+  try {
+    const response = await fetch(page, { cache: "no-store" });
+    if (!response.ok) return;
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const content = textFromLegalElement(doc.querySelector(".legal-container"));
+    if (!textarea.value.trim()) textarea.value = content;
+  } catch {
+    // The saved Store Manager value remains editable even if a default page cannot be loaded.
+  }
+}
+
+function populateLegalEditors(site = {}) {
+  LEGAL_EDITOR_FIELDS.forEach(([key, field]) => {
+    const textarea = siteForm[field];
+    if (!textarea) return;
+    textarea.value = site.legalPages?.[key] || "";
+    loadDefaultLegalEditorContent(textarea);
+  });
 }
 
 function slugify(value) {
@@ -463,15 +530,7 @@ function fillSiteForm() {
   if (siteForm.socialYoutube) siteForm.socialYoutube.value = site.socials?.youtube || "";
   if (siteForm.socialTiktok) siteForm.socialTiktok.value = site.socials?.tiktok || "";
   if (siteForm.socialTwitch) siteForm.socialTwitch.value = site.socials?.twitch || "";
-  if (siteForm.legalPrivacy) siteForm.legalPrivacy.value = site.legalPages?.privacy || "";
-  if (siteForm.legalTerms) siteForm.legalTerms.value = site.legalPages?.terms || "";
-  if (siteForm.legalCopyright) siteForm.legalCopyright.value = site.legalPages?.copyright || "";
-  if (siteForm.legalDmca) siteForm.legalDmca.value = site.legalPages?.dmca || "";
-  if (siteForm.legalContact) siteForm.legalContact.value = site.legalPages?.contact || "";
-  if (siteForm.legalArtistAgreement) siteForm.legalArtistAgreement.value = site.legalPages?.artistAgreement || "";
-  if (siteForm.legalPayoutPolicy) siteForm.legalPayoutPolicy.value = site.legalPages?.payoutPolicy || "";
-  if (siteForm.legalNoRefundPolicy) siteForm.legalNoRefundPolicy.value = site.legalPages?.noRefundPolicy || "";
-  if (siteForm.legalAbout) siteForm.legalAbout.value = site.legalPages?.about || "";
+  populateLegalEditors(site);
   if (siteForm.googleAnalytics) siteForm.googleAnalytics.value = site.googleAnalytics || "";
   if (siteForm.facebookPixel) siteForm.facebookPixel.value = site.facebookPixel || "";
   if (siteForm.stripeSettings) siteForm.stripeSettings.value = site.stripeSettings || "";
@@ -950,7 +1009,8 @@ async function saveAndRender(options = {}) {
 
 siteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  message(siteMessage, "Saving platform settings...", "pending");
+  const saveLabel = event.submitter?.dataset.saveLabel || "Platform Settings";
+  message(siteMessage, `Saving ${saveLabel}...`, "pending");
   const logo = await fileToDataUrl(siteForm.logo.files[0]);
   const favicon = await fileToDataUrl(siteForm.favicon.files[0]);
   currentStore.site = {
@@ -997,7 +1057,7 @@ siteForm.addEventListener("submit", async (event) => {
   fillSiteForm();
   siteForm.logo.value = "";
   siteForm.favicon.value = "";
-  message(siteMessage, "Platform settings saved.");
+  message(siteMessage, `${saveLabel} saved.`);
 });
 
 managerArtistTable?.addEventListener("click", async (event) => {

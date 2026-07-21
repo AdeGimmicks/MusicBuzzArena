@@ -410,16 +410,52 @@
               </div>
               <section class="manager-settings-group">
                 <h3>Legal Pages</h3>
-                <p class="settings-help">Leave a page blank to keep the current HTML page content. Add text here only when you want Store Manager to replace the public page content.</p>
-                <label>Privacy Policy <textarea name="legalPrivacy" rows="8" placeholder="Saved Store Manager Privacy Policy content"></textarea></label>
-                <label>Terms of Service <textarea name="legalTerms" rows="8" placeholder="Saved Store Manager Terms content"></textarea></label>
-                <label>Copyright Policy <textarea name="legalCopyright" rows="8" placeholder="Saved Store Manager Copyright content"></textarea></label>
-                <label>DMCA Policy <textarea name="legalDmca" rows="8" placeholder="Saved Store Manager DMCA content"></textarea></label>
-                <label>Contact Page <textarea name="legalContact" rows="8" placeholder="Saved Store Manager Contact page content"></textarea></label>
-                <label>Artist Agreement <textarea name="legalArtistAgreement" rows="8" placeholder="Saved Store Manager Artist Agreement content"></textarea></label>
-                <label>Payout Policy <textarea name="legalPayoutPolicy" rows="8" placeholder="Saved Store Manager Payout Policy content"></textarea></label>
-                <label>No Refund Policy <textarea name="legalNoRefundPolicy" rows="8" placeholder="Saved Store Manager No Refund Policy content"></textarea></label>
-                <label>About Page <textarea name="legalAbout" rows="8" placeholder="Saved Store Manager About page content"></textarea></label>
+                <p class="settings-help">Each editor starts with the current website page text. Open one page, edit it, and save that page to publish the new version.</p>
+                <details class="legal-editor-panel">
+                  <summary>Privacy Policy</summary>
+                  <label>Privacy Policy <textarea name="legalPrivacy" rows="10" data-default-legal-page="privacy.html" placeholder="Loading current Privacy Policy content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="Privacy Policy">Save Privacy Policy</button>
+                </details>
+                <details class="legal-editor-panel">
+                  <summary>Terms of Service</summary>
+                  <label>Terms of Service <textarea name="legalTerms" rows="10" data-default-legal-page="terms.html" placeholder="Loading current Terms content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="Terms of Service">Save Terms of Service</button>
+                </details>
+                <details class="legal-editor-panel">
+                  <summary>Copyright Policy</summary>
+                  <label>Copyright Policy <textarea name="legalCopyright" rows="10" data-default-legal-page="copyright.html" placeholder="Loading current Copyright content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="Copyright Policy">Save Copyright Policy</button>
+                </details>
+                <details class="legal-editor-panel">
+                  <summary>DMCA Policy</summary>
+                  <label>DMCA Policy <textarea name="legalDmca" rows="10" data-default-legal-page="dmca-policy.html" placeholder="Loading current DMCA content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="DMCA Policy">Save DMCA Policy</button>
+                </details>
+                <details class="legal-editor-panel">
+                  <summary>Contact Page</summary>
+                  <label>Contact Page <textarea name="legalContact" rows="10" data-default-legal-page="contact.html" placeholder="Loading current Contact page content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="Contact Page">Save Contact Page</button>
+                </details>
+                <details class="legal-editor-panel">
+                  <summary>Artist Agreement</summary>
+                  <label>Artist Agreement <textarea name="legalArtistAgreement" rows="10" data-default-legal-page="artist-agreement.html" placeholder="Loading current Artist Agreement content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="Artist Agreement">Save Artist Agreement</button>
+                </details>
+                <details class="legal-editor-panel">
+                  <summary>Payout Policy</summary>
+                  <label>Payout Policy <textarea name="legalPayoutPolicy" rows="10" data-default-legal-page="payout-policy.html" placeholder="Loading current Payout Policy content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="Payout Policy">Save Payout Policy</button>
+                </details>
+                <details class="legal-editor-panel">
+                  <summary>No Refund Policy</summary>
+                  <label>No Refund Policy <textarea name="legalNoRefundPolicy" rows="10" data-default-legal-page="no-refund-policy.html" placeholder="Loading current No Refund Policy content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="No Refund Policy">Save No Refund Policy</button>
+                </details>
+                <details class="legal-editor-panel">
+                  <summary>About Page</summary>
+                  <label>About Page <textarea name="legalAbout" rows="10" data-default-legal-page="about.html" placeholder="Loading current About page content..."></textarea></label>
+                  <button class="secondary-button" type="submit" data-save-label="About Page">Save About Page</button>
+                </details>
               </section>
               <button class="primary-button" type="submit">Save Platform Settings</button>
               <p class="form-message" id="siteMessage" role="status"></p>

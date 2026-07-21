@@ -1718,6 +1718,29 @@ h3 {
   margin: 0;
 }
 
+.legal-editor-panel {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.legal-editor-panel summary {
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 1000;
+}
+
+.legal-editor-panel[open] {
+  display: grid;
+  gap: 12px;
+}
+
+.legal-editor-panel textarea {
+  font-family: inherit;
+  min-height: 240px;
+}
+
 .manager-list article {
   display: grid;
   gap: 4px;

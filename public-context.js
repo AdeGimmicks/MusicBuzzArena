@@ -219,9 +219,17 @@
     const container = document.querySelector(".legal-container");
     if (!container) return;
     const rendered = renderLegalText(savedContent);
-    container.innerHTML = rendered.includes("<h1>")
+    const contentHtml = rendered.includes("<h1>")
       ? rendered
       : `<h1>${escapeHtml(config.title)}</h1>${rendered}`;
+    if (config.key === "contact") {
+      const form = container.querySelector("form");
+      container.innerHTML = form
+        ? `${contentHtml}<h2>Contact Form</h2>${form.outerHTML}`
+        : contentHtml;
+      return;
+    }
+    container.innerHTML = contentHtml;
   }
 
   function rewriteLegalLinks(slug) {
