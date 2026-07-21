@@ -463,6 +463,15 @@ function fillSiteForm() {
   if (siteForm.socialYoutube) siteForm.socialYoutube.value = site.socials?.youtube || "";
   if (siteForm.socialTiktok) siteForm.socialTiktok.value = site.socials?.tiktok || "";
   if (siteForm.socialTwitch) siteForm.socialTwitch.value = site.socials?.twitch || "";
+  if (siteForm.legalPrivacy) siteForm.legalPrivacy.value = site.legalPages?.privacy || "";
+  if (siteForm.legalTerms) siteForm.legalTerms.value = site.legalPages?.terms || "";
+  if (siteForm.legalCopyright) siteForm.legalCopyright.value = site.legalPages?.copyright || "";
+  if (siteForm.legalDmca) siteForm.legalDmca.value = site.legalPages?.dmca || "";
+  if (siteForm.legalContact) siteForm.legalContact.value = site.legalPages?.contact || "";
+  if (siteForm.legalArtistAgreement) siteForm.legalArtistAgreement.value = site.legalPages?.artistAgreement || "";
+  if (siteForm.legalPayoutPolicy) siteForm.legalPayoutPolicy.value = site.legalPages?.payoutPolicy || "";
+  if (siteForm.legalNoRefundPolicy) siteForm.legalNoRefundPolicy.value = site.legalPages?.noRefundPolicy || "";
+  if (siteForm.legalAbout) siteForm.legalAbout.value = site.legalPages?.about || "";
   if (siteForm.googleAnalytics) siteForm.googleAnalytics.value = site.googleAnalytics || "";
   if (siteForm.facebookPixel) siteForm.facebookPixel.value = site.facebookPixel || "";
   if (siteForm.stripeSettings) siteForm.stripeSettings.value = site.stripeSettings || "";
@@ -962,6 +971,18 @@ siteForm.addEventListener("submit", async (event) => {
       youtube: normalizeLink(siteForm.socialYoutube?.value || ""),
       tiktok: normalizeLink(siteForm.socialTiktok?.value || ""),
       twitch: normalizeLink(siteForm.socialTwitch?.value || ""),
+    },
+    legalPages: {
+      ...(currentStore.site?.legalPages || {}),
+      privacy: siteForm.legalPrivacy?.value.trim() || "",
+      terms: siteForm.legalTerms?.value.trim() || "",
+      copyright: siteForm.legalCopyright?.value.trim() || "",
+      dmca: siteForm.legalDmca?.value.trim() || "",
+      contact: siteForm.legalContact?.value.trim() || "",
+      artistAgreement: siteForm.legalArtistAgreement?.value.trim() || "",
+      payoutPolicy: siteForm.legalPayoutPolicy?.value.trim() || "",
+      noRefundPolicy: siteForm.legalNoRefundPolicy?.value.trim() || "",
+      about: siteForm.legalAbout?.value.trim() || "",
     },
     commissionRate: Number(siteForm.commissionRate.value || 10),
     googleAnalytics: siteForm.googleAnalytics?.value.trim() || "",

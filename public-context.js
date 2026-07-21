@@ -17,6 +17,26 @@
     "privacy.html",
     "terms.html",
   ]);
+  const LEGAL_PAGE_CONFIG = {
+    "about.html": { key: "about", title: "About MusicBusiness Arena" },
+    "artist-agreement.html": { key: "artistAgreement", title: "Artist Agreement" },
+    "contact.html": { key: "contact", title: "Contact Us" },
+    "copyright.html": { key: "copyright", title: "Copyright Policy" },
+    "dmca-policy.html": { key: "dmca", title: "DMCA Policy" },
+    "no-refund-policy.html": { key: "noRefundPolicy", title: "No Refund Policy" },
+    "payout-policy.html": { key: "payoutPolicy", title: "Payout Policy" },
+    "privacy.html": { key: "privacy", title: "Privacy Policy" },
+    "terms.html": { key: "terms", title: "Terms of Service" },
+    about: { key: "about", title: "About MusicBusiness Arena" },
+    "artist-agreement": { key: "artistAgreement", title: "Artist Agreement" },
+    contact: { key: "contact", title: "Contact Us" },
+    copyright: { key: "copyright", title: "Copyright Policy" },
+    "dmca-policy": { key: "dmca", title: "DMCA Policy" },
+    "no-refund-policy": { key: "noRefundPolicy", title: "No Refund Policy" },
+    "payout-policy": { key: "payoutPolicy", title: "Payout Policy" },
+    privacy: { key: "privacy", title: "Privacy Policy" },
+    terms: { key: "terms", title: "Terms of Service" },
+  };
   const DEFAULT_SITE = {
     logo: "Mba Logos/MusicBusiness Logo.png",
     title: "MusicBusiness Arena",
@@ -161,6 +181,49 @@
     });
   }
 
+  function pageFilename() {
+    const parts = pathParts();
+    return parts[parts.length - 1] || "";
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderLegalText(text) {
+    const blocks = String(text || "")
+      .replace(/\r\n/g, "\n")
+      .split(/\n{2,}/)
+      .map((block) => block.trim())
+      .filter(Boolean);
+    return blocks.map((block) => {
+      if (block.startsWith("## ")) return `<h2>${escapeHtml(block.slice(3).trim())}</h2>`;
+      if (block.startsWith("# ")) return `<h1>${escapeHtml(block.slice(2).trim())}</h1>`;
+      const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+      if (lines.every((line) => line.startsWith("- "))) {
+        return `<ul>${lines.map((line) => `<li>${escapeHtml(line.slice(2).trim())}</li>`).join("")}</ul>`;
+      }
+      return `<p>${lines.map(escapeHtml).join("<br>")}</p>`;
+    }).join("");
+  }
+
+  function applyLegalPageContent(store = {}) {
+    const config = LEGAL_PAGE_CONFIG[pageFilename()];
+    if (!config) return;
+    const savedContent = store.site?.legalPages?.[config.key];
+    if (!savedContent || !String(savedContent).trim()) return;
+    const container = document.querySelector(".legal-container");
+    if (!container) return;
+    const rendered = renderLegalText(savedContent);
+    container.innerHTML = rendered.includes("<h1>")
+      ? rendered
+      : `<h1>${escapeHtml(config.title)}</h1>${rendered}`;
+  }
+
   function rewriteLegalLinks(slug) {
     document.querySelectorAll("a[href]").forEach((link) => {
       const rawHref = link.getAttribute("href") || "";
@@ -230,6 +293,7 @@
     if (!window.MBA?.loadStore) return;
     const store = await window.MBA.loadStore({ force: false });
     applySiteChrome(store);
+    applyLegalPageContent(store);
     const artist = findArtist(store, artistTokenFromPath()) || findArtist(store, artistTokenFromQuery());
     if (!artist) return;
     artist.publicCatalogLabel = catalogLabelForArtist(artist, store.releases || []);

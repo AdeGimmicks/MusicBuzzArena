@@ -170,6 +170,7 @@ function defaultStore() {
         tiktok: "",
         twitch: "",
       },
+      legalPages: {},
       featuredArtistId: "artist-focuzman",
       commissionRate: 10,
       videos: {

@@ -39,6 +39,7 @@ const MBA_DEFAULT_STORE = {
       tiktok: "",
       twitch: "",
     },
+    legalPages: {},
     featuredArtistId: "artist-focuzman",
     commissionRate: 15,
     videos: {
