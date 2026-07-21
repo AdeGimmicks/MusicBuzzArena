@@ -50,6 +50,7 @@ const managerArtistForm = document.querySelector("#managerArtistForm");
 const managerSongForm = document.querySelector("#managerSongForm");
 const managerArtistMessage = document.querySelector("#managerArtistMessage");
 const managerSongMessage = document.querySelector("#managerSongMessage");
+const managerPayoutMessage = document.querySelector("#managerPayoutMessage");
 
 let currentStore = window.MBA.defaults();
 
@@ -244,6 +245,74 @@ function transactionNet(transaction) {
     return Number(transaction.artistPayout || 0);
   }
   return Math.max(0, transactionGross(transaction) * (ARTIST_PAYOUT_PERCENT / 100));
+}
+
+function payoutSummaryForArtist(artist) {
+  const artistTxns = artistTransactions(artist.id);
+  const grossSales = artistTxns.length
+    ? artistTxns.reduce((sum, transaction) => sum + transactionGross(transaction), 0)
+    : artistRevenue(artist.id);
+  const processorFees = artistTxns.length
+    ? artistTxns.reduce((sum, transaction) => sum + transactionProcessorFee(transaction), 0)
+    : grossSales * (PAYMENT_PROCESSING_FEE_PERCENT / 100);
+  const platformFees = artistTxns.length
+    ? artistTxns.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0)
+    : grossSales * (PLATFORM_SERVICE_FEE_PERCENT / 100);
+  const operationsFees = artistTxns.length
+    ? artistTxns.reduce((sum, transaction) => sum + transactionOperationsFee(transaction), 0)
+    : grossSales * (PLATFORM_OPERATIONS_FEE_PERCENT / 100);
+  const netEarnings = artistTxns.length
+    ? artistTxns.reduce((sum, transaction) => sum + transactionNet(transaction), 0)
+    : grossSales * (ARTIST_PAYOUT_PERCENT / 100);
+  const payableTransactions = artistTxns.filter((transaction) => transaction.payoutStatus !== "paid" && transaction.payoutStatus !== "processing");
+  const availableBalance = payableTransactions.reduce((sum, transaction) => sum + transactionNet(transaction), 0) || (artistTxns.length ? 0 : netEarnings);
+  const payoutStatus = artist.stripeAccountStatus === "connected"
+    ? (availableBalance > 0 ? "pending" : "ready")
+    : stripeStatusLabel(artist.stripeAccountStatus);
+  return {
+    artist,
+    grossSales,
+    processorFees,
+    platformFees,
+    operationsFees,
+    netEarnings,
+    availableBalance,
+    payoutStatus,
+    payableTransactions,
+  };
+}
+
+function downloadCsv(filename, header, rows) {
+  const lines = rows.map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(","));
+  const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function payoutCsvRows(artists) {
+  return artists.map((artist) => {
+    const summary = payoutSummaryForArtist(artist);
+    return [
+      artist.name || artist.handle || "Artist",
+      stripeStatusLabel(artist.stripeAccountStatus),
+      artistDownloads(artist.id),
+      summary.grossSales,
+      summary.processorFees,
+      summary.platformFees,
+      summary.operationsFees,
+      summary.netEarnings,
+      summary.availableBalance,
+      summary.payoutStatus,
+    ];
+  });
+}
+
+function exportPayoutCsv(artists, filename = "musicbusinessarena-payouts.csv") {
+  const header = ["Artist", "Stripe", "Downloads", "Gross Sales", "Processing 5%", "Service 10%", "Operations 5%", "Net 80%", "Available", "Payout Status"];
+  downloadCsv(filename, header, payoutCsvRows(artists));
 }
 
 function stripeStatusLabel(status) {
@@ -663,41 +732,24 @@ function renderPayouts() {
     ? `
       <div class="manager-table-header payout-columns"><span>Artist</span><span>Stripe</span><span>Downloads</span><span>Gross Sales</span><span>Processing 5%</span><span>Service 10%</span><span>Operations 5%</span><span>Net 80%</span><span>Available</span><span>Payout Status</span><span>Actions</span></div>
       ${artists.map((artist) => {
-        const artistTxns = artistTransactions(artist.id);
-        const grossSales = artistTxns.length
-          ? artistTxns.reduce((sum, transaction) => sum + transactionGross(transaction), 0)
-          : artistRevenue(artist.id);
-        const processorFees = artistTxns.length
-          ? artistTxns.reduce((sum, transaction) => sum + transactionProcessorFee(transaction), 0)
-          : grossSales * (PAYMENT_PROCESSING_FEE_PERCENT / 100);
-        const platformFees = artistTxns.length
-          ? artistTxns.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0)
-          : grossSales * (PLATFORM_SERVICE_FEE_PERCENT / 100);
-        const operationsFees = artistTxns.length
-          ? artistTxns.reduce((sum, transaction) => sum + transactionOperationsFee(transaction), 0)
-          : grossSales * (PLATFORM_OPERATIONS_FEE_PERCENT / 100);
-        const netEarnings = artistTxns.length
-          ? artistTxns.reduce((sum, transaction) => sum + transactionNet(transaction), 0)
-          : grossSales * (ARTIST_PAYOUT_PERCENT / 100);
-        const availableBalance = artistTxns
-          .filter((transaction) => transaction.payoutStatus !== "paid" && transaction.payoutStatus !== "processing")
-          .reduce((sum, transaction) => sum + transactionNet(transaction), 0) || netEarnings;
-        const payoutStatus = artist.stripeAccountStatus === "connected"
-          ? (availableBalance > 0 ? "pending" : "ready")
-          : stripeStatusLabel(artist.stripeAccountStatus);
+        const summary = payoutSummaryForArtist(artist);
         return `
-          <article class="manager-table-row payout-columns">
+          <article class="manager-table-row payout-columns" data-id="${artist.id}">
             <strong>${escapeText(artist.name || artist.handle || "Artist")}</strong>
             <span>${escapeText(stripeStatusLabel(artist.stripeAccountStatus))}</span>
             <span>${artistDownloads(artist.id)}</span>
-            <span>${money(grossSales)}</span>
-            <span>${money(processorFees)}</span>
-            <span>${money(platformFees)}</span>
-            <span>${money(operationsFees)}</span>
-            <span>${money(netEarnings)}</span>
-            <span>${money(availableBalance)}</span>
-            <mark>${escapeText(payoutStatus)}</mark>
-            <div class="manager-row-actions"><button type="button">View</button><button type="button">Export</button><button type="button">Mark Paid</button></div>
+            <span>${money(summary.grossSales)}</span>
+            <span>${money(summary.processorFees)}</span>
+            <span>${money(summary.platformFees)}</span>
+            <span>${money(summary.operationsFees)}</span>
+            <span>${money(summary.netEarnings)}</span>
+            <span>${money(summary.availableBalance)}</span>
+            <mark>${escapeText(summary.payoutStatus)}</mark>
+            <div class="manager-row-actions">
+              <button type="button" data-payout-view="${artist.id}">View</button>
+              <button type="button" data-payout-export="${artist.id}">Export</button>
+              <button type="button" data-payout-paid="${artist.id}">Mark Paid</button>
+            </div>
           </article>
         `;
       }).join("")}
@@ -1010,6 +1062,50 @@ managerSongForm?.addEventListener("submit", async (event) => {
   message(managerSongMessage, "Release saved.");
 });
 
+managerPayoutTable?.addEventListener("click", async (event) => {
+  const row = event.target.closest("[data-id]");
+  if (!row) return;
+  const artist = currentStore.artists.find((item) => item.id === row.dataset.id);
+  if (!artist) return;
+
+  if (event.target.closest("[data-payout-view]")) {
+    showArtistAnalytics(artist.id);
+  }
+
+  if (event.target.closest("[data-payout-export]")) {
+    exportPayoutCsv([artist], `musicbusinessarena-payout-${artistSlug(artist)}.csv`);
+    message(managerPayoutMessage, `Exported payout report for ${artist.name || artist.handle || "artist"}.`);
+  }
+
+  if (event.target.closest("[data-payout-paid]")) {
+    const summary = payoutSummaryForArtist(artist);
+    if (!summary.payableTransactions.length) {
+      message(managerPayoutMessage, `No unpaid manual payout records for ${artist.name || artist.handle || "artist"}.`, "pending");
+      return;
+    }
+    const paidAt = new Date().toISOString();
+    summary.payableTransactions.forEach((transaction) => {
+      transaction.payoutStatus = "paid";
+      transaction.paidOutAt = paidAt;
+      transaction.updatedAt = paidAt;
+    });
+    currentStore.auditLogs = [
+      ...(currentStore.auditLogs || []),
+      {
+        id: `payout-paid-${artist.id}-${Date.now().toString(36)}`,
+        action: "Marked artist payout paid",
+        artistId: artist.id,
+        artistName: artist.name || artist.handle || "Artist",
+        amount: summary.payableTransactions.reduce((sum, transaction) => sum + transactionNet(transaction), 0),
+        createdAt: paidAt,
+        reason: "Store Manager payout action",
+      },
+    ];
+    await saveAndRender();
+    message(managerPayoutMessage, `Marked ${summary.payableTransactions.length} payout record(s) paid for ${artist.name || artist.handle || "artist"}.`);
+  }
+});
+
 [artistSearchInput, artistStatusFilter, artistSortSelect].forEach((control) => {
   control?.addEventListener("input", renderArtists);
   control?.addEventListener("change", renderArtists);
@@ -1063,6 +1159,11 @@ document.querySelector("#exportDownloadsCsv")?.addEventListener("click", () => {
   link.download = "musicbusinessarena-downloads.csv";
   link.click();
   URL.revokeObjectURL(link.href);
+});
+
+document.querySelector("#exportPayoutsCsv")?.addEventListener("click", () => {
+  exportPayoutCsv(currentStore.artists || []);
+  message(managerPayoutMessage, "Exported platform payout report.");
 });
 
 /* ===================================================
