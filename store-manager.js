@@ -37,6 +37,7 @@ const songGenreFilter = document.querySelector("#songGenreFilter");
 const downloadSearchInput = document.querySelector("#downloadSearchInput");
 const downloadArtistFilter = document.querySelector("#downloadArtistFilter");
 const downloadCountryFilter = document.querySelector("#downloadCountryFilter");
+const managerAnalyticsArtistSelect = document.querySelector("#managerAnalyticsArtistSelect");
 
 const managerArtistTable = document.querySelector("#managerArtistTable");
 const managerSongTable = document.querySelector("#managerSongTable");
@@ -264,6 +265,87 @@ function videoEntries() {
   });
 }
 
+function scopedAnalyticsArtist() {
+  const artistId = managerAnalyticsArtistSelect?.value || "";
+  return artistId ? (currentStore.artists || []).find((artist) => String(artist.id) === String(artistId)) || null : null;
+}
+
+function scopedAnalyticsReleases() {
+  const artist = scopedAnalyticsArtist();
+  const releases = currentStore.releases || [];
+  return artist ? releases.filter((release) => String(release.artistId) === String(artist.id)) : releases;
+}
+
+function scopedAnalyticsTransactions() {
+  const artist = scopedAnalyticsArtist();
+  const transactions = currentStore.transactions || [];
+  return artist ? transactions.filter((transaction) => String(transaction.artistId) === String(artist.id)) : transactions;
+}
+
+function scopedAnalyticsArtists() {
+  const artist = scopedAnalyticsArtist();
+  return artist ? [artist] : (currentStore.artists || []);
+}
+
+function platformClickItems(releases) {
+  const totals = {};
+  releases.forEach((release) => {
+    Object.entries(release.platformClicks || {}).forEach(([platform, count]) => {
+      totals[platform] = Number(totals[platform] || 0) + Number(count || 0);
+    });
+  });
+  return Object.entries(totals)
+    .map(([platform, clicks]) => ({ title: platformLabel(platform), clicks }))
+    .filter((item) => item.clicks > 0)
+    .sort((a, b) => b.clicks - a.clicks || a.title.localeCompare(b.title));
+}
+
+function platformLabel(key) {
+  return String(key || "Platform")
+    .replace(/[-_]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function artistVisitTotals(artists) {
+  return artists.reduce(
+    (totals, artist) => ({
+      profileViews: totals.profileViews + Number(artist.profileViews || artist.followers || 0),
+      artistPageVisits: totals.artistPageVisits + Number(artist.artistPageVisits || 0),
+      musicPageVisits: totals.musicPageVisits + Number(artist.musicPageVisits || 0),
+      videoPageVisits: totals.videoPageVisits + Number(artist.videoPageVisits || 0),
+      downloadPageVisits: totals.downloadPageVisits + Number(artist.downloadPageVisits || 0),
+    }),
+    { profileViews: 0, artistPageVisits: 0, musicPageVisits: 0, videoPageVisits: 0, downloadPageVisits: 0 }
+  );
+}
+
+function analyticsFinancials(releases, transactions) {
+  const hasTransactions = transactions.length > 0;
+  const gross = hasTransactions
+    ? transactions.reduce((sum, transaction) => sum + transactionGross(transaction), 0)
+    : releases.reduce((sum, release) => sum + releaseRevenue(release), 0);
+  const processingFees = hasTransactions
+    ? transactions.reduce((sum, transaction) => sum + transactionProcessorFee(transaction), 0)
+    : gross * (PAYMENT_PROCESSING_FEE_PERCENT / 100);
+  const platformFees = hasTransactions
+    ? transactions.reduce((sum, transaction) => sum + transactionPlatformFee(transaction), 0)
+    : gross * (PLATFORM_SERVICE_FEE_PERCENT / 100);
+  const operationsFees = hasTransactions
+    ? transactions.reduce((sum, transaction) => sum + transactionOperationsFee(transaction), 0)
+    : gross * (PLATFORM_OPERATIONS_FEE_PERCENT / 100);
+  const net = hasTransactions
+    ? transactions.reduce((sum, transaction) => sum + transactionNet(transaction), 0)
+    : gross * (ARTIST_PAYOUT_PERCENT / 100);
+  return { gross, processingFees, platformFees, operationsFees, net };
+}
+
+function showArtistAnalytics(artistId) {
+  if (managerAnalyticsArtistSelect) managerAnalyticsArtistSelect.value = artistId || "";
+  renderAnalytics();
+  showManagerSection("managerAnalytics");
+}
+
 /* ===================================================
    STORE MANAGER NAVIGATION AND PAGE SETUP
 
@@ -311,10 +393,10 @@ function populateFilters() {
   const genres = [...new Set((currentStore.releases || []).map((release) => release.genre).filter(Boolean))].sort();
   const countries = [...new Set((currentStore.releases || []).map((release) => release.country).filter(Boolean))].sort();
 
-  [songArtistFilter, downloadArtistFilter].forEach((select) => {
+  [songArtistFilter, downloadArtistFilter, managerAnalyticsArtistSelect].forEach((select) => {
     if (!select) return;
     const value = select.value;
-    select.replaceChildren(new Option("All artists", ""));
+    select.replaceChildren(new Option(select === managerAnalyticsArtistSelect ? "All artists analytics" : "All artists", ""));
     artists.forEach((artist) => select.append(new Option(artist.name || artist.handle || "Untitled artist", artist.id)));
     select.value = [...select.options].some((option) => option.value === value) ? value : "";
   });
@@ -416,6 +498,7 @@ function renderArtists() {
           <div class="manager-row-actions">
             <a href="${escapeAttr(artistCatalogPath(artist))}" target="_blank" rel="noreferrer">View Artist</a>
             <a href="/upload" target="_blank" rel="noreferrer">Open Dashboard</a>
+            <button type="button" data-artist-analytics="${artist.id}">Analytics</button>
             <button type="button" data-edit-artist="${artist.id}">Edit Artist</button>
             <button type="button" data-artist-status="suspended">Suspend Artist</button>
             <button type="button" data-artist-status="approved">Reactivate Artist</button>
@@ -470,6 +553,7 @@ function renderSongs() {
           <span>${formatDate(release.createdAt || release.releaseDate)}</span>
           <div class="manager-row-actions">
             <a href="${escapeAttr(releaseCatalogPath(release))}" target="_blank" rel="noreferrer">View</a>
+            <button type="button" data-release-analytics="${release.id}">Analytics</button>
             <button type="button" data-edit-song="${release.id}">Edit</button>
             <button type="button" data-song-status="approved">Approve</button>
             <button type="button" data-song-status="denied">Reject</button>
@@ -628,18 +712,101 @@ function renderPayouts() {
    streaming platform clicks, and overall website activity.
 =================================================== */
 function renderAnalytics() {
-  const topArtist = (currentStore.artists || []).slice().sort((a, b) => artistRevenue(b.id) - artistRevenue(a.id))[0];
-  const topSong = (currentStore.releases || []).slice().sort((a, b) => releaseRevenue(b) - releaseRevenue(a))[0];
-  const topPlatform = (currentStore.releases || []).flatMap((release) => Object.entries(release.streaming || {}).filter(([, value]) => value)).map(([key]) => key)[0] || "None";
-  const topCountry = (currentStore.releases || []).find((release) => release.country)?.country || "None";
-  setText("#analyticsTotalArtists", String((currentStore.artists || []).length));
-  setText("#analyticsTotalSongs", String((currentStore.releases || []).length));
-  setText("#analyticsTotalDownloads", String((currentStore.releases || []).reduce((sum, release) => sum + Number(release.downloads || 0), 0)));
-  setText("#analyticsTotalRevenue", money((currentStore.releases || []).reduce((sum, release) => sum + releaseRevenue(release), 0)));
-  setText("#analyticsTopArtist", topArtist?.name || "None");
-  setText("#analyticsTopSong", topSong?.title || "None");
+  const selectedArtist = scopedAnalyticsArtist();
+  const artists = scopedAnalyticsArtists();
+  const releases = scopedAnalyticsReleases();
+  const transactions = scopedAnalyticsTransactions();
+  const financials = analyticsFinancials(releases, transactions);
+  const visitTotals = artistVisitTotals(artists);
+  const topArtist = artists.slice().sort((a, b) => artistRevenue(b.id) - artistRevenue(a.id))[0];
+  const topRelease = releases.slice().sort((a, b) => releaseRevenue(b) - releaseRevenue(a) || Number(b.downloads || 0) - Number(a.downloads || 0))[0];
+  const platformItems = platformClickItems(releases);
+  const topCountry = releases.find((release) => release.country)?.country || "None";
+  const downloads = releases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
+  const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
+
+  setText("#analyticsTotalArtists", String(selectedArtist ? 1 : (currentStore.artists || []).length));
+  setText("#analyticsTotalSongs", String(releases.length));
+  setText("#analyticsTotalDownloads", String(downloads));
+  setText("#analyticsTotalRevenue", money(financials.gross));
+  setText("#analyticsTopArtist", topArtist?.name || topArtist?.handle || "None");
+  setText("#analyticsTopSong", topRelease?.title || "None");
   setText("#analyticsTopCountry", topCountry);
-  setText("#analyticsTopPlatform", topPlatform);
+  setText("#analyticsTopPlatform", platformItems[0]?.title || "None");
+  setText("#analyticsProfileViews", String(visitTotals.profileViews));
+  setText("#analyticsArtistVisits", String(visitTotals.artistPageVisits));
+  setText("#analyticsMusicVisits", String(visitTotals.musicPageVisits || releases.reduce((sum, release) => sum + Number(release.plays || 0), 0)));
+  setText("#analyticsVideoVisits", String(visitTotals.videoPageVisits));
+  setText("#analyticsDownloadVisits", String(visitTotals.downloadPageVisits));
+  setText("#analyticsStreamingClicks", String(streamingClicks));
+  setText("#analyticsNetEarnings", money(financials.net));
+  setText("#analyticsPlatformFees", money(financials.platformFees + financials.processingFees + financials.operationsFees));
+  setText("#analyticsTrafficSources", selectedArtist?.trafficSources || "Direct");
+
+  renderList(
+    "#analyticsTopReleaseList",
+    releases
+      .slice()
+      .sort((a, b) => Number(b.downloads || 0) - Number(a.downloads || 0) || Number(b.streamingClicks || 0) - Number(a.streamingClicks || 0))
+      .slice(0, 8)
+      .map((release) => ({
+        title: release.title || "Untitled release",
+        meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${Number(release.streamingClicks || 0)} stream clicks | ${money(releaseRevenue(release))}`,
+      })),
+    "Release analytics will appear after artists upload audio."
+  );
+  renderList(
+    "#analyticsRevenueBreakdown",
+    [
+      { title: "Gross sales", meta: money(financials.gross) },
+      { title: "Artist net", meta: money(financials.net) },
+      { title: "Processing fees", meta: money(financials.processingFees) },
+      { title: "Service fees", meta: money(financials.platformFees) },
+      { title: "Operations fees", meta: money(financials.operationsFees) },
+    ],
+    "Revenue data will appear after sales."
+  );
+  renderList(
+    "#analyticsPlatformBreakdown",
+    platformItems.slice(0, 8).map((item) => ({ title: item.title, meta: `${item.clicks} clicks` })),
+    "Streaming click analytics will appear after fans click platform links."
+  );
+  renderList(
+    "#analyticsVisitBreakdown",
+    [
+      { title: "Profile views", meta: String(visitTotals.profileViews) },
+      { title: "Artist home visits", meta: String(visitTotals.artistPageVisits) },
+      { title: "Music / beats visits", meta: String(visitTotals.musicPageVisits) },
+      { title: "Video visits", meta: String(visitTotals.videoPageVisits) },
+      { title: "Download page visits", meta: String(visitTotals.downloadPageVisits) },
+    ],
+    "Visit analytics will appear after public page traffic."
+  );
+  renderList(
+    "#analyticsRecentDownloads",
+    releases
+      .filter((release) => Number(release.downloads || 0) > 0)
+      .slice()
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+      .slice(0, 8)
+      .map((release) => ({
+        title: release.title || "Untitled release",
+        meta: `${release.artistName || "Artist"} | ${release.downloads} downloads | ${release.country || "United States"}`,
+      })),
+    "Download analytics will appear after purchases."
+  );
+  renderList(
+    "#analyticsArtistSummary",
+    artists
+      .slice()
+      .sort((a, b) => artistRevenue(b.id) - artistRevenue(a.id))
+      .slice(0, 8)
+      .map((artist) => ({
+        title: artist.name || artist.handle || "Untitled artist",
+        meta: `${artistReleases(artist.id).length} releases | ${artistDownloads(artist.id)} downloads | ${money(artistRevenue(artist.id))}`,
+      })),
+    "Artist analytics will appear after artists join."
+  );
 }
 
 /* ===================================================
@@ -746,6 +913,10 @@ managerArtistTable?.addEventListener("click", async (event) => {
     managerArtistForm.status.value = artist.status || "approved";
   }
 
+  if (event.target.closest("[data-artist-analytics]")) {
+    showArtistAnalytics(artist.id);
+  }
+
   const statusButton = event.target.closest("[data-artist-status]");
   if (statusButton) {
     artist.status = statusButton.dataset.artistStatus;
@@ -794,6 +965,10 @@ managerSongTable?.addEventListener("click", async (event) => {
     managerSongForm.price.value = release.price || 0;
     managerSongForm.status.value = release.status || "pending";
     managerSongForm.songBio.value = release.songBio || "";
+  }
+
+  if (event.target.closest("[data-release-analytics]")) {
+    showArtistAnalytics(release.artistId);
   }
 
   const statusButton = event.target.closest("[data-song-status]");
@@ -849,6 +1024,8 @@ managerSongForm?.addEventListener("submit", async (event) => {
   control?.addEventListener("input", renderDownloads);
   control?.addEventListener("change", renderDownloads);
 });
+
+managerAnalyticsArtistSelect?.addEventListener("change", renderAnalytics);
 
 managerNavLinks.forEach((link) => {
   link.addEventListener("click", (event) => {

@@ -293,6 +293,11 @@
         ================================================== -->
         <section class="manager-dashboard-section" id="managerAnalytics" data-section-title="Analytics">
           <div class="manager-section-heading"><div><p class="eyebrow">Platform growth</p><h2>Analytics</h2></div></div>
+          <section class="manager-console-card">
+            <div class="manager-tools">
+              <label>View Artist Analytics <select id="managerAnalyticsArtistSelect"><option value="">All artists</option></select></label>
+            </div>
+          </section>
           <section class="manager-metric-grid analytics-grid">
             <article><span>Total Artists</span><strong id="analyticsTotalArtists">0</strong></article>
             <article><span>Total Releases</span><strong id="analyticsTotalSongs">0</strong></article>
@@ -302,9 +307,23 @@
             <article><span>Top Releases</span><strong id="analyticsTopSong">None</strong></article>
             <article><span>Top Download Countries</span><strong id="analyticsTopCountry">None</strong></article>
             <article><span>Most Clicked Streaming Platforms</span><strong id="analyticsTopPlatform">None</strong></article>
-            <article><span>Traffic Sources</span><strong>Direct</strong></article>
-            <article><span>Monthly Growth Charts</span><strong>Ready</strong></article>
-            <article><span>Yearly Growth Charts</span><strong>Ready</strong></article>
+            <article><span>Profile Views</span><strong id="analyticsProfileViews">0</strong></article>
+            <article><span>Artist Page Visits</span><strong id="analyticsArtistVisits">0</strong></article>
+            <article><span>Music / Beats Visits</span><strong id="analyticsMusicVisits">0</strong></article>
+            <article><span>Video Visits</span><strong id="analyticsVideoVisits">0</strong></article>
+            <article><span>Download Page Visits</span><strong id="analyticsDownloadVisits">0</strong></article>
+            <article><span>Streaming Clicks</span><strong id="analyticsStreamingClicks">0</strong></article>
+            <article><span>Net Artist Earnings</span><strong id="analyticsNetEarnings">$0.00</strong></article>
+            <article><span>Platform Fees</span><strong id="analyticsPlatformFees">$0.00</strong></article>
+            <article><span>Traffic Sources</span><strong id="analyticsTrafficSources">Direct</strong></article>
+          </section>
+          <section class="manager-dashboard-grid">
+            <article class="manager-console-card"><h3>Top Releases</h3><div class="manager-list" id="analyticsTopReleaseList"></div></article>
+            <article class="manager-console-card"><h3>Revenue Breakdown</h3><div class="manager-list" id="analyticsRevenueBreakdown"></div></article>
+            <article class="manager-console-card"><h3>Streaming Platforms</h3><div class="manager-list" id="analyticsPlatformBreakdown"></div></article>
+            <article class="manager-console-card"><h3>Page Visits</h3><div class="manager-list" id="analyticsVisitBreakdown"></div></article>
+            <article class="manager-console-card"><h3>Recent Downloads</h3><div class="manager-list" id="analyticsRecentDownloads"></div></article>
+            <article class="manager-console-card"><h3>Artist Summary</h3><div class="manager-list" id="analyticsArtistSummary"></div></article>
           </section>
         </section>
 
