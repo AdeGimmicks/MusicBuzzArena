@@ -73,6 +73,12 @@ const STORE_MANAGER_PASSWORD = envValue("STORE_MANAGER_PASSWORD", "ADMIN_PASSWOR
 const STORE_MANAGER_PASSWORD_HASH = envValue("STORE_MANAGER_PASSWORD_HASH", "ADMIN_PASSWORD_HASH");
 const RESEND_API_KEY = envValue("RESEND_API_KEY");
 const ARTIST_EMAIL_FROM = envValue("ARTIST_EMAIL_FROM", "EMAIL_FROM") || "MusicBusiness Arena <noreply@musicbusinessarena.com>";
+const CONTACT_EMAIL_FROM = envValue("CONTACT_EMAIL_FROM", "EMAIL_FROM") || ARTIST_EMAIL_FROM;
+const CONTACT_GENERAL_EMAIL = normalizeEmail(envValue("CONTACT_GENERAL_EMAIL") || "musicbusinessarena@gmail.com");
+const CONTACT_ARTIST_SUPPORT_EMAIL = normalizeEmail(envValue("CONTACT_ARTIST_SUPPORT_EMAIL", "CONTACT_ARTIST_EMAIL") || "musicbuzzarenaartists@gmail.com");
+const CONTACT_COPYRIGHT_EMAIL = normalizeEmail(envValue("CONTACT_COPYRIGHT_EMAIL", "CONTACT_DMCA_EMAIL") || "musicbuzzarenaartists@gmail.com");
+const CONTACT_PAYOUT_EMAIL = normalizeEmail(envValue("CONTACT_PAYOUT_EMAIL") || CONTACT_GENERAL_EMAIL);
+const CONTACT_TECHNICAL_EMAIL = normalizeEmail(envValue("CONTACT_TECHNICAL_EMAIL") || CONTACT_GENERAL_EMAIL);
 const OWNER_ARTIST_NAME = envValue("OWNER_ARTIST_NAME") || "Focuzman";
 const OWNER_ARTIST_EMAIL = normalizeEmail(envValue("OWNER_ARTIST_EMAIL") || "focuzmanmusic@gmail.com");
 const OWNER_ARTIST_INITIAL_PASSWORD = envValue("OWNER_ARTIST_INITIAL_PASSWORD") || "Focuzmanmbaacct@123";
@@ -342,6 +348,7 @@ function defaultStore() {
     transactions: [],
     analyticsArchive: [],
     auditLogs: [],
+    contactMessages: [],
     artistAccounts: [],
     storeManagerAccounts: [],
   };
@@ -400,6 +407,7 @@ function mergeStore(store) {
     transactions: Array.isArray(store?.transactions) ? store.transactions : [],
     analyticsArchive: Array.isArray(store?.analyticsArchive) ? store.analyticsArchive : [],
     auditLogs: Array.isArray(store?.auditLogs) ? store.auditLogs : [],
+    contactMessages: Array.isArray(store?.contactMessages) ? store.contactMessages : [],
     artistAccounts: Array.isArray(store?.artistAccounts) ? store.artistAccounts : [],
     storeManagerAccounts: Array.isArray(store?.storeManagerAccounts) ? store.storeManagerAccounts : [],
   };
@@ -544,6 +552,7 @@ function withoutClientAnalytics(store) {
   sanitized.transactions = [];
   sanitized.analyticsArchive = [];
   sanitized.auditLogs = [];
+  sanitized.contactMessages = [];
   return sanitized;
 }
 
@@ -997,6 +1006,7 @@ function publicStore(store) {
   delete sanitized.artistAccounts;
   delete sanitized.storeManagerAccounts;
   delete sanitized.auditLogs;
+  delete sanitized.contactMessages;
   sanitized.artists = (sanitized.artists || []).map((artist) => {
     const publicArtist = { ...artist };
     delete publicArtist.stripeAccountId;
@@ -1198,6 +1208,147 @@ async function sendArtistEmail(to, subject, body) {
   }
   // Development fallback: the link remains visible in server logs until email provider env vars are configured.
   console.log(`[Artist email] To: ${to}\nSubject: ${subject}\n${body}`);
+}
+
+function contactInquiryLabel(inquiryType) {
+  return {
+    general: "General Inquiry",
+    copyright: "Copyright / DMCA",
+    artistSupport: "Artist Support",
+    payout: "Payout / Download Support",
+    technical: "Technical Issue",
+  }[inquiryType] || "General Inquiry";
+}
+
+function normalizeContactInquiryType(value) {
+  const key = String(value || "").trim().toLowerCase();
+  if (["copyright", "dmca", "copyright-dmca", "copyright_dmca"].includes(key)) return "copyright";
+  if (["artist", "artist-support", "artist_support", "support"].includes(key)) return "artistSupport";
+  if (["payout", "download", "payment", "payout-download", "payout_download"].includes(key)) return "payout";
+  if (["technical", "tech", "bug", "technical-issue", "technical_issue"].includes(key)) return "technical";
+  return "general";
+}
+
+function inferContactInquiryType(inquiryType, subject, message) {
+  const explicitType = normalizeContactInquiryType(inquiryType);
+  if (explicitType !== "general") return explicitType;
+  const text = `${subject || ""} ${message || ""}`.toLowerCase();
+  if (/\b(dmca|copyright|infringement|takedown|stolen|unauthorized)\b/.test(text)) return "copyright";
+  if (/\b(artist|profile|upload|account|login|password|song|beat|instrumental)\b/.test(text)) return "artistSupport";
+  if (/\b(payout|payment|stripe|paid|download|refund|purchase|money|earning|revenue)\b/.test(text)) return "payout";
+  if (/\b(error|bug|broken|technical|website|page|not working|issue)\b/.test(text)) return "technical";
+  return "general";
+}
+
+function contactRecipientForType(inquiryType) {
+  return {
+    general: CONTACT_GENERAL_EMAIL,
+    copyright: CONTACT_COPYRIGHT_EMAIL,
+    artistSupport: CONTACT_ARTIST_SUPPORT_EMAIL,
+    payout: CONTACT_PAYOUT_EMAIL,
+    technical: CONTACT_TECHNICAL_EMAIL,
+  }[inquiryType] || CONTACT_GENERAL_EMAIL;
+}
+
+async function sendContactEmail(to, subject, body, replyTo) {
+  if (RESEND_API_KEY) {
+    try {
+      const payload = {
+        from: CONTACT_EMAIL_FROM,
+        to: [to],
+        subject,
+        text: body,
+      };
+      if (replyTo) payload.reply_to = replyTo;
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) return true;
+      console.warn(`[Contact email] Resend failed with ${response.status}: ${await response.text()}`);
+    } catch (error) {
+      console.warn(`[Contact email] Resend request failed: ${error.message}`);
+    }
+    return false;
+  }
+  console.log(`[Contact email] To: ${to}\nSubject: ${subject}\n${body}`);
+  return true;
+}
+
+async function submitContactMessage(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = parseRequestBody(bodyText, request);
+  const name = String(body.name || "").trim();
+  const email = normalizeEmail(body.email);
+  const subject = String(body.subject || "").trim();
+  const message = String(body.message || "").trim();
+  const inquiryType = inferContactInquiryType(body.inquiryType, subject, message);
+  const inquiryLabel = contactInquiryLabel(inquiryType);
+  const recipient = contactRecipientForType(inquiryType);
+
+  if (!name || !email || !subject || !message) {
+    sendJson(response, 400, { error: "Full name, email address, subject, and message are required." });
+    return;
+  }
+
+  if (!recipient) {
+    sendJson(response, 500, { error: "Contact email routing is not configured." });
+    return;
+  }
+
+  const createdAt = new Date().toISOString();
+  const record = {
+    id: `contact-${Date.now()}-${randomToken().slice(0, 8)}`,
+    name,
+    email,
+    inquiryType,
+    inquiryLabel,
+    subject,
+    message,
+    recipient,
+    status: "pending",
+    createdAt,
+  };
+
+  const emailSubject = `[${inquiryLabel}] ${subject}`;
+  const emailBody = [
+    "New MusicBusiness Arena contact message",
+    "",
+    `Inquiry Type: ${inquiryLabel}`,
+    `Name: ${name}`,
+    `Email: ${email}`,
+    `Submitted: ${createdAt}`,
+    "",
+    "Subject:",
+    subject,
+    "",
+    "Message:",
+    message,
+  ].join("\n");
+
+  const delivered = await sendContactEmail(recipient, emailSubject, emailBody, email);
+  record.status = delivered ? "sent" : "email_failed";
+  await mutateStore((store) => {
+    store.contactMessages = Array.isArray(store.contactMessages) ? store.contactMessages : [];
+    store.contactMessages.unshift(record);
+    store.contactMessages = store.contactMessages.slice(0, 500);
+  });
+  if (!delivered) {
+    sendJson(response, 502, {
+      error: "Your message was saved, but email delivery failed. Please try again later.",
+      inquiryType,
+    });
+    return;
+  }
+  sendJson(response, 200, {
+    ok: true,
+    message: "Your message has been sent. Thank you for contacting MusicBusiness Arena.",
+    inquiryType,
+  });
 }
 
 function timingSafeEqualText(left, right) {
@@ -2803,6 +2954,11 @@ async function handleRequest(request, response) {
 
     if (url.pathname === "/api/store" && request.method === "GET") {
       sendJson(response, 200, publicStore(await readStore()));
+      return;
+    }
+
+    if (url.pathname === "/api/contact-message" && request.method === "POST") {
+      await submitContactMessage(request, response);
       return;
     }
 

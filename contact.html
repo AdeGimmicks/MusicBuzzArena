@@ -103,7 +103,7 @@
 
 <h2>Contact Form</h2>
 
-<form>
+<form id="contactForm" data-contact-form>
     <p>
         <label>Full Name</label><br>
         <input type="text" name="name" required>
@@ -112,6 +112,17 @@
     <p>
         <label>Email Address</label><br>
         <input type="email" name="email" required>
+    </p>
+
+    <p>
+        <label>Inquiry Type</label><br>
+        <select name="inquiryType" required>
+            <option value="general">General Inquiry</option>
+            <option value="copyright">Copyright / DMCA</option>
+            <option value="artistSupport">Artist Support</option>
+            <option value="payout">Payout / Download Support</option>
+            <option value="technical">Technical Issue</option>
+        </select>
     </p>
 
     <p>
@@ -125,10 +136,47 @@
     </p>
 
     <button type="submit">Send Message</button>
+    <p data-contact-status role="status" aria-live="polite"></p>
 </form>
 
 <script src="mba-storage.js"></script>
 <script src="public-context.js"></script>
+<script>
+  document.addEventListener("submit", async (event) => {
+    const form = event.target.closest("[data-contact-form]");
+    if (!form) return;
+    event.preventDefault();
+
+    const status = form.querySelector("[data-contact-status]");
+    const button = form.querySelector('button[type="submit"]');
+    const originalText = button ? button.textContent : "";
+    if (status) status.textContent = "Sending message...";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Sending...";
+    }
+
+    try {
+      const payload = Object.fromEntries(new FormData(form).entries());
+      const response = await fetch("/api/contact-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Message could not be sent.");
+      form.reset();
+      if (status) status.textContent = result.message || "Your message has been sent.";
+    } catch (error) {
+      if (status) status.textContent = error.message || "Message could not be sent.";
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText || "Send Message";
+      }
+    }
+  });
+</script>
 </body>
 </html>
 
