@@ -1265,22 +1265,27 @@ function contactAutoReplyBody({ name, inquiryType, inquiryLabel, subject }) {
   const typeLines = {
     general: [
       "Our team will review your message and reply if more information is needed.",
+      "If your message is about a specific artist, release, download, payment, or account, please keep the artist name, song title, page link, and any receipt or screenshot available so we can review it faster.",
     ],
     copyright: [
-      "For copyright or DMCA concerns, MusicBusiness Arena will review the report under the platform policies.",
-      "If the report concerns a specific artist, release, beat, video, or uploaded content, please keep any supporting proof available. The platform may review, hide, reject, suspend, or remove content when appropriate, but this confirmation is not a final decision on the claim.",
+      "We received your copyright / DMCA message. MusicBusiness Arena will review copyright reports under the platform policies and applicable notice-and-takedown procedures.",
+      "Please keep the exact artist name, song or video title, public page link, proof of ownership or authorization, and any supporting documents available. If more information is needed, the platform may ask you for those details before taking action.",
+      "If the report concerns content uploaded by an artist, the platform may notify the artist/uploader and give them a chance to respond. MusicBusiness Arena may hide, reject, remove, suspend, or delete content or accounts when appropriate, but this confirmation email is not a final decision on the claim.",
+      "For privacy and security, MusicBusiness Arena does not automatically share private artist account details from this public contact form.",
     ],
     artistSupport: [
-      "For artist account or upload questions, please also check your Artist Dashboard for current account, release, and upload status.",
-      "Our team will review your message and reply if account-specific help is needed.",
+      "For artist account, upload, release, beat, instrumental, video, streaming link, download, login, or profile questions, please also check your Artist Dashboard for the latest account and release status.",
+      "If your question is about a specific release, include the release title and the page link when replying. Our team will review your message and reply if account-specific help is needed.",
     ],
     payout: [
-      "For payout or download-support questions, please check your Artist Dashboard for your current earnings, downloads, Stripe status, and payout information.",
-      "Our team will review your message. For security, we do not send detailed payout decisions from the public contact form until the account can be verified.",
+      "We received your payout / download-support message. Please check your Artist Dashboard for your current downloads, earnings, Stripe status, and payout information.",
+      "MusicBusiness Arena generally processes artist payouts according to the platform payout policy. If an eligible payout is still pending, please allow normal processing time. Bank, Stripe, and business-day timing can sometimes take a few days after payout processing begins.",
+      "If you believe a payout is missing, please keep the artist name, registered artist email, release title, download/payment details, and any Stripe or receipt information available. Our team will review the account record before giving a payout-specific answer.",
+      "For security, detailed payout decisions are not sent from the public contact form unless the artist account can be verified.",
     ],
     technical: [
       "For technical issues, our team will review the page, account, or feature you reported.",
-      "If possible, keep a screenshot or the exact page link available in case we need more information.",
+      "If possible, keep a screenshot, the exact page link, your device/browser, and the steps that caused the issue available in case we need more information.",
     ],
   }[inquiryType] || [];
 
