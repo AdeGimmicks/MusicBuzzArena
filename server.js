@@ -1250,6 +1250,49 @@ function contactRecipientForType(inquiryType) {
   }[inquiryType] || CONTACT_GENERAL_EMAIL;
 }
 
+function contactAutoReplyBody({ name, inquiryType, inquiryLabel, subject }) {
+  const greeting = name ? `Hello ${name},` : "Hello,";
+  const baseLines = [
+    greeting,
+    "",
+    "Thank you for contacting MusicBusiness Arena. We received your message and routed it to the correct support channel.",
+    "",
+    `Inquiry Type: ${inquiryLabel}`,
+    `Subject: ${subject}`,
+    "",
+  ];
+
+  const typeLines = {
+    general: [
+      "Our team will review your message and reply if more information is needed.",
+    ],
+    copyright: [
+      "For copyright or DMCA concerns, MusicBusiness Arena will review the report under the platform policies.",
+      "If the report concerns a specific artist, release, beat, video, or uploaded content, please keep any supporting proof available. The platform may review, hide, reject, suspend, or remove content when appropriate, but this confirmation is not a final decision on the claim.",
+    ],
+    artistSupport: [
+      "For artist account or upload questions, please also check your Artist Dashboard for current account, release, and upload status.",
+      "Our team will review your message and reply if account-specific help is needed.",
+    ],
+    payout: [
+      "For payout or download-support questions, please check your Artist Dashboard for your current earnings, downloads, Stripe status, and payout information.",
+      "Our team will review your message. For security, we do not send detailed payout decisions from the public contact form until the account can be verified.",
+    ],
+    technical: [
+      "For technical issues, our team will review the page, account, or feature you reported.",
+      "If possible, keep a screenshot or the exact page link available in case we need more information.",
+    ],
+  }[inquiryType] || [];
+
+  return [
+    ...baseLines,
+    ...typeLines,
+    "",
+    "MusicBusiness Arena",
+    "https://musicbusinessarena.com",
+  ].join("\n");
+}
+
 async function sendContactEmail(to, subject, body, replyTo) {
   if (RESEND_API_KEY) {
     try {
@@ -1332,6 +1375,16 @@ async function submitContactMessage(request, response) {
 
   const delivered = await sendContactEmail(recipient, emailSubject, emailBody, email);
   record.status = delivered ? "sent" : "email_failed";
+  let autoReplyDelivered = false;
+  if (delivered) {
+    autoReplyDelivered = await sendContactEmail(
+      email,
+      `We received your MusicBusiness Arena message: ${subject}`,
+      contactAutoReplyBody({ name, inquiryType, inquiryLabel, subject }),
+      recipient
+    );
+    record.autoReplyStatus = autoReplyDelivered ? "sent" : "email_failed";
+  }
   await mutateStore((store) => {
     store.contactMessages = Array.isArray(store.contactMessages) ? store.contactMessages : [];
     store.contactMessages.unshift(record);
