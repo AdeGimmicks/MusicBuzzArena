@@ -593,8 +593,9 @@ function linkHubPage(release, artist) {
         </label>
         <label class="subscribe-consent">
           <input type="checkbox">
-          <span>I agree to share my contact details with ${artistLabel}. Optional.</span>
+          <span>I agree to receive updates from MusicBusiness Arena about ${artistLabel}.</span>
         </label>
+        <p class="subscribe-status" data-subscribe-status aria-live="polite"></p>
         <button class="modal-primary" type="button" data-submit-subscribe>Subscribe</button>
       </div>
     </div>
@@ -769,9 +770,54 @@ function linkHubPage(release, artist) {
       if (label) label.textContent = "Copy link";
     }, 1400);
   });
-  wrap.querySelector("[data-submit-subscribe]")?.addEventListener("click", (event) => {
-    event.currentTarget.textContent = "Subscribed";
-    window.setTimeout(closeModals, 900);
+  wrap.querySelector("[data-submit-subscribe]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const modal = wrap.querySelector("[data-subscribe-modal]");
+    const emailInput = modal?.querySelector(".subscribe-email input");
+    const consentInput = modal?.querySelector(".subscribe-consent input");
+    const status = modal?.querySelector("[data-subscribe-status]");
+    const originalText = button.textContent;
+    const email = String(emailInput?.value || "").trim();
+
+    if (status) status.textContent = "";
+    if (!email) {
+      if (status) status.textContent = "Please enter your email address.";
+      emailInput?.focus();
+      return;
+    }
+    if (!consentInput?.checked) {
+      if (status) status.textContent = "Please confirm that MusicBusiness Arena can email you about this artist.";
+      consentInput?.focus();
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Subscribing...";
+    try {
+      const response = await fetch("/api/artist-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          artistId: artist.id,
+          releaseId: release.id,
+          email,
+          sourceUrl: window.location.href,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Subscription could not be saved.");
+      const followerLabel = wrap.querySelector(".link-followers");
+      if (followerLabel && Number.isFinite(Number(payload.followerCount))) {
+        followerLabel.textContent = `${Number(payload.followerCount).toLocaleString()} followers`;
+      }
+      button.textContent = payload.alreadySubscribed ? "Already Subscribed" : "Subscribed";
+      if (status) status.textContent = payload.message || "You are subscribed.";
+      window.setTimeout(closeModals, 1100);
+    } catch (error) {
+      if (status) status.textContent = error.message || "Subscription could not be saved.";
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   });
   wrap.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModals));
   wrap.querySelectorAll(".link-modal").forEach((modal) => {

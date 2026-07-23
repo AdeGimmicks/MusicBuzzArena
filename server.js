@@ -349,6 +349,7 @@ function defaultStore() {
     analyticsArchive: [],
     auditLogs: [],
     contactMessages: [],
+    artistSubscribers: [],
     artistAccounts: [],
     storeManagerAccounts: [],
   };
@@ -408,6 +409,7 @@ function mergeStore(store) {
     analyticsArchive: Array.isArray(store?.analyticsArchive) ? store.analyticsArchive : [],
     auditLogs: Array.isArray(store?.auditLogs) ? store.auditLogs : [],
     contactMessages: Array.isArray(store?.contactMessages) ? store.contactMessages : [],
+    artistSubscribers: Array.isArray(store?.artistSubscribers) ? store.artistSubscribers : [],
     artistAccounts: Array.isArray(store?.artistAccounts) ? store.artistAccounts : [],
     storeManagerAccounts: Array.isArray(store?.storeManagerAccounts) ? store.storeManagerAccounts : [],
   };
@@ -553,6 +555,7 @@ function withoutClientAnalytics(store) {
   sanitized.analyticsArchive = [];
   sanitized.auditLogs = [];
   sanitized.contactMessages = [];
+  sanitized.artistSubscribers = [];
   return sanitized;
 }
 
@@ -596,6 +599,7 @@ function mergePersistentStore(existingStore, incomingStore, options = {}) {
     donations: mergeEntityLists(existing.donations, incoming.donations || [], options),
     transactions: mergeEntityLists(existing.transactions, incoming.transactions || [], options),
     auditLogs: mergeEntityLists(existing.auditLogs, incoming.auditLogs || [], options),
+    artistSubscribers: mergeEntityLists(existing.artistSubscribers, incoming.artistSubscribers || [], options),
     artistAccounts: mergeEntityLists(existing.artistAccounts, incoming.artistAccounts || [], options),
     storeManagerAccounts: mergeEntityLists(existing.storeManagerAccounts, incoming.storeManagerAccounts || [], options),
     analyticsArchive,
@@ -1003,12 +1007,21 @@ function publicAccount(account) {
 
 function publicStore(store) {
   const sanitized = cloneValue(store || {});
+  const subscriberCounts = (sanitized.artistSubscribers || []).reduce((counts, subscriber) => {
+    if (subscriber?.status === "unsubscribed") return counts;
+    const artistId = String(subscriber?.artistId || "");
+    if (!artistId) return counts;
+    counts.set(artistId, (counts.get(artistId) || 0) + 1);
+    return counts;
+  }, new Map());
   delete sanitized.artistAccounts;
   delete sanitized.storeManagerAccounts;
   delete sanitized.auditLogs;
   delete sanitized.contactMessages;
+  delete sanitized.artistSubscribers;
   sanitized.artists = (sanitized.artists || []).map((artist) => {
     const publicArtist = { ...artist };
+    publicArtist.subscriberCount = subscriberCounts.get(String(publicArtist.id || "")) || 0;
     delete publicArtist.stripeAccountId;
     delete publicArtist.stripeAccountStatus;
     delete publicArtist.stripeChargesEnabled;
@@ -1406,6 +1419,94 @@ async function submitContactMessage(request, response) {
     ok: true,
     message: "Your message has been sent. Thank you for contacting MusicBusiness Arena.",
     inquiryType,
+  });
+}
+
+async function subscribeToArtist(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = parseRequestBody(bodyText, request);
+  const artistId = String(body.artistId || "").trim();
+  const releaseId = String(body.releaseId || "").trim();
+  const email = normalizeEmail(body.email);
+  const sourceUrl = String(body.sourceUrl || "").trim().slice(0, 500);
+
+  if (!artistId || !email) {
+    sendJson(response, 400, { error: "Artist and email address are required." });
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    sendJson(response, 400, { error: "Please enter a valid email address." });
+    return;
+  }
+
+  const result = await mutateStore((store) => {
+    const artist = (store.artists || []).find((item) => String(item.id) === artistId);
+    if (!artist || String(artist.status || "approved").toLowerCase() !== "approved") {
+      return { error: "This artist is not available for subscriptions." };
+    }
+
+    const now = new Date().toISOString();
+    store.artistSubscribers = Array.isArray(store.artistSubscribers) ? store.artistSubscribers : [];
+    const existing = store.artistSubscribers.find(
+      (subscriber) => String(subscriber.artistId || "") === artistId && normalizeEmail(subscriber.email) === email
+    );
+
+    if (existing) {
+      existing.status = "active";
+      existing.updatedAt = now;
+      existing.lastSourceUrl = sourceUrl;
+      if (releaseId) existing.lastReleaseId = releaseId;
+      return {
+        ok: true,
+        alreadySubscribed: true,
+        artistName: artist.name || "this artist",
+        followerCount: Number(artist.followers || artist.follows || 0),
+        subscriberCount: store.artistSubscribers.filter(
+          (subscriber) => String(subscriber.artistId || "") === artistId && subscriber.status !== "unsubscribed"
+        ).length,
+      };
+    }
+
+    store.artistSubscribers.push({
+      id: `artist-subscriber-${Date.now().toString(36)}-${crypto.randomBytes(6).toString("hex")}`,
+      artistId,
+      artistName: artist.name || "",
+      releaseId,
+      email,
+      sourceUrl,
+      status: "active",
+      consentText: "I agree to receive updates from MusicBusiness Arena about this artist.",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    artist.followers = Number(artist.followers || artist.follows || 0) + 1;
+    return {
+      ok: true,
+      alreadySubscribed: false,
+      artistName: artist.name || "this artist",
+      followerCount: Number(artist.followers || artist.follows || 0),
+      subscriberCount: store.artistSubscribers.filter(
+        (subscriber) => String(subscriber.artistId || "") === artistId && subscriber.status !== "unsubscribed"
+      ).length,
+    };
+  });
+
+  if (result?.error) {
+    sendJson(response, 404, { error: result.error });
+    return;
+  }
+
+  sendJson(response, 200, {
+    ok: true,
+    alreadySubscribed: Boolean(result?.alreadySubscribed),
+    artistName: result?.artistName || "this artist",
+    followerCount: Number(result?.followerCount || result?.subscriberCount || 0),
+    subscriberCount: Number(result?.subscriberCount || 0),
+    message: result?.alreadySubscribed
+      ? `You are already subscribed to ${result?.artistName || "this artist"}.`
+      : `You are subscribed to ${result?.artistName || "this artist"}.`,
   });
 }
 
@@ -3017,6 +3118,11 @@ async function handleRequest(request, response) {
 
     if (url.pathname === "/api/contact-message" && request.method === "POST") {
       await submitContactMessage(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/artist-subscribe" && request.method === "POST") {
+      await subscribeToArtist(request, response);
       return;
     }
 
