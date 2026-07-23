@@ -370,6 +370,20 @@
                 <label>Release Link (optional) <select name="releaseId"><option value="">No release link</option></select></label>
               </div>
               <div class="form-row">
+                <label>Email Button Destination
+                  <select name="linkTarget">
+                    <option value="release-auto">Selected release page</option>
+                    <option value="artist-home">Artist home page</option>
+                    <option value="artist-catalog">Artist music / beats page</option>
+                    <option value="artist-videos">Artist videos page</option>
+                    <option value="release-listen">Release listen page</option>
+                    <option value="release-download">Release download page</option>
+                    <option value="custom">Custom URL</option>
+                  </select>
+                </label>
+                <label>Custom URL <input name="customUrl" type="url" placeholder="https://musicbusinessarena.com/artist/page" /></label>
+              </div>
+              <div class="form-row">
                 <label>Subject Template
                   <select name="subjectTemplate">
                     <option value="new-release">New release announcement</option>
@@ -396,6 +410,18 @@
               </div>
               <label>Message <textarea name="message" rows="7" placeholder="Write the update MusicBusiness Arena should send to this artist's subscribers." required></textarea></label>
               <div class="subscriber-release-preview" id="subscriberReleasePreview" aria-live="polite"></div>
+              <details class="subscriber-template-editor">
+                <summary>Save Or Remove Subscriber Templates</summary>
+                <div class="form-row">
+                  <label>Subject Template Name <input name="subjectTemplateName" type="text" placeholder="Weekend release subject" /></label>
+                  <button class="secondary-button" type="button" id="saveSubscriberSubjectTemplate">Save Current Subject</button>
+                </div>
+                <div class="form-row">
+                  <label>Message Template Name <input name="messageTemplateName" type="text" placeholder="New album announcement" /></label>
+                  <button class="secondary-button" type="button" id="saveSubscriberMessageTemplate">Save Current Message</button>
+                </div>
+                <div class="manager-table subscriber-template-list" id="subscriberTemplateList"></div>
+              </details>
               <button class="primary-button" type="submit">Send Update</button>
               <p class="form-message" id="subscriberMessageStatus" role="status"></p>
             </form>

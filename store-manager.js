@@ -58,6 +58,9 @@ const managerSongMessage = document.querySelector("#managerSongMessage");
 const managerPayoutMessage = document.querySelector("#managerPayoutMessage");
 const subscriberMessageStatus = document.querySelector("#subscriberMessageStatus");
 const subscriberReleasePreview = document.querySelector("#subscriberReleasePreview");
+const saveSubscriberSubjectTemplateButton = document.querySelector("#saveSubscriberSubjectTemplate");
+const saveSubscriberMessageTemplateButton = document.querySelector("#saveSubscriberMessageTemplate");
+const subscriberTemplateList = document.querySelector("#subscriberTemplateList");
 
 let currentStore = window.MBA.defaults();
 const LEGAL_EDITOR_FIELDS = [
@@ -87,6 +90,17 @@ const SUBSCRIBER_MESSAGE_TEMPLATES = {
     "Hi,\n\n{artist} has shared a new video update on MusicBusiness Arena.\n\nTap the link below to watch it and stay connected with the artist.\n\nThank you for supporting {artist} on MusicBusiness Arena.",
   news:
     "Hi,\n\n{artist} has a new update for subscribers on MusicBusiness Arena.\n\nStay tuned for more releases, videos, and important news from the artist.\n\nThank you for supporting {artist}.",
+};
+const SUBSCRIBER_BUILT_IN_TEMPLATE_LABELS = {
+  "new-release": "New release announcement",
+  "new-song": "New song announcement",
+  "new-beat": "New beat / instrumental",
+  "new-video": "New video update",
+  "artist-news": "Artist news",
+  release: "Release announcement",
+  beat: "Beat / instrumental announcement",
+  video: "Video announcement",
+  news: "Artist news",
 };
 
 /* ===================================================
@@ -886,6 +900,41 @@ function subscribersForArtist(artistId) {
   return activeSubscribers().filter((subscriber) => String(subscriber.artistId || "") === String(artistId || ""));
 }
 
+function subscriberTemplates(type) {
+  const templates = currentStore.site?.subscriberTemplates?.[type];
+  return Array.isArray(templates) ? templates : [];
+}
+
+function customSubscriberTemplate(type, id) {
+  return subscriberTemplates(type).find((template) => String(template.id || "") === String(id || ""));
+}
+
+function populateSubscriberTemplateSelects() {
+  if (subscriberMessageForm?.subjectTemplate) {
+    const selected = subscriberMessageForm.subjectTemplate.value || "new-release";
+    subscriberMessageForm.subjectTemplate.replaceChildren(
+      ...Object.keys(SUBSCRIBER_SUBJECT_TEMPLATES).map((key) => new Option(SUBSCRIBER_BUILT_IN_TEMPLATE_LABELS[key] || key, key)),
+      ...subscriberTemplates("subjects").map((template) => new Option(template.name || "Saved subject", `saved:${template.id}`)),
+      new Option("Custom subject", "custom")
+    );
+    subscriberMessageForm.subjectTemplate.value = [...subscriberMessageForm.subjectTemplate.options].some((option) => option.value === selected)
+      ? selected
+      : "new-release";
+  }
+
+  if (subscriberMessageForm?.messageTemplate) {
+    const selected = subscriberMessageForm.messageTemplate.value || "release";
+    subscriberMessageForm.messageTemplate.replaceChildren(
+      ...Object.keys(SUBSCRIBER_MESSAGE_TEMPLATES).map((key) => new Option(SUBSCRIBER_BUILT_IN_TEMPLATE_LABELS[key] || key, key)),
+      ...subscriberTemplates("messages").map((template) => new Option(template.name || "Saved message", `saved:${template.id}`)),
+      new Option("Custom message", "custom")
+    );
+    subscriberMessageForm.messageTemplate.value = [...subscriberMessageForm.messageTemplate.options].some((option) => option.value === selected)
+      ? selected
+      : "release";
+  }
+}
+
 function selectedSubscriberArtist() {
   const artistId = subscriberMessageForm?.artistId?.value || "";
   return (currentStore.artists || []).find((artist) => String(artist.id || "") === String(artistId));
@@ -915,13 +964,19 @@ function fillSubscriberTemplate(template) {
 
 function applySubscriberSubjectTemplate() {
   if (!subscriberMessageForm?.subjectTemplate || !subscriberMessageForm?.subject) return;
-  const template = SUBSCRIBER_SUBJECT_TEMPLATES[subscriberMessageForm.subjectTemplate.value];
+  const value = subscriberMessageForm.subjectTemplate.value;
+  const template = value.startsWith("saved:")
+    ? customSubscriberTemplate("subjects", value.replace("saved:", ""))?.subject
+    : SUBSCRIBER_SUBJECT_TEMPLATES[value];
   if (template) subscriberMessageForm.subject.value = fillSubscriberTemplate(template);
 }
 
 function applySubscriberMessageTemplate() {
   if (!subscriberMessageForm?.messageTemplate || !subscriberMessageForm?.message) return;
-  const template = SUBSCRIBER_MESSAGE_TEMPLATES[subscriberMessageForm.messageTemplate.value];
+  const value = subscriberMessageForm.messageTemplate.value;
+  const template = value.startsWith("saved:")
+    ? customSubscriberTemplate("messages", value.replace("saved:", ""))?.message
+    : SUBSCRIBER_MESSAGE_TEMPLATES[value];
   if (template) subscriberMessageForm.message.value = fillSubscriberTemplate(template);
 }
 
@@ -946,6 +1001,91 @@ function updateSubscriberReleasePreview() {
       <p>${escapeText(release.releaseType || "Audio")} cover will be included in the email.</p>
     </div>
   `;
+}
+
+function renderSubscriberTemplateList() {
+  if (!subscriberTemplateList) return;
+  const subjects = subscriberTemplates("subjects").map((template) => ({ ...template, type: "subjects", kind: "Subject" }));
+  const messages = subscriberTemplates("messages").map((template) => ({ ...template, type: "messages", kind: "Message" }));
+  const rows = [...subjects, ...messages];
+  subscriberTemplateList.innerHTML = rows.length
+    ? `
+      <div class="manager-table-header subscriber-template-columns"><span>Type</span><span>Name</span><span>Content</span><span>Actions</span></div>
+      ${rows.map((template) => `
+        <article class="manager-table-row subscriber-template-columns" data-id="${escapeAttr(template.id)}">
+          <strong>${escapeText(template.kind)}</strong>
+          <span>${escapeText(template.name || "Saved template")}</span>
+          <span>${escapeText(template.subject || template.message || "")}</span>
+          <div class="manager-row-actions">
+            <button type="button" data-delete-subscriber-template="${escapeAttr(template.id)}" data-template-type="${escapeAttr(template.type)}">Delete</button>
+          </div>
+        </article>
+      `).join("")}
+    `
+    : emptyState("Saved subject and message templates will appear here.");
+}
+
+async function saveSubscriberTemplate(type) {
+  const isSubject = type === "subjects";
+  const nameField = isSubject ? subscriberMessageForm?.subjectTemplateName : subscriberMessageForm?.messageTemplateName;
+  const contentField = isSubject ? subscriberMessageForm?.subject : subscriberMessageForm?.message;
+  const contentKey = isSubject ? "subject" : "message";
+  const name = String(nameField?.value || "").trim();
+  const content = String(contentField?.value || "").trim();
+  if (!name || !content) {
+    message(subscriberMessageStatus, "Add a template name and content before saving.", "error");
+    return;
+  }
+
+  const site = currentStore.site || {};
+  const subscriberTemplateStore = site.subscriberTemplates || {};
+  const existingTemplates = Array.isArray(subscriberTemplateStore[type]) ? subscriberTemplateStore[type] : [];
+  const existingIndex = existingTemplates.findIndex((template) => String(template.name || "").toLowerCase() === name.toLowerCase());
+  const template = {
+    id: existingTemplates[existingIndex]?.id || window.MBA.uid(`subscriber-${isSubject ? "subject" : "message"}`),
+    name,
+    [contentKey]: content,
+    updatedAt: new Date().toISOString(),
+  };
+  if (!template.createdAt) template.createdAt = existingTemplates[existingIndex]?.createdAt || template.updatedAt;
+  const nextTemplates = existingIndex >= 0
+    ? existingTemplates.map((item, index) => (index === existingIndex ? template : item))
+    : [...existingTemplates, template];
+
+  currentStore.site = {
+    ...site,
+    subscriberTemplates: {
+      subjects: subscriberTemplateStore.subjects || [],
+      messages: subscriberTemplateStore.messages || [],
+      [type]: nextTemplates,
+    },
+  };
+  await saveAdminStore(currentStore);
+  currentStore = await loadAdminStore();
+  populateSubscriberTemplateSelects();
+  if (isSubject && subscriberMessageForm?.subjectTemplate) subscriberMessageForm.subjectTemplate.value = `saved:${template.id}`;
+  if (!isSubject && subscriberMessageForm?.messageTemplate) subscriberMessageForm.messageTemplate.value = `saved:${template.id}`;
+  renderSubscriberTemplateList();
+  if (nameField) nameField.value = "";
+  message(subscriberMessageStatus, `${isSubject ? "Subject" : "Message"} template saved.`);
+}
+
+async function deleteSubscriberTemplate(type, id) {
+  const site = currentStore.site || {};
+  const subscriberTemplateStore = site.subscriberTemplates || {};
+  currentStore.site = {
+    ...site,
+    subscriberTemplates: {
+      subjects: subscriberTemplateStore.subjects || [],
+      messages: subscriberTemplateStore.messages || [],
+      [type]: (subscriberTemplateStore[type] || []).filter((template) => String(template.id || "") !== String(id || "")),
+    },
+  };
+  await saveAdminStore(currentStore);
+  currentStore = await loadAdminStore();
+  populateSubscriberTemplateSelects();
+  renderSubscriberTemplateList();
+  message(subscriberMessageStatus, "Template deleted.");
 }
 
 function filteredSubscribers() {
@@ -1003,8 +1143,10 @@ function renderSubscribers() {
   setText("#subscriberArtistCount", String(selectedArtistCount));
   setText("#subscriberArtistTotal", String(artistIdsWithSubscribers.size));
   setText("#subscriberLastDate", latestSubscriber ? formatDate(latestSubscriber.createdAt || latestSubscriber.updatedAt) : "None");
+  populateSubscriberTemplateSelects();
   updateSubscriberReleaseOptions();
   updateSubscriberRecipientPreview();
+  renderSubscriberTemplateList();
 
   if (!managerSubscriberTable) return;
   managerSubscriberTable.innerHTML = rows.length
@@ -1423,6 +1565,14 @@ subscriberMessageForm?.releaseId?.addEventListener("change", () => {
 
 subscriberMessageForm?.subjectTemplate?.addEventListener("change", applySubscriberSubjectTemplate);
 subscriberMessageForm?.messageTemplate?.addEventListener("change", applySubscriberMessageTemplate);
+saveSubscriberSubjectTemplateButton?.addEventListener("click", () => saveSubscriberTemplate("subjects"));
+saveSubscriberMessageTemplateButton?.addEventListener("click", () => saveSubscriberTemplate("messages"));
+
+subscriberTemplateList?.addEventListener("click", async (event) => {
+  const deleteButton = event.target.closest("[data-delete-subscriber-template]");
+  if (!deleteButton) return;
+  await deleteSubscriberTemplate(deleteButton.dataset.templateType, deleteButton.dataset.deleteSubscriberTemplate);
+});
 
 managerSubscriberTable?.addEventListener("click", async (event) => {
   const messageButton = event.target.closest("[data-message-subscriber-artist]");
@@ -1452,6 +1602,8 @@ subscriberMessageForm?.addEventListener("submit", async (event) => {
   const subject = subscriberMessageForm.subject.value.trim();
   const messageText = subscriberMessageForm.message.value.trim();
   const releaseId = subscriberMessageForm.releaseId.value;
+  const linkTarget = subscriberMessageForm.linkTarget?.value || "release-auto";
+  const customUrl = subscriberMessageForm.customUrl?.value.trim() || "";
 
   if (!artistId || !subject || !messageText) {
     message(subscriberMessageStatus, "Choose an artist, subject, and message before sending.", "error");
@@ -1467,7 +1619,7 @@ subscriberMessageForm?.addEventListener("submit", async (event) => {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ artistId, subject, message: messageText, releaseId }),
+      body: JSON.stringify({ artistId, subject, message: messageText, releaseId, linkTarget, customUrl }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || "Subscriber update could not be sent.");

@@ -177,6 +177,10 @@ function defaultStore() {
         twitch: "",
       },
       legalPages: {},
+      subscriberTemplates: {
+        subjects: [],
+        messages: [],
+      },
       featuredArtistId: "artist-focuzman",
       commissionRate: 10,
       videos: {
@@ -1019,6 +1023,7 @@ function publicStore(store) {
   delete sanitized.auditLogs;
   delete sanitized.contactMessages;
   delete sanitized.artistSubscribers;
+  if (sanitized.site) delete sanitized.site.subscriberTemplates;
   sanitized.artists = (sanitized.artists || []).map((artist) => {
     const publicArtist = { ...artist };
     publicArtist.subscriberCount = subscriberCounts.get(String(publicArtist.id || "")) || 0;
@@ -1536,6 +1541,43 @@ function subscriberReleaseUrl(request, artist, release) {
   return `${requestOrigin(request)}/${type}/${artistPart}/${releasePart}`;
 }
 
+function subscriberArtistCatalogUrl(request, artist, releases = []) {
+  if (!artist) return "";
+  const artistPart = slugify(artist.slug || artist.handle || artist.name || artist.id);
+  const artistReleases = releases.filter((release) => String(release.artistId || "") === String(artist.id || ""));
+  const approved = artistReleases.filter((release) => (release.status || "approved") === "approved");
+  const usesBeats = approved.length && approved.every((release) => release.downloadOnly === true || release.releaseType === "Beat / Instrumental");
+  return `${requestOrigin(request)}/${artistPart}/${usesBeats ? "beats" : "music"}`;
+}
+
+function subscriberArtistUrl(request, artist, section = "home", releases = []) {
+  if (!artist) return "";
+  const artistPart = slugify(artist.slug || artist.handle || artist.name || artist.id);
+  if (!artistPart) return requestOrigin(request);
+  if (section === "catalog") return subscriberArtistCatalogUrl(request, artist, releases);
+  if (section === "videos") return `${requestOrigin(request)}/${artistPart}/videos`;
+  return `${requestOrigin(request)}/${artistPart}`;
+}
+
+function subscriberCustomUrl(request, customUrl) {
+  const value = String(customUrl || "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return `${requestOrigin(request)}${value}`;
+  return `${requestOrigin(request)}/${value.replace(/^\/+/, "")}`;
+}
+
+function subscriberDestinationUrl(request, artist, release, releases, linkTarget, customUrl) {
+  if (linkTarget === "custom") return subscriberCustomUrl(request, customUrl);
+  if (linkTarget === "artist-home") return subscriberArtistUrl(request, artist, "home", releases);
+  if (linkTarget === "artist-catalog") return subscriberArtistUrl(request, artist, "catalog", releases);
+  if (linkTarget === "artist-videos") return subscriberArtistUrl(request, artist, "videos", releases);
+  if (linkTarget === "release-listen" && release) return `${requestOrigin(request)}${releasePublicPath("listen", release, artist)}`;
+  if (linkTarget === "release-download" && release) return `${requestOrigin(request)}${releasePublicPath("download", release, artist)}`;
+  if (release) return subscriberReleaseUrl(request, artist, release);
+  return subscriberArtistUrl(request, artist, "home", releases);
+}
+
 async function sendSubscriberUpdate(request, response) {
   const bodyText = await readRequestBody(request);
   const body = parseRequestBody(bodyText, request);
@@ -1543,6 +1585,8 @@ async function sendSubscriberUpdate(request, response) {
   const subject = String(body.subject || "").trim();
   const messageText = String(body.message || "").trim();
   const releaseId = String(body.releaseId || "").trim();
+  const linkTarget = String(body.linkTarget || "release-auto").trim();
+  const customUrl = String(body.customUrl || "").trim();
 
   if (!artistId || !subject || !messageText) {
     sendJson(response, 400, { error: "Artist, subject, and message are required." });
@@ -1559,7 +1603,7 @@ async function sendSubscriberUpdate(request, response) {
   const release = releaseId
     ? (store.releases || []).find((item) => String(item.id || "") === releaseId && String(item.artistId || "") === artistId)
     : null;
-  const releaseUrl = release ? subscriberReleaseUrl(request, artist, release) : "";
+  const destinationUrl = subscriberDestinationUrl(request, artist, release, store.releases || [], linkTarget, customUrl);
   const releaseCoverUrl = release?.cover ? checkoutImageUrl(requestOrigin(request), release.cover) : "";
   const recipients = (store.artistSubscribers || [])
     .filter((subscriber) => String(subscriber.artistId || "") === artistId)
@@ -1579,8 +1623,8 @@ async function sendSubscriberUpdate(request, response) {
     "",
     messageText,
   ];
-  if (releaseUrl) {
-    bodyLines.push("", `Listen or view the release here: ${releaseUrl}`);
+  if (destinationUrl) {
+    bodyLines.push("", `Open this update here: ${destinationUrl}`);
   }
   bodyLines.push(
     "",
@@ -1595,10 +1639,13 @@ async function sendSubscriberUpdate(request, response) {
         <div style="padding:18px;">
           <p style="color:#6b7280;font-size:13px;font-weight:700;letter-spacing:.08em;margin:0 0 8px;text-transform:uppercase;">${escapeEmailHtml(release.releaseType || "Release")}</p>
           <h2 style="color:#111827;font-size:24px;line-height:1.25;margin:0 0 14px;">${escapeEmailHtml(release.title || "Untitled release")}</h2>
-          ${releaseUrl ? `<a href="${escapeEmailHtml(releaseUrl)}" style="background:#111827;border-radius:999px;color:#ffffff;display:inline-block;font-weight:800;padding:12px 20px;text-decoration:none;">Open Release</a>` : ""}
+          ${destinationUrl ? `<a href="${escapeEmailHtml(destinationUrl)}" style="background:#111827;border-radius:999px;color:#ffffff;display:inline-block;font-weight:800;padding:12px 20px;text-decoration:none;">Open Link</a>` : ""}
         </div>
       </div>
     `
+    : "";
+  const destinationBlock = !release && destinationUrl
+    ? `<p style="margin:24px 0;"><a href="${escapeEmailHtml(destinationUrl)}" style="background:#111827;border-radius:999px;color:#ffffff;display:inline-block;font-weight:800;padding:12px 20px;text-decoration:none;">Open Link</a></p>`
     : "";
   const emailHtml = `
     <div style="background:#f5f1e4;padding:24px;">
@@ -1607,7 +1654,7 @@ async function sendSubscriberUpdate(request, response) {
         <h1 style="font-size:28px;line-height:1.2;margin:0 0 18px;">Update from ${escapeEmailHtml(artistName)}</h1>
         <div style="color:#374151;font-size:16px;line-height:1.65;">${emailTextToHtml(messageText)}</div>
         ${releaseBlock}
-        ${releaseUrl && !release ? `<p><a href="${escapeEmailHtml(releaseUrl)}">${escapeEmailHtml(releaseUrl)}</a></p>` : ""}
+        ${destinationBlock}
         <hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0;">
         <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">You are receiving this because you subscribed to updates for ${escapeEmailHtml(artistName)} on MusicBusiness Arena. If you no longer want these updates, reply to this email with unsubscribe.</p>
       </div>
@@ -1630,6 +1677,8 @@ async function sendSubscriberUpdate(request, response) {
       artistId,
       artistName,
       releaseId,
+      linkTarget,
+      destinationUrl,
       subject,
       sentCount,
       failedCount,

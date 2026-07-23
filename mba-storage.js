@@ -40,6 +40,10 @@ const MBA_DEFAULT_STORE = {
       twitch: "",
     },
     legalPages: {},
+    subscriberTemplates: {
+      subjects: [],
+      messages: [],
+    },
     featuredArtistId: "artist-focuzman",
     commissionRate: 15,
     videos: {
