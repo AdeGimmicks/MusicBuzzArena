@@ -1619,6 +1619,49 @@ h3 {
   grid-template-columns: minmax(190px, 1.2fr) minmax(130px, 0.9fr) 100px 110px minmax(220px, 1.4fr) minmax(250px, 1.4fr);
 }
 
+.subscriber-release-preview {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: none;
+  gap: 14px;
+  padding: 12px;
+}
+
+.subscriber-release-preview:not(:empty) {
+  display: flex;
+}
+
+.subscriber-release-preview img {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  height: 76px;
+  object-fit: cover;
+  width: 76px;
+}
+
+.subscriber-release-preview span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.subscriber-release-preview strong,
+.subscriber-release-preview p {
+  margin: 0;
+}
+
+.subscriber-release-preview p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
 .manager-table-header {
   color: var(--muted);
   font-size: 0.72rem;

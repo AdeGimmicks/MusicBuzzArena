@@ -57,6 +57,7 @@ const managerArtistMessage = document.querySelector("#managerArtistMessage");
 const managerSongMessage = document.querySelector("#managerSongMessage");
 const managerPayoutMessage = document.querySelector("#managerPayoutMessage");
 const subscriberMessageStatus = document.querySelector("#subscriberMessageStatus");
+const subscriberReleasePreview = document.querySelector("#subscriberReleasePreview");
 
 let currentStore = window.MBA.defaults();
 const LEGAL_EDITOR_FIELDS = [
@@ -70,6 +71,23 @@ const LEGAL_EDITOR_FIELDS = [
   ["noRefundPolicy", "legalNoRefundPolicy"],
   ["about", "legalAbout"],
 ];
+const SUBSCRIBER_SUBJECT_TEMPLATES = {
+  "new-release": "New release from {artist}: {release}",
+  "new-song": "{artist} just released a new song: {release}",
+  "new-beat": "New beat from {artist}: {release}",
+  "new-video": "New video from {artist}",
+  "artist-news": "Update from {artist}",
+};
+const SUBSCRIBER_MESSAGE_TEMPLATES = {
+  release:
+    "Hi,\n\n{artist} has a new release on MusicBusiness Arena: {release}.\n\nTap the release link below to listen, watch, or download it now.\n\nThank you for supporting {artist} on MusicBusiness Arena.",
+  beat:
+    "Hi,\n\n{artist} has a new beat / instrumental available on MusicBusiness Arena: {release}.\n\nTap the release link below to preview it and download it from the artist's page.\n\nThank you for supporting {artist} on MusicBusiness Arena.",
+  video:
+    "Hi,\n\n{artist} has shared a new video update on MusicBusiness Arena.\n\nTap the link below to watch it and stay connected with the artist.\n\nThank you for supporting {artist} on MusicBusiness Arena.",
+  news:
+    "Hi,\n\n{artist} has a new update for subscribers on MusicBusiness Arena.\n\nStay tuned for more releases, videos, and important news from the artist.\n\nThank you for supporting {artist}.",
+};
 
 /* ===================================================
    STORE MANAGER DIRECT ACCESS
@@ -868,6 +886,68 @@ function subscribersForArtist(artistId) {
   return activeSubscribers().filter((subscriber) => String(subscriber.artistId || "") === String(artistId || ""));
 }
 
+function selectedSubscriberArtist() {
+  const artistId = subscriberMessageForm?.artistId?.value || "";
+  return (currentStore.artists || []).find((artist) => String(artist.id || "") === String(artistId));
+}
+
+function selectedSubscriberRelease() {
+  const releaseId = subscriberMessageForm?.releaseId?.value || "";
+  if (!releaseId) return null;
+  return (currentStore.releases || []).find((release) => String(release.id || "") === String(releaseId));
+}
+
+function subscriberTemplateContext() {
+  const artist = selectedSubscriberArtist();
+  const release = selectedSubscriberRelease();
+  return {
+    artist: artist?.name || artist?.handle || "this artist",
+    release: release?.title || "the new release",
+  };
+}
+
+function fillSubscriberTemplate(template) {
+  const context = subscriberTemplateContext();
+  return String(template || "")
+    .replace(/\{artist\}/g, context.artist)
+    .replace(/\{release\}/g, context.release);
+}
+
+function applySubscriberSubjectTemplate() {
+  if (!subscriberMessageForm?.subjectTemplate || !subscriberMessageForm?.subject) return;
+  const template = SUBSCRIBER_SUBJECT_TEMPLATES[subscriberMessageForm.subjectTemplate.value];
+  if (template) subscriberMessageForm.subject.value = fillSubscriberTemplate(template);
+}
+
+function applySubscriberMessageTemplate() {
+  if (!subscriberMessageForm?.messageTemplate || !subscriberMessageForm?.message) return;
+  const template = SUBSCRIBER_MESSAGE_TEMPLATES[subscriberMessageForm.messageTemplate.value];
+  if (template) subscriberMessageForm.message.value = fillSubscriberTemplate(template);
+}
+
+function updateSubscriberTemplates() {
+  applySubscriberSubjectTemplate();
+  applySubscriberMessageTemplate();
+}
+
+function updateSubscriberReleasePreview() {
+  if (!subscriberReleasePreview) return;
+  const release = selectedSubscriberRelease();
+  if (!release) {
+    subscriberReleasePreview.innerHTML = "";
+    return;
+  }
+
+  subscriberReleasePreview.innerHTML = `
+    <img src="${escapeAttr(release.cover || "Mba Logos/MusicBusiness Logo.png")}" alt="">
+    <div>
+      <span>Selected Release</span>
+      <strong>${escapeText(release.title || "Untitled release")}</strong>
+      <p>${escapeText(release.releaseType || "Audio")} cover will be included in the email.</p>
+    </div>
+  `;
+}
+
 function filteredSubscribers() {
   const artistId = subscriberArtistSelect?.value || "";
   const status = subscriberStatusFilter?.value || "";
@@ -896,6 +976,7 @@ function updateSubscriberReleaseOptions() {
     subscriberMessageForm.releaseId.append(new Option(release.title || "Untitled release", release.id));
   });
   subscriberMessageForm.releaseId.value = releases.some((release) => release.id === value) ? value : "";
+  updateSubscriberReleasePreview();
 }
 
 function updateSubscriberRecipientPreview() {
@@ -1332,7 +1413,16 @@ managerPayoutTable?.addEventListener("click", async (event) => {
 subscriberMessageForm?.artistId?.addEventListener("change", () => {
   updateSubscriberReleaseOptions();
   updateSubscriberRecipientPreview();
+  updateSubscriberTemplates();
 });
+
+subscriberMessageForm?.releaseId?.addEventListener("change", () => {
+  updateSubscriberReleasePreview();
+  updateSubscriberTemplates();
+});
+
+subscriberMessageForm?.subjectTemplate?.addEventListener("change", applySubscriberSubjectTemplate);
+subscriberMessageForm?.messageTemplate?.addEventListener("change", applySubscriberMessageTemplate);
 
 managerSubscriberTable?.addEventListener("click", async (event) => {
   const messageButton = event.target.closest("[data-message-subscriber-artist]");

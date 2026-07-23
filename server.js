@@ -1311,7 +1311,24 @@ function contactAutoReplyBody({ name, inquiryType, inquiryLabel, subject }) {
   ].join("\n");
 }
 
-async function sendContactEmail(to, subject, body, replyTo) {
+function escapeEmailHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function emailTextToHtml(value) {
+  return String(value || "")
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${escapeEmailHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+async function sendContactEmail(to, subject, body, replyTo, htmlBody = "") {
   if (RESEND_API_KEY) {
     try {
       const payload = {
@@ -1320,6 +1337,7 @@ async function sendContactEmail(to, subject, body, replyTo) {
         subject,
         text: body,
       };
+      if (htmlBody) payload.html = htmlBody;
       if (replyTo) payload.reply_to = replyTo;
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -1542,6 +1560,7 @@ async function sendSubscriberUpdate(request, response) {
     ? (store.releases || []).find((item) => String(item.id || "") === releaseId && String(item.artistId || "") === artistId)
     : null;
   const releaseUrl = release ? subscriberReleaseUrl(request, artist, release) : "";
+  const releaseCoverUrl = release?.cover ? checkoutImageUrl(requestOrigin(request), release.cover) : "";
   const recipients = (store.artistSubscribers || [])
     .filter((subscriber) => String(subscriber.artistId || "") === artistId)
     .filter((subscriber) => (subscriber.status || "active") !== "unsubscribed")
@@ -1569,11 +1588,36 @@ async function sendSubscriberUpdate(request, response) {
     "If you no longer want these updates, reply to this email with unsubscribe."
   );
   const emailBody = bodyLines.join("\n");
+  const releaseBlock = release
+    ? `
+      <div style="border:1px solid #e5e7eb;border-radius:14px;margin:24px 0;overflow:hidden;background:#ffffff;">
+        ${releaseCoverUrl ? `<img src="${escapeEmailHtml(releaseCoverUrl)}" alt="${escapeEmailHtml(release.title || "Release")} cover" style="display:block;width:100%;max-height:420px;object-fit:cover;">` : ""}
+        <div style="padding:18px;">
+          <p style="color:#6b7280;font-size:13px;font-weight:700;letter-spacing:.08em;margin:0 0 8px;text-transform:uppercase;">${escapeEmailHtml(release.releaseType || "Release")}</p>
+          <h2 style="color:#111827;font-size:24px;line-height:1.25;margin:0 0 14px;">${escapeEmailHtml(release.title || "Untitled release")}</h2>
+          ${releaseUrl ? `<a href="${escapeEmailHtml(releaseUrl)}" style="background:#111827;border-radius:999px;color:#ffffff;display:inline-block;font-weight:800;padding:12px 20px;text-decoration:none;">Open Release</a>` : ""}
+        </div>
+      </div>
+    `
+    : "";
+  const emailHtml = `
+    <div style="background:#f5f1e4;padding:24px;">
+      <div style="background:#ffffff;border-radius:16px;color:#111827;font-family:Arial,sans-serif;margin:0 auto;max-width:640px;padding:28px;">
+        <p style="color:#f4bd27;font-size:13px;font-weight:800;letter-spacing:.12em;margin:0 0 10px;text-transform:uppercase;">MusicBusiness Arena</p>
+        <h1 style="font-size:28px;line-height:1.2;margin:0 0 18px;">Update from ${escapeEmailHtml(artistName)}</h1>
+        <div style="color:#374151;font-size:16px;line-height:1.65;">${emailTextToHtml(messageText)}</div>
+        ${releaseBlock}
+        ${releaseUrl && !release ? `<p><a href="${escapeEmailHtml(releaseUrl)}">${escapeEmailHtml(releaseUrl)}</a></p>` : ""}
+        <hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0;">
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">You are receiving this because you subscribed to updates for ${escapeEmailHtml(artistName)} on MusicBusiness Arena. If you no longer want these updates, reply to this email with unsubscribe.</p>
+      </div>
+    </div>
+  `;
   let sentCount = 0;
   let failedCount = 0;
 
   for (const recipient of uniqueRecipients) {
-    const delivered = await sendContactEmail(recipient, subject, emailBody, CONTACT_GENERAL_EMAIL);
+    const delivered = await sendContactEmail(recipient, subject, emailBody, CONTACT_GENERAL_EMAIL, emailHtml);
     if (delivered) sentCount += 1;
     else failedCount += 1;
   }

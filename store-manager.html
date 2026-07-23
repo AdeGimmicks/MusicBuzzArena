@@ -367,13 +367,35 @@
             <form id="subscriberMessageForm" class="manager-edit-form">
               <div class="form-row">
                 <label>Artist Audience <select name="artistId" required><option value="">Choose artist</option></select></label>
+                <label>Release Link (optional) <select name="releaseId"><option value="">No release link</option></select></label>
+              </div>
+              <div class="form-row">
+                <label>Subject Template
+                  <select name="subjectTemplate">
+                    <option value="new-release">New release announcement</option>
+                    <option value="new-song">New song announcement</option>
+                    <option value="new-beat">New beat / instrumental</option>
+                    <option value="new-video">New video update</option>
+                    <option value="artist-news">Artist news</option>
+                    <option value="custom">Custom subject</option>
+                  </select>
+                </label>
                 <label>Email Subject <input name="subject" type="text" placeholder="New release from this artist" required /></label>
               </div>
-              <label>Message <textarea name="message" rows="7" placeholder="Write the update MusicBusiness Arena should send to this artist's subscribers." required></textarea></label>
               <div class="form-row">
-                <label>Release Link (optional) <select name="releaseId"><option value="">No release link</option></select></label>
+                <label>Message Template
+                  <select name="messageTemplate">
+                    <option value="release">Release announcement</option>
+                    <option value="beat">Beat / instrumental announcement</option>
+                    <option value="video">Video announcement</option>
+                    <option value="news">Artist news</option>
+                    <option value="custom">Custom message</option>
+                  </select>
+                </label>
                 <label>Preview Recipients <input name="recipientPreview" type="text" readonly value="Choose an artist to see recipient count" /></label>
               </div>
+              <label>Message <textarea name="message" rows="7" placeholder="Write the update MusicBusiness Arena should send to this artist's subscribers." required></textarea></label>
+              <div class="subscriber-release-preview" id="subscriberReleasePreview" aria-live="polite"></div>
               <button class="primary-button" type="submit">Send Update</button>
               <p class="form-message" id="subscriberMessageStatus" role="status"></p>
             </form>
