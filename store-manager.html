@@ -65,6 +65,7 @@
           <a href="#managerDownloads" data-manager-section="managerDownloads">Downloads</a>
           <a href="#managerPayouts" data-manager-section="managerPayouts">Payouts</a>
           <a href="#managerAnalytics" data-manager-section="managerAnalytics">Analytics</a>
+          <a href="#managerSubscribers" data-manager-section="managerSubscribers">Subscribers</a>
           <a href="#managerSupport" data-manager-section="managerSupport">Support</a>
           <a href="#managerReports" data-manager-section="managerReports">Reports</a>
           <a href="#managerSettings" data-manager-section="managerSettings">Platform Settings</a>
@@ -327,6 +328,55 @@
             <article class="manager-console-card"><h3>Page Visits</h3><div class="manager-list" id="analyticsVisitBreakdown"></div></article>
             <article class="manager-console-card"><h3>Recent Downloads</h3><div class="manager-list" id="analyticsRecentDownloads"></div></article>
             <article class="manager-console-card"><h3>Artist Summary</h3><div class="manager-list" id="analyticsArtistSummary"></div></article>
+          </section>
+        </section>
+
+        <!-- ==================================================
+             SUBSCRIBER MANAGEMENT SECTION
+
+             Lets the Store Manager view artist subscribers and
+             send MusicBusiness Arena updates to an artist's audience.
+
+             Used by:
+             • Store Manager > Subscribers
+
+             Subscriber emails are private platform data. Artists do
+             not see this list.
+        ================================================== -->
+        <section class="manager-dashboard-section" id="managerSubscribers" data-section-title="Subscribers">
+          <div class="manager-section-heading">
+            <div><p class="eyebrow">Artist audiences</p><h2>Subscribers</h2></div>
+            <button class="secondary-button" id="exportSubscribersCsv" type="button">Export Subscribers CSV</button>
+          </div>
+          <section class="manager-metric-grid">
+            <article><span>Total Subscribers</span><strong id="subscriberTotalCount">0</strong></article>
+            <article><span>Selected Artist Subscribers</span><strong id="subscriberArtistCount">0</strong></article>
+            <article><span>Active Artists With Subscribers</span><strong id="subscriberArtistTotal">0</strong></article>
+            <article><span>Last Subscriber</span><strong id="subscriberLastDate">None</strong></article>
+          </section>
+          <section class="manager-console-card">
+            <div class="manager-tools subscriber-tools">
+              <label>Artist <select id="subscriberArtistSelect"><option value="">All artists</option></select></label>
+              <label>Search Subscribers <input id="subscriberSearchInput" type="search" placeholder="Email, artist, status" /></label>
+              <label>Status <select id="subscriberStatusFilter"><option value="">All statuses</option><option value="active">active</option><option value="unsubscribed">unsubscribed</option></select></label>
+            </div>
+            <div class="manager-table manager-subscriber-table" id="managerSubscriberTable"></div>
+          </section>
+          <section class="manager-console-card">
+            <h3>Send Subscriber Update</h3>
+            <form id="subscriberMessageForm" class="manager-edit-form">
+              <div class="form-row">
+                <label>Artist Audience <select name="artistId" required><option value="">Choose artist</option></select></label>
+                <label>Email Subject <input name="subject" type="text" placeholder="New release from this artist" required /></label>
+              </div>
+              <label>Message <textarea name="message" rows="7" placeholder="Write the update MusicBusiness Arena should send to this artist's subscribers." required></textarea></label>
+              <div class="form-row">
+                <label>Release Link (optional) <select name="releaseId"><option value="">No release link</option></select></label>
+                <label>Preview Recipients <input name="recipientPreview" type="text" readonly value="Choose an artist to see recipient count" /></label>
+              </div>
+              <button class="primary-button" type="submit">Send Update</button>
+              <p class="form-message" id="subscriberMessageStatus" role="status"></p>
+            </form>
           </section>
         </section>
 

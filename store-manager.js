@@ -38,19 +38,25 @@ const downloadSearchInput = document.querySelector("#downloadSearchInput");
 const downloadArtistFilter = document.querySelector("#downloadArtistFilter");
 const downloadCountryFilter = document.querySelector("#downloadCountryFilter");
 const managerAnalyticsArtistSelect = document.querySelector("#managerAnalyticsArtistSelect");
+const subscriberArtistSelect = document.querySelector("#subscriberArtistSelect");
+const subscriberSearchInput = document.querySelector("#subscriberSearchInput");
+const subscriberStatusFilter = document.querySelector("#subscriberStatusFilter");
 
 const managerArtistTable = document.querySelector("#managerArtistTable");
 const managerSongTable = document.querySelector("#managerSongTable");
 const managerVideoTable = document.querySelector("#managerVideoTable");
 const managerDownloadTable = document.querySelector("#managerDownloadTable");
 const managerPayoutTable = document.querySelector("#managerPayoutTable");
+const managerSubscriberTable = document.querySelector("#managerSubscriberTable");
 const managerSupportTable = document.querySelector("#managerSupportTable");
 const managerReportTable = document.querySelector("#managerReportTable");
 const managerArtistForm = document.querySelector("#managerArtistForm");
 const managerSongForm = document.querySelector("#managerSongForm");
+const subscriberMessageForm = document.querySelector("#subscriberMessageForm");
 const managerArtistMessage = document.querySelector("#managerArtistMessage");
 const managerSongMessage = document.querySelector("#managerSongMessage");
 const managerPayoutMessage = document.querySelector("#managerPayoutMessage");
+const subscriberMessageStatus = document.querySelector("#subscriberMessageStatus");
 
 let currentStore = window.MBA.defaults();
 const LEGAL_EDITOR_FIELDS = [
@@ -542,10 +548,16 @@ function populateFilters() {
   const genres = [...new Set((currentStore.releases || []).map((release) => release.genre).filter(Boolean))].sort();
   const countries = [...new Set((currentStore.releases || []).map((release) => release.country).filter(Boolean))].sort();
 
-  [songArtistFilter, downloadArtistFilter, managerAnalyticsArtistSelect].forEach((select) => {
+  [songArtistFilter, downloadArtistFilter, managerAnalyticsArtistSelect, subscriberArtistSelect, subscriberMessageForm?.artistId].forEach((select) => {
     if (!select) return;
     const value = select.value;
-    select.replaceChildren(new Option(select === managerAnalyticsArtistSelect ? "All artists analytics" : "All artists", ""));
+    const defaultLabel =
+      select === managerAnalyticsArtistSelect
+        ? "All artists analytics"
+        : select === subscriberMessageForm?.artistId
+          ? "Choose artist"
+          : "All artists";
+    select.replaceChildren(new Option(defaultLabel, ""));
     artists.forEach((artist) => select.append(new Option(artist.name || artist.handle || "Untitled artist", artist.id)));
     select.value = [...select.options].some((option) => option.value === value) ? value : "";
   });
@@ -838,6 +850,103 @@ function renderPayouts() {
 }
 
 /* ===================================================
+   SUBSCRIBER MANAGEMENT
+
+   Shows private artist subscriber emails to the Store Manager
+   and prepares audience update emails sent by MusicBusiness Arena.
+=================================================== */
+function activeSubscribers() {
+  return (currentStore.artistSubscribers || []).filter((subscriber) => (subscriber.status || "active") !== "unsubscribed");
+}
+
+function subscriberArtistName(subscriber) {
+  const artist = (currentStore.artists || []).find((item) => String(item.id) === String(subscriber.artistId));
+  return artist?.name || subscriber.artistName || "Artist";
+}
+
+function subscribersForArtist(artistId) {
+  return activeSubscribers().filter((subscriber) => String(subscriber.artistId || "") === String(artistId || ""));
+}
+
+function filteredSubscribers() {
+  const artistId = subscriberArtistSelect?.value || "";
+  const status = subscriberStatusFilter?.value || "";
+  const query = String(subscriberSearchInput?.value || "").toLowerCase();
+  return (currentStore.artistSubscribers || [])
+    .filter((subscriber) => (!artistId || String(subscriber.artistId || "") === artistId))
+    .filter((subscriber) => (!status || (subscriber.status || "active") === status))
+    .filter((subscriber) => {
+      if (!query) return true;
+      return [subscriber.email, subscriberArtistName(subscriber), subscriber.status, subscriber.sourceUrl]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    })
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0));
+}
+
+function updateSubscriberReleaseOptions() {
+  if (!subscriberMessageForm?.releaseId) return;
+  const artistId = subscriberMessageForm.artistId.value || "";
+  const releases = (currentStore.releases || []).filter((release) => String(release.artistId || "") === artistId);
+  const value = subscriberMessageForm.releaseId.value;
+  subscriberMessageForm.releaseId.replaceChildren(new Option("No release link", ""));
+  releases.forEach((release) => {
+    subscriberMessageForm.releaseId.append(new Option(release.title || "Untitled release", release.id));
+  });
+  subscriberMessageForm.releaseId.value = releases.some((release) => release.id === value) ? value : "";
+}
+
+function updateSubscriberRecipientPreview() {
+  if (!subscriberMessageForm?.recipientPreview) return;
+  const artistId = subscriberMessageForm.artistId.value || "";
+  const count = artistId ? subscribersForArtist(artistId).length : 0;
+  subscriberMessageForm.recipientPreview.value = artistId
+    ? `${count} active subscriber${count === 1 ? "" : "s"}`
+    : "Choose an artist to see recipient count";
+}
+
+function renderSubscribers() {
+  const subscribers = currentStore.artistSubscribers || [];
+  const active = activeSubscribers();
+  const selectedArtistId = subscriberArtistSelect?.value || "";
+  const selectedArtistCount = selectedArtistId ? subscribersForArtist(selectedArtistId).length : active.length;
+  const artistIdsWithSubscribers = new Set(active.map((subscriber) => String(subscriber.artistId || "")).filter(Boolean));
+  const latestSubscriber = active
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0))[0];
+  const rows = filteredSubscribers();
+
+  setText("#subscriberTotalCount", String(active.length));
+  setText("#subscriberArtistCount", String(selectedArtistCount));
+  setText("#subscriberArtistTotal", String(artistIdsWithSubscribers.size));
+  setText("#subscriberLastDate", latestSubscriber ? formatDate(latestSubscriber.createdAt || latestSubscriber.updatedAt) : "None");
+  updateSubscriberReleaseOptions();
+  updateSubscriberRecipientPreview();
+
+  if (!managerSubscriberTable) return;
+  managerSubscriberTable.innerHTML = rows.length
+    ? `
+      <div class="manager-table-header subscriber-columns"><span>Email</span><span>Artist</span><span>Status</span><span>Subscribed</span><span>Source</span><span>Actions</span></div>
+      ${rows.map((subscriber) => `
+        <article class="manager-table-row subscriber-columns" data-id="${escapeAttr(subscriber.id)}">
+          <strong>${escapeText(subscriber.email || "")}</strong>
+          <span>${escapeText(subscriberArtistName(subscriber))}</span>
+          <mark>${escapeText(subscriber.status || "active")}</mark>
+          <span>${formatDate(subscriber.createdAt || subscriber.updatedAt)}</span>
+          <span>${escapeText(subscriber.sourceUrl || subscriber.lastSourceUrl || "Listen page")}</span>
+          <div class="manager-row-actions">
+            <button type="button" data-message-subscriber-artist="${escapeAttr(subscriber.artistId || "")}">Message Artist Audience</button>
+            <button type="button" data-copy-subscriber="${escapeAttr(subscriber.email || "")}">Copy Email</button>
+          </div>
+        </article>
+      `).join("")}
+    `
+    : emptyState("Subscribers will appear here after visitors subscribe on artist listen pages.");
+}
+
+/* ===================================================
    PLATFORM ANALYTICS
 
    Shows Store Manager summaries for visits, downloads,
@@ -993,6 +1102,7 @@ function renderAll() {
   renderDownloads();
   renderPayouts();
   renderAnalytics();
+  renderSubscribers();
   renderSupportAndReports();
 }
 
@@ -1214,6 +1324,82 @@ managerPayoutTable?.addEventListener("click", async (event) => {
   }
 });
 
+[subscriberSearchInput, subscriberArtistSelect, subscriberStatusFilter].forEach((control) => {
+  control?.addEventListener("input", renderSubscribers);
+  control?.addEventListener("change", renderSubscribers);
+});
+
+subscriberMessageForm?.artistId?.addEventListener("change", () => {
+  updateSubscriberReleaseOptions();
+  updateSubscriberRecipientPreview();
+});
+
+managerSubscriberTable?.addEventListener("click", async (event) => {
+  const messageButton = event.target.closest("[data-message-subscriber-artist]");
+  if (messageButton) {
+    const artistId = messageButton.dataset.messageSubscriberArtist;
+    showManagerSection("managerSubscribers");
+    if (subscriberArtistSelect) subscriberArtistSelect.value = artistId;
+    if (subscriberMessageForm?.artistId) subscriberMessageForm.artistId.value = artistId;
+    renderSubscribers();
+    subscriberMessageForm?.subject?.focus();
+    return;
+  }
+
+  const copyButton = event.target.closest("[data-copy-subscriber]");
+  if (copyButton) {
+    await navigator.clipboard.writeText(copyButton.dataset.copySubscriber || "");
+    copyButton.textContent = "Copied";
+    window.setTimeout(() => {
+      copyButton.textContent = "Copy Email";
+    }, 1200);
+  }
+});
+
+subscriberMessageForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const artistId = subscriberMessageForm.artistId.value;
+  const subject = subscriberMessageForm.subject.value.trim();
+  const messageText = subscriberMessageForm.message.value.trim();
+  const releaseId = subscriberMessageForm.releaseId.value;
+
+  if (!artistId || !subject || !messageText) {
+    message(subscriberMessageStatus, "Choose an artist, subject, and message before sending.", "error");
+    return;
+  }
+
+  message(subscriberMessageStatus, "Sending subscriber update...", "pending");
+  const button = event.submitter;
+  if (button) button.disabled = true;
+
+  try {
+    const response = await fetch("/api/admin/subscriber-update", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artistId, subject, message: messageText, releaseId }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Subscriber update could not be sent.");
+    message(
+      subscriberMessageStatus,
+      `Sent to ${payload.sentCount || 0} subscriber${Number(payload.sentCount || 0) === 1 ? "" : "s"}.`,
+    );
+    subscriberMessageForm.subject.value = "";
+    subscriberMessageForm.message.value = "";
+    subscriberMessageForm.releaseId.value = "";
+    currentStore = await loadAdminStore();
+    renderAll();
+    if (subscriberMessageForm.artistId) subscriberMessageForm.artistId.value = artistId;
+    updateSubscriberReleaseOptions();
+    updateSubscriberRecipientPreview();
+  } catch (error) {
+    message(subscriberMessageStatus, error.message || "Subscriber update could not be sent.", "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+});
+
 [artistSearchInput, artistStatusFilter, artistSortSelect].forEach((control) => {
   control?.addEventListener("input", renderArtists);
   control?.addEventListener("change", renderArtists);
@@ -1272,6 +1458,24 @@ document.querySelector("#exportDownloadsCsv")?.addEventListener("click", () => {
 document.querySelector("#exportPayoutsCsv")?.addEventListener("click", () => {
   exportPayoutCsv(currentStore.artists || []);
   message(managerPayoutMessage, "Exported platform payout report.");
+});
+
+document.querySelector("#exportSubscribersCsv")?.addEventListener("click", () => {
+  const rows = filteredSubscribers();
+  const header = ["Email", "Artist", "Status", "Subscribed", "Source URL"];
+  const lines = rows.map((subscriber) => [
+    subscriber.email,
+    subscriberArtistName(subscriber),
+    subscriber.status || "active",
+    subscriber.createdAt || subscriber.updatedAt || "",
+    subscriber.sourceUrl || subscriber.lastSourceUrl || "",
+  ].map((value) => `"${String(value || "").replace(/"/g, '""')}"`).join(","));
+  const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "musicbusinessarena-subscribers.csv";
+  link.click();
+  URL.revokeObjectURL(link.href);
 });
 
 /* ===================================================

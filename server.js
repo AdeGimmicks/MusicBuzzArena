@@ -1510,6 +1510,99 @@ async function subscribeToArtist(request, response) {
   });
 }
 
+function subscriberReleaseUrl(request, artist, release) {
+  if (!artist || !release) return "";
+  const artistPart = slugify(artist.slug || artist.handle || artist.name || artist.id);
+  const releasePart = slugify(release.slug || release.title || release.id);
+  const type = release.downloadOnly === true || release.releaseType === "Beat / Instrumental" ? "download" : "listen";
+  return `${requestOrigin(request)}/${type}/${artistPart}/${releasePart}`;
+}
+
+async function sendSubscriberUpdate(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = parseRequestBody(bodyText, request);
+  const artistId = String(body.artistId || "").trim();
+  const subject = String(body.subject || "").trim();
+  const messageText = String(body.message || "").trim();
+  const releaseId = String(body.releaseId || "").trim();
+
+  if (!artistId || !subject || !messageText) {
+    sendJson(response, 400, { error: "Artist, subject, and message are required." });
+    return;
+  }
+
+  const store = await readStore();
+  const artist = (store.artists || []).find((item) => String(item.id || "") === artistId);
+  if (!artist) {
+    sendJson(response, 404, { error: "Artist not found." });
+    return;
+  }
+
+  const release = releaseId
+    ? (store.releases || []).find((item) => String(item.id || "") === releaseId && String(item.artistId || "") === artistId)
+    : null;
+  const releaseUrl = release ? subscriberReleaseUrl(request, artist, release) : "";
+  const recipients = (store.artistSubscribers || [])
+    .filter((subscriber) => String(subscriber.artistId || "") === artistId)
+    .filter((subscriber) => (subscriber.status || "active") !== "unsubscribed")
+    .map((subscriber) => normalizeEmail(subscriber.email))
+    .filter(Boolean);
+  const uniqueRecipients = [...new Set(recipients)];
+
+  if (!uniqueRecipients.length) {
+    sendJson(response, 400, { error: "This artist does not have active subscribers yet." });
+    return;
+  }
+
+  const artistName = artist.name || artist.handle || "this artist";
+  const bodyLines = [
+    `MusicBusiness Arena update for ${artistName}`,
+    "",
+    messageText,
+  ];
+  if (releaseUrl) {
+    bodyLines.push("", `Listen or view the release here: ${releaseUrl}`);
+  }
+  bodyLines.push(
+    "",
+    "You are receiving this because you subscribed to updates for this artist on MusicBusiness Arena.",
+    "If you no longer want these updates, reply to this email with unsubscribe."
+  );
+  const emailBody = bodyLines.join("\n");
+  let sentCount = 0;
+  let failedCount = 0;
+
+  for (const recipient of uniqueRecipients) {
+    const delivered = await sendContactEmail(recipient, subject, emailBody, CONTACT_GENERAL_EMAIL);
+    if (delivered) sentCount += 1;
+    else failedCount += 1;
+  }
+
+  await mutateStore((nextStore) => {
+    nextStore.auditLogs = Array.isArray(nextStore.auditLogs) ? nextStore.auditLogs : [];
+    nextStore.auditLogs.unshift({
+      id: `subscriber-update-${Date.now().toString(36)}-${crypto.randomBytes(6).toString("hex")}`,
+      action: "Sent subscriber update",
+      artistId,
+      artistName,
+      releaseId,
+      subject,
+      sentCount,
+      failedCount,
+      createdAt: new Date().toISOString(),
+      reason: "Store Manager subscriber message",
+    });
+    nextStore.auditLogs = nextStore.auditLogs.slice(0, 1000);
+  });
+
+  sendJson(response, failedCount ? 207 : 200, {
+    ok: failedCount === 0,
+    sentCount,
+    failedCount,
+    recipientCount: uniqueRecipients.length,
+  });
+}
+
 function timingSafeEqualText(left, right) {
   const leftBuffer = Buffer.from(String(left || ""));
   const rightBuffer = Buffer.from(String(right || ""));
@@ -3249,6 +3342,11 @@ async function handleRequest(request, response) {
 
     if (url.pathname === "/api/admin/store" && request.method === "GET") {
       sendJson(response, 200, await readStore());
+      return;
+    }
+
+    if (url.pathname === "/api/admin/subscriber-update" && request.method === "POST") {
+      await sendSubscriberUpdate(request, response);
       return;
     }
 

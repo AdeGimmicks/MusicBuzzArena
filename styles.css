@@ -1615,6 +1615,10 @@ h3 {
   grid-template-columns: minmax(130px, 1fr) 110px 80px 100px 110px 100px 110px 100px 100px 110px minmax(220px, 1.3fr);
 }
 
+.subscriber-columns {
+  grid-template-columns: minmax(190px, 1.2fr) minmax(130px, 0.9fr) 100px 110px minmax(220px, 1.4fr) minmax(250px, 1.4fr);
+}
+
 .manager-table-header {
   color: var(--muted);
   font-size: 0.72rem;
