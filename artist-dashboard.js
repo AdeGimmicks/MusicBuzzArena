@@ -597,6 +597,7 @@ async function autoSaveReleaseDraft() {
     artistName: releaseForm.artistName.value.trim(),
     releaseType: type,
     downloadOnly: isDownloadOnlyReleaseType(type),
+    allowComplimentaryFullListen: releaseForm.allowComplimentaryFullListen?.checked === true,
     genre: releaseForm.genre.value,
     secondaryGenre: releaseForm.secondaryGenre.value,
     songBio: releaseForm.songBio.value.trim(),
@@ -884,6 +885,7 @@ function clearReleaseForm() {
   releaseForm.price.value = "0.99";
   releaseForm.previewStart.value = formatPreviewTime(DEFAULT_PREVIEW_START);
   releaseForm.previewEnd.value = formatPreviewTime(DEFAULT_PREVIEW_END);
+  if (releaseForm.allowComplimentaryFullListen) releaseForm.allowComplimentaryFullListen.checked = false;
   releaseForm.cover.required = true;
   releaseForm.audio.required = true;
   songBioCount.textContent = "0";
@@ -1064,6 +1066,9 @@ function fillReleaseForm(release) {
   releaseForm.producer.value = release.producer || "";
   if (releaseForm.writer) releaseForm.writer.value = release.writer || "";
   releaseForm.price.value = release.price ?? "0.99";
+  if (releaseForm.allowComplimentaryFullListen) {
+    releaseForm.allowComplimentaryFullListen.checked = release.allowComplimentaryFullListen === true;
+  }
   const storedPreviewStart = Math.max(0, Number(release.previewStart ?? DEFAULT_PREVIEW_START));
   const storedPreviewEnd = Number(release.previewEnd ?? storedPreviewStart + Number(release.previewDuration || DEFAULT_PREVIEW_END));
   releaseForm.previewStart.value = formatPreviewTime(storedPreviewStart);

@@ -1480,6 +1480,9 @@ async function subscribeToArtist(request, response) {
       existing.updatedAt = now;
       existing.lastSourceUrl = sourceUrl;
       if (releaseId) existing.lastReleaseId = releaseId;
+      const completedReleases = Array.isArray(existing.completedComplimentaryListenReleaseIds)
+        ? existing.completedComplimentaryListenReleaseIds.map(String)
+        : [];
       return {
         ok: true,
         alreadySubscribed: true,
@@ -1488,6 +1491,7 @@ async function subscribeToArtist(request, response) {
         subscriberCount: store.artistSubscribers.filter(
           (subscriber) => String(subscriber.artistId || "") === artistId && subscriber.status !== "unsubscribed"
         ).length,
+        complimentaryListenCompleted: releaseId ? completedReleases.includes(releaseId) : false,
       };
     }
 
@@ -1500,6 +1504,7 @@ async function subscribeToArtist(request, response) {
       sourceUrl,
       status: "active",
       consentText: "I agree to receive updates from MusicBusiness Arena about this artist.",
+      completedComplimentaryListenReleaseIds: [],
       createdAt: now,
       updatedAt: now,
     });
@@ -1513,6 +1518,7 @@ async function subscribeToArtist(request, response) {
       subscriberCount: store.artistSubscribers.filter(
         (subscriber) => String(subscriber.artistId || "") === artistId && subscriber.status !== "unsubscribed"
       ).length,
+      complimentaryListenCompleted: false,
     };
   });
 
@@ -1527,9 +1533,89 @@ async function subscribeToArtist(request, response) {
     artistName: result?.artistName || "this artist",
     followerCount: Number(result?.followerCount || result?.subscriberCount || 0),
     subscriberCount: Number(result?.subscriberCount || 0),
+    complimentaryListenCompleted: Boolean(result?.complimentaryListenCompleted),
     message: result?.alreadySubscribed
       ? `You are already subscribed to ${result?.artistName || "this artist"}.`
       : `You are subscribed to ${result?.artistName || "this artist"}.`,
+  });
+}
+
+function subscriberForComplimentaryListen(store, artistId, email) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!artistId || !normalizedEmail) return null;
+  return (store.artistSubscribers || []).find(
+    (subscriber) =>
+      String(subscriber.artistId || "") === String(artistId) &&
+      normalizeEmail(subscriber.email) === normalizedEmail &&
+      (subscriber.status || "active") !== "unsubscribed"
+  );
+}
+
+function subscriberCompletedRelease(subscriber, releaseId) {
+  const completed = Array.isArray(subscriber?.completedComplimentaryListenReleaseIds)
+    ? subscriber.completedComplimentaryListenReleaseIds.map(String)
+    : [];
+  return completed.includes(String(releaseId || ""));
+}
+
+async function complimentaryListenStatus(request, response, url) {
+  const artistId = String(url.searchParams.get("artistId") || "").trim();
+  const releaseId = String(url.searchParams.get("releaseId") || "").trim();
+  const email = normalizeEmail(url.searchParams.get("email") || "");
+  const store = await readStore();
+  const subscriber = subscriberForComplimentaryListen(store, artistId, email);
+  sendJson(response, 200, {
+    ok: true,
+    registered: Boolean(subscriber),
+    completed: subscriberCompletedRelease(subscriber, releaseId),
+  });
+}
+
+async function completeComplimentaryListen(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = parseRequestBody(bodyText, request);
+  const artistId = String(body.artistId || "").trim();
+  const releaseId = String(body.releaseId || "").trim();
+  const email = normalizeEmail(body.email);
+
+  if (!artistId || !releaseId || !email) {
+    sendJson(response, 400, { error: "Artist, release, and email are required." });
+    return;
+  }
+
+  const result = await mutateStore((store) => {
+    const artist = (store.artists || []).find((item) => String(item.id || "") === artistId);
+    const release = (store.releases || []).find(
+      (item) =>
+        String(item.id || "") === releaseId &&
+        String(item.artistId || "") === artistId &&
+        item.allowComplimentaryFullListen === true
+    );
+    const subscriber = subscriberForComplimentaryListen(store, artistId, email);
+    if (!artist || !release) return { error: "This complimentary listen is not available." };
+    if (!subscriber) return { error: "Subscribe before completing the complimentary listen." };
+
+    subscriber.completedComplimentaryListenReleaseIds = Array.isArray(subscriber.completedComplimentaryListenReleaseIds)
+      ? subscriber.completedComplimentaryListenReleaseIds.map(String)
+      : [];
+    if (!subscriber.completedComplimentaryListenReleaseIds.includes(releaseId)) {
+      subscriber.completedComplimentaryListenReleaseIds.push(releaseId);
+    }
+    subscriber.lastCompletedComplimentaryListenAt = new Date().toISOString();
+    subscriber.updatedAt = subscriber.lastCompletedComplimentaryListenAt;
+    return { ok: true, artist, release };
+  });
+
+  if (result?.error) {
+    sendJson(response, 400, { error: result.error });
+    return;
+  }
+
+  sendJson(response, 200, {
+    ok: true,
+    completed: true,
+    downloadUrl: releasePublicPath("download", result.release, result.artist),
+    price: Number(result.release.price || 0),
   });
 }
 
@@ -3309,6 +3395,16 @@ async function handleRequest(request, response) {
 
     if (url.pathname === "/api/artist-subscribe" && request.method === "POST") {
       await subscribeToArtist(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/complimentary-listen-status" && request.method === "GET") {
+      await complimentaryListenStatus(request, response, url);
+      return;
+    }
+
+    if (url.pathname === "/api/complimentary-listen-complete" && request.method === "POST") {
+      await completeComplimentaryListen(request, response);
       return;
     }
 

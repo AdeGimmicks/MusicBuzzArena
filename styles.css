@@ -685,6 +685,7 @@ h3 {
   height: auto;
   max-width: 198px;
   padding: 5px;
+  position: relative;
   width: 100%;
 }
 
@@ -695,6 +696,49 @@ h3 {
   clip-path: none;
   height: 100%;
   width: 100%;
+}
+
+.artwork-play-button {
+  align-items: center;
+  background: rgba(17, 20, 27, 0.84);
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-radius: 999px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 900;
+  justify-content: center;
+  left: 50%;
+  min-height: 46px;
+  min-width: 86px;
+  padding: 0 15px;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  z-index: 2;
+}
+
+.artwork-play-button:hover,
+.artwork-play-button:focus-visible,
+.release-card:hover .artwork-play-button,
+.music-release-artwork:hover .artwork-play-button {
+  background: rgba(17, 20, 27, 0.94);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36);
+  outline: 0;
+  transform: translate(-50%, -50%) scale(1.04);
+}
+
+.artwork-play-button.is-playing {
+  background: var(--gold);
+  border-color: rgba(17, 20, 27, 0.22);
+  color: #11141b;
 }
 
 .release-body,
@@ -3486,6 +3530,7 @@ select:focus {
   display: flex;
   justify-content: center;
   min-width: 0;
+  position: relative;
 }
 
 .music-release-cover {
@@ -4533,6 +4578,13 @@ select:focus {
   min-height: 52px;
   padding: 0 24px;
   width: 100%;
+}
+
+.complimentary-download-link {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .share-modal-card {

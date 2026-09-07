@@ -76,6 +76,286 @@ function isDownloadOnlyRelease(release) {
   return release?.downloadOnly === true || release?.releaseType === "Beat / Instrumental";
 }
 
+let activeArtworkAudio = null;
+let activeArtworkButton = null;
+const COMPLIMENTARY_GATE_SECONDS = 30;
+
+function money(value) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
+}
+
+function canPlayComplimentaryRelease(release) {
+  return release?.allowComplimentaryFullListen === true && Boolean(release.audioUrl);
+}
+
+function listenerEmailKey(artist) {
+  return `mba-listener-email:${artist?.id || "artist"}`;
+}
+
+function storedListenerEmail(artist) {
+  try {
+    return localStorage.getItem(listenerEmailKey(artist)) || localStorage.getItem("mba-listener-email") || "";
+  } catch {
+    return "";
+  }
+}
+
+function storeListenerEmail(artist, email) {
+  try {
+    localStorage.setItem(listenerEmailKey(artist), email);
+    localStorage.setItem("mba-listener-email", email);
+  } catch {
+    // The server still records the email even when browser storage is unavailable.
+  }
+}
+
+async function complimentaryListenStatus(artist, release, email) {
+  if (!email) return { registered: false, completed: false };
+  const params = new URLSearchParams({
+    artistId: artist?.id || "",
+    releaseId: release?.id || "",
+    email,
+  });
+  const response = await fetch(`/api/complimentary-listen-status?${params.toString()}`, { cache: "no-store" });
+  if (!response.ok) return { registered: false, completed: false };
+  return response.json();
+}
+
+async function markComplimentaryListenComplete(artist, release, email) {
+  const response = await fetch("/api/complimentary-listen-complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      artistId: artist?.id || "",
+      releaseId: release?.id || "",
+      email,
+    }),
+  });
+  return response.json().catch(() => ({}));
+}
+
+function ensureComplimentaryModal() {
+  let modal = document.querySelector("[data-complimentary-modal]");
+  if (modal) return modal;
+  modal = document.createElement("div");
+  modal.className = "link-modal complimentary-listen-modal";
+  modal.dataset.complimentaryModal = "";
+  modal.setAttribute("aria-hidden", "true");
+  modal.innerHTML = `
+    <div class="link-modal-card complimentary-listen-card" role="dialog" aria-modal="true" aria-labelledby="complimentaryListenTitle">
+      <button class="link-modal-close" type="button" data-close-complimentary-modal aria-label="Close">×</button>
+      <h2 id="complimentaryListenTitle"></h2>
+      <p data-complimentary-message></p>
+      <label class="subscribe-email" data-complimentary-email-field>
+        <span>Email</span>
+        <input type="email" placeholder="you@example.com" autocomplete="email">
+      </label>
+      <label class="subscribe-consent" data-complimentary-consent-field>
+        <input type="checkbox">
+        <span>I agree to receive updates from MusicBusiness Arena about this artist.</span>
+      </label>
+      <p class="subscribe-status" data-complimentary-status aria-live="polite"></p>
+      <button class="modal-primary" type="button" data-submit-complimentary-email>Continue Listening</button>
+      <a class="modal-primary complimentary-download-link" data-complimentary-download href="#">Download</a>
+    </div>
+  `;
+  document.body.append(modal);
+  modal.querySelector("[data-close-complimentary-modal]")?.addEventListener("click", () => {
+    modal.setAttribute("aria-hidden", "true");
+  });
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) modal.setAttribute("aria-hidden", "true");
+  });
+  return modal;
+}
+
+function showComplimentarySubscribeModal(artist, release, onSubscribed) {
+  const modal = ensureComplimentaryModal();
+  modal.querySelector("#complimentaryListenTitle").textContent = "Subscribe to keep listening";
+  modal.querySelector("[data-complimentary-message]").textContent =
+    `Enter your email to finish listening to ${release.title || "this song"} by ${artist?.name || release.artistName || "this artist"}.`;
+  modal.querySelector("[data-complimentary-email-field]").hidden = false;
+  modal.querySelector("[data-complimentary-consent-field]").hidden = false;
+  modal.querySelector("[data-submit-complimentary-email]").hidden = false;
+  modal.querySelector("[data-complimentary-download]").hidden = true;
+  modal.querySelector("[data-complimentary-status]").textContent = "";
+  modal.querySelector(".subscribe-email input").value = storedListenerEmail(artist);
+  modal.querySelector(".subscribe-consent input").checked = false;
+  modal.setAttribute("aria-hidden", "false");
+  modal.querySelector(".subscribe-email input")?.focus();
+  modal.querySelector("[data-submit-complimentary-email]").onclick = async (event) => {
+    const button = event.currentTarget;
+    const emailInput = modal.querySelector(".subscribe-email input");
+    const consentInput = modal.querySelector(".subscribe-consent input");
+    const status = modal.querySelector("[data-complimentary-status]");
+    const email = String(emailInput?.value || "").trim();
+    if (!email) {
+      status.textContent = "Please enter your email address.";
+      emailInput?.focus();
+      return;
+    }
+    if (!consentInput?.checked) {
+      status.textContent = "Please confirm that MusicBusiness Arena can email you about this artist.";
+      consentInput?.focus();
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "Saving...";
+    try {
+      const response = await fetch("/api/artist-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          artistId: artist?.id || "",
+          releaseId: release?.id || "",
+          email,
+          sourceUrl: window.location.href,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Subscription could not be saved.");
+      storeListenerEmail(artist, email);
+      modal.setAttribute("aria-hidden", "true");
+      onSubscribed(email, payload);
+    } catch (error) {
+      status.textContent = error.message || "Subscription could not be saved.";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Continue Listening";
+    }
+  };
+}
+
+function showComplimentaryUsedModal(artist, release) {
+  const modal = ensureComplimentaryModal();
+  const downloadUrl = releasePublicUrl("download", release, artist);
+  modal.querySelector("#complimentaryListenTitle").textContent = "Complimentary listen used";
+  modal.querySelector("[data-complimentary-message]").textContent =
+    "You've enjoyed your complimentary full listen. Support the artist by downloading the song to keep listening anytime on your device.";
+  modal.querySelector("[data-complimentary-email-field]").hidden = true;
+  modal.querySelector("[data-complimentary-consent-field]").hidden = true;
+  modal.querySelector("[data-submit-complimentary-email]").hidden = true;
+  modal.querySelector("[data-complimentary-status]").textContent = "";
+  const download = modal.querySelector("[data-complimentary-download]");
+  download.hidden = false;
+  download.href = downloadUrl;
+  download.textContent = `Download ${money(release.price || 0)}`;
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function resetArtworkButton(button) {
+  if (!button) return;
+  button.classList.remove("is-playing");
+  button.textContent = "▶ Play";
+  button.setAttribute("aria-label", "Play song");
+}
+
+function stopActiveArtworkAudio(exceptAudio = null) {
+  if (activeArtworkAudio && activeArtworkAudio !== exceptAudio) {
+    activeArtworkAudio.pause();
+    activeArtworkAudio.currentTime = 0;
+    resetArtworkButton(activeArtworkButton);
+  }
+  if (!exceptAudio) {
+    activeArtworkAudio = null;
+    activeArtworkButton = null;
+  }
+}
+
+function attachArtworkPlayer(button, release, artist) {
+  if (!button || !release?.audioUrl) return;
+  const audio = new Audio(release.audioUrl);
+  audio.preload = "metadata";
+  let listenerEmail = storedListenerEmail(artist);
+  let registered = Boolean(listenerEmail);
+  let completed = false;
+  let prompted = false;
+  let listenedSeconds = 0;
+  let lastTime = 0;
+  let hasStarted = false;
+  const setPlaying = (isPlaying) => {
+    button.classList.toggle("is-playing", isPlaying);
+    button.textContent = isPlaying ? "❚❚ Pause" : "▶ Play";
+    button.setAttribute("aria-label", `${isPlaying ? "Pause" : "Play"} ${release.title || "song"}`);
+  };
+  const canMarkComplete = () => {
+    const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    if (!duration) return false;
+    return listenedSeconds >= Math.max(1, duration - 2);
+  };
+
+  button.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!audio.paused) {
+      audio.pause();
+      return;
+    }
+    if (listenerEmail) {
+      const status = await complimentaryListenStatus(artist, release, listenerEmail);
+      registered = Boolean(status.registered);
+      completed = Boolean(status.completed);
+      if (completed) {
+        showComplimentaryUsedModal(artist, release);
+        return;
+      }
+    }
+    stopActiveArtworkAudio(audio);
+    activeArtworkAudio = audio;
+    activeArtworkButton = button;
+    try {
+      await audio.play();
+    } catch {
+      setPlaying(false);
+    }
+  });
+
+  audio.addEventListener("timeupdate", () => {
+    const currentTime = audio.currentTime;
+    const delta = currentTime - lastTime;
+    if (!audio.paused && delta > 0 && delta < 2.5) listenedSeconds += delta;
+    lastTime = currentTime;
+    if (!registered && !prompted && currentTime >= COMPLIMENTARY_GATE_SECONDS) {
+      prompted = true;
+      audio.pause();
+      showComplimentarySubscribeModal(artist, release, async (email, payload) => {
+        listenerEmail = email;
+        registered = true;
+        if (payload?.complimentaryListenCompleted) {
+          completed = true;
+          showComplimentaryUsedModal(artist, release);
+          return;
+        }
+        try {
+          await audio.play();
+        } catch {
+          setPlaying(false);
+        }
+      });
+    }
+  });
+  audio.addEventListener("play", () => setPlaying(true));
+  audio.addEventListener("pause", () => setPlaying(false));
+  audio.addEventListener("playing", () => {
+    if (!hasStarted) {
+      hasStarted = true;
+      lastTime = audio.currentTime;
+    }
+  });
+  audio.addEventListener("seeked", () => {
+    lastTime = audio.currentTime;
+  });
+  audio.addEventListener("ended", async () => {
+    setPlaying(false);
+    if (registered && listenerEmail && !completed && canMarkComplete()) {
+      const payload = await markComplimentaryListenComplete(artist, release, listenerEmail);
+      completed = payload?.completed === true;
+    }
+    if (activeArtworkAudio === audio) activeArtworkAudio = null;
+    if (activeArtworkButton === button) activeArtworkButton = null;
+  });
+}
+
 function artistFromPath(store) {
   const slug = window.location.pathname.split("/").filter(Boolean)[0];
   if (!slug || slug === "home") return null;
@@ -176,6 +456,11 @@ function releaseCard(release, artist) {
   card.innerHTML = `
     <div class="release-cover-frame">
       <img class="release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${release.title} cover" loading="lazy" decoding="async" />
+      ${
+        canPlayComplimentaryRelease(release)
+          ? `<button class="artwork-play-button" type="button" data-artwork-play aria-label="Play ${release.title || "song"}">▶ Play</button>`
+          : ""
+      }
     </div>
     <div class="release-body">
       <p class="release-meta">${release.releaseType || "Single"} | ${release.genre || "Music"}</p>
@@ -195,6 +480,7 @@ function releaseCard(release, artist) {
     event.preventDefault();
     window.location.href = actionUrl;
   });
+  attachArtworkPlayer(card.querySelector("[data-artwork-play]"), release, artist);
   return card;
 }
 
@@ -245,6 +531,7 @@ function renderShelf(container, releases, store, emptyText) {
   container.setAttribute("aria-busy", "false");
   container.replaceChildren();
   const visibleReleases = releases.slice(0, 20);
+  stopActiveArtworkAudio();
 
   if (!visibleReleases.length) {
     container.append(emptyShelf(emptyText));
@@ -260,7 +547,7 @@ function renderShelf(container, releases, store, emptyText) {
 function currentStoreSnapshot(store) {
   const page = window.location.pathname || "/home";
   const releaseKey = (store.releases || [])
-    .map((release) => `${release.id}:${release.title}:${release.genre}:${release.status}:${release.cover}`)
+    .map((release) => `${release.id}:${release.title}:${release.genre}:${release.status}:${release.cover}:${release.audioUrl}:${release.allowComplimentaryFullListen}`)
     .join("|");
   const artistKey = (store.artists || []).map((artist) => `${artist.id}:${artist.status}`).join("|");
   return `${page}::${releaseKey}::${artistKey}`;
