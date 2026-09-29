@@ -4222,12 +4222,6 @@ select:focus {
   padding: 0 14px;
 }
 
-.link-share-button {
-  font-size: 1.05rem;
-  padding: 0;
-  width: 38px;
-}
-
 .link-subscribe[aria-disabled="true"] {
   opacity: 0.72;
 }

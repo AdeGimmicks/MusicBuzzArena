@@ -613,7 +613,7 @@ function linkHubPage(release, artist) {
       <button class="link-subscribe" type="button" data-open-subscribe>
         Subscribe
       </button>
-      <button class="link-share-button" type="button" data-share-release="${release.id}" aria-label="Share this song">⇧</button>
+      <button class="link-share-button" type="button" data-share-release="${release.id}" aria-label="Share this song">Share</button>
     </div>
     <section class="link-profile-head" aria-label="Artist profile links">
       <img class="link-artist-photo" src="${artistPhotoSrc}" alt="${release.title || artistLabel} cover">
