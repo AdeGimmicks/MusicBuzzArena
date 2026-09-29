@@ -518,6 +518,9 @@ function linkHubPage(release, artist) {
   const shareUrl = `${window.location.origin}${releasePublicUrl("listen", release, artist)}`;
   const encodedShareUrl = encodeURIComponent(shareUrl);
   const encodedShareText = encodeURIComponent(`Listen to ${release.title || "this song"} by ${artistLabel}`);
+  const encodedEmailBody = encodeURIComponent(
+    `Listen to ${release.title || "this song"} by ${artistLabel} on MusicBusiness Arena.\n\n${shareUrl}`
+  );
   const tracks = releaseTracks(release);
   const hubTrackList = tracks.length > 1
     ? `<div class="link-track-list">
@@ -690,11 +693,12 @@ function linkHubPage(release, artist) {
           <span>${release.title || "Untitled track"}</span>
         </div>
         <div class="share-options">
-          <button type="button" data-copy-link>🔗<span>Copy link</span></button>
-          <a href="https://twitter.com/intent/tweet?text=${encodedShareText}&url=${encodedShareUrl}" target="_blank" rel="noreferrer">𝕏<span>X</span></a>
-          <a href="https://www.facebook.com/sharer/sharer.php?u=${encodedShareUrl}" target="_blank" rel="noreferrer">f<span>Facebook</span></a>
-          <a href="https://wa.me/?text=${encodedShareText}%20${encodedShareUrl}" target="_blank" rel="noreferrer">☘<span>WhatsApp</span></a>
-          <a href="mailto:?subject=${encodedShareText}&body=${encodedShareUrl}">✉<span>Email</span></a>
+          <button type="button" data-copy-link><span class="share-option-icon" aria-hidden="true">🔗</span><span>Copy link</span></button>
+          <a href="https://twitter.com/intent/tweet?text=${encodedShareText}&url=${encodedShareUrl}" target="_blank" rel="noreferrer"><span class="share-option-icon" aria-hidden="true">𝕏</span><span>X</span></a>
+          <a href="https://www.facebook.com/sharer/sharer.php?u=${encodedShareUrl}" target="_blank" rel="noreferrer"><span class="share-option-icon" aria-hidden="true">f</span><span>Facebook</span></a>
+          <a href="https://wa.me/?text=${encodedShareText}%20${encodedShareUrl}" target="_blank" rel="noreferrer"><span class="share-option-icon" aria-hidden="true">W</span><span>WhatsApp</span></a>
+          <a href="mailto:?subject=${encodedShareText}&body=${encodedEmailBody}" title="Open your email app with this song ready to send"><span class="share-option-icon" aria-hidden="true">✉</span><span>Email</span></a>
+          <button type="button" data-native-share hidden><span class="share-option-icon" aria-hidden="true">•••</span><span>More Apps</span></button>
         </div>
       </div>
     </div>
@@ -851,6 +855,25 @@ function linkHubPage(release, artist) {
       if (label) label.textContent = "Copy link";
     }, 1400);
   });
+  const nativeShareButton = wrap.querySelector("[data-native-share]");
+  if (nativeShareButton && navigator.share) {
+    nativeShareButton.hidden = false;
+    nativeShareButton.addEventListener("click", async () => {
+      try {
+        await navigator.share({
+          title: `${release.title || "Song"} by ${artistLabel}`,
+          text: `Listen on MusicBusiness Arena`,
+          url: shareUrl,
+        });
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          await navigator.clipboard.writeText(shareUrl);
+          const label = nativeShareButton.querySelector("span:last-child");
+          if (label) label.textContent = "Link copied";
+        }
+      }
+    });
+  }
   wrap.querySelector("[data-submit-subscribe]")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     const modal = wrap.querySelector("[data-subscribe-modal]");

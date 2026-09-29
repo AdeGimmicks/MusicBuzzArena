@@ -4895,11 +4895,12 @@ select:focus {
 }
 
 .share-options {
-  display: flex;
+  display: grid;
   gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
   max-width: 100%;
-  overflow-x: auto;
   padding: 8px 0 2px;
+  width: 100%;
 }
 
 .share-options a,
@@ -4910,16 +4911,18 @@ select:focus {
   color: #11141b;
   cursor: pointer;
   display: grid;
-  flex: 0 0 74px;
   font-size: 1.15rem;
   font-weight: 900;
   gap: 8px;
   justify-items: center;
 }
 
-.share-options a::first-letter,
-.share-options button::first-letter {
+.share-option-icon {
+  align-items: center;
+  display: inline-flex;
   font-size: 1.4rem;
+  justify-content: center;
+  min-height: 24px;
 }
 
 .share-options span {
