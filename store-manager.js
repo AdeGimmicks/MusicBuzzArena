@@ -1189,7 +1189,19 @@ function renderSubscribers() {
 
 function scopedVisitorEvents() {
   const selectedArtist = scopedAnalyticsArtist();
-  const events = currentStore.visitorEvents || [];
+  const lastExternalSourceByVisitor = new Map();
+  const events = (currentStore.visitorEvents || [])
+    .slice()
+    .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
+    .map((event) => {
+      const source = String(event.source || "Direct");
+      const internalSource = source === "Internal" || source === "musicbusinessarena.com" || source.endsWith(".musicbusinessarena.com");
+      const attributedSource = internalSource
+        ? lastExternalSourceByVisitor.get(event.visitorId) || "Direct"
+        : source;
+      if (event.visitorId && attributedSource !== "Direct") lastExternalSourceByVisitor.set(event.visitorId, attributedSource);
+      return { ...event, source: attributedSource };
+    });
   return selectedArtist
     ? events.filter((event) => String(event.artistId || "") === String(selectedArtist.id))
     : events;
@@ -1200,14 +1212,14 @@ function visitorLocationLabel(event) {
   return [...new Set(parts)].join(", ") || "Unknown";
 }
 
-function filteredVisitorEvents(events) {
+function filteredVisitorEvents(events, options = {}) {
   const range = visitorRangeSelect?.value || "30";
   const source = visitorSourceSelect?.value || "";
   const query = String(visitorSearchInput?.value || "").trim().toLowerCase();
   const cutoff = range === "all" ? 0 : Date.now() - Number(range || 30) * 24 * 60 * 60 * 1000;
   return events.filter((event) => {
     if (cutoff && new Date(event.createdAt || 0).getTime() < cutoff) return false;
-    if (source && event.source !== source) return false;
+    if (!options.ignoreSource && source && event.source !== source) return false;
     if (!query) return true;
     return [event.ipAddress, event.visitorId, event.source, event.country, event.region, event.city, event.artistName, event.releaseTitle, event.activity, event.pagePath]
       .some((value) => String(value || "").toLowerCase().includes(query));
@@ -1226,18 +1238,19 @@ function populateVisitorSourceFilter(events) {
 function visitorSourceItems(events) {
   const counts = events.reduce((totals, event) => {
     const source = event.source || "Direct";
-    totals[source] = Number(totals[source] || 0) + 1;
+    if (!totals[source]) totals[source] = { visits: 0, visitors: new Set() };
+    totals[source].visits += 1;
+    totals[source].visitors.add(event.visitorId || event.ipAddress || event.id);
     return totals;
   }, {});
   return Object.entries(counts)
-    .map(([title, visits]) => ({ title, visits }))
+    .map(([title, count]) => ({ title, visits: count.visits, uniqueVisitors: count.visitors.size }))
     .sort((a, b) => b.visits - a.visits || a.title.localeCompare(b.title));
 }
 
-function renderVisitorActivity(events) {
-  if (!analyticsVisitorTable) return;
+function visitorRowsMarkup(events) {
   const rows = events.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 500);
-  analyticsVisitorTable.innerHTML = rows.length
+  return rows.length
     ? `
       <div class="manager-table-header visitor-columns"><span>Date & Time</span><span>IP / Visitor</span><span>Source</span><span>Location</span><span>Artist / Song</span><span>Activity</span><span>Device</span><span>Page</span></div>
       ${rows.map((event) => `
@@ -1254,6 +1267,49 @@ function renderVisitorActivity(events) {
       `).join("")}
     `
     : emptyState("Visitor activity will appear here after new public website visits are recorded.");
+}
+
+function renderVisitorSourceCards(items, totalEvents) {
+  const container = document.querySelector("#analyticsTrafficSourceBreakdown");
+  if (!container) return;
+  const selected = visitorSourceSelect?.value || "";
+  const allVisitors = new Set(totalEvents.map((event) => event.visitorId || event.ipAddress).filter(Boolean)).size;
+  const cards = [
+    { title: "All Sources", visits: totalEvents.length, uniqueVisitors: allVisitors, value: "" },
+    ...items.map((item) => ({ ...item, value: item.title })),
+  ];
+  container.innerHTML = cards.length
+    ? cards.map((item) => `
+        <button class="visitor-source-card${selected === item.value ? " is-active" : ""}" type="button" data-visitor-source="${escapeAttr(item.value)}">
+          <strong>${escapeText(item.title)} Visitors</strong>
+          <span>${item.visits} visit${item.visits === 1 ? "" : "s"}</span>
+          <small>${item.uniqueVisitors} unique visitor${item.uniqueVisitors === 1 ? "" : "s"}</small>
+        </button>
+      `).join("")
+    : emptyState("Traffic sources will appear after new public website visits are recorded.");
+}
+
+function renderVisitorActivity(events) {
+  if (!analyticsVisitorTable) return;
+  const selectedSource = visitorSourceSelect?.value || "";
+  setText("#analyticsVisitorActivityTitle", selectedSource ? `${selectedSource} Visitor Activity` : "Visitor Activity by Source");
+  if (selectedSource || !events.length) {
+    analyticsVisitorTable.innerHTML = visitorRowsMarkup(events);
+    return;
+  }
+  const sourceGroups = visitorSourceItems(events);
+  analyticsVisitorTable.innerHTML = sourceGroups.map((source) => {
+    const sourceEvents = events.filter((event) => (event.source || "Direct") === source.title);
+    return `
+      <section class="visitor-source-group">
+        <div class="visitor-source-group-heading">
+          <h4>${escapeText(source.title)} Visitors</h4>
+          <span>${source.visits} visits · ${source.uniqueVisitors} unique</span>
+        </div>
+        <div class="manager-table">${visitorRowsMarkup(sourceEvents)}</div>
+      </section>
+    `;
+  }).join("");
 }
 
 /* ===================================================
@@ -1277,8 +1333,9 @@ function renderAnalytics() {
   const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
   const scopedEvents = scopedVisitorEvents();
   populateVisitorSourceFilter(scopedEvents);
+  const sourceScopeEvents = filteredVisitorEvents(scopedEvents, { ignoreSource: true });
   const visitorEvents = filteredVisitorEvents(scopedEvents);
-  const sourceItems = visitorSourceItems(visitorEvents);
+  const sourceItems = visitorSourceItems(sourceScopeEvents);
   const today = new Date().toDateString();
   const todayVisits = scopedEvents.filter((event) => new Date(event.createdAt || 0).toDateString() === today).length;
 
@@ -1367,11 +1424,7 @@ function renderAnalytics() {
       })),
     "Artist analytics will appear after artists join."
   );
-  renderList(
-    "#analyticsTrafficSourceBreakdown",
-    sourceItems.slice(0, 12).map((item) => ({ title: item.title, meta: `${item.visits} visit${item.visits === 1 ? "" : "s"}` })),
-    "Traffic sources will appear after new public website visits are recorded."
-  );
+  renderVisitorSourceCards(sourceItems.slice(0, 20), sourceScopeEvents);
   renderVisitorActivity(visitorEvents);
 }
 
@@ -1762,6 +1815,12 @@ subscriberMessageForm?.addEventListener("submit", async (event) => {
 managerAnalyticsArtistSelect?.addEventListener("change", renderAnalytics);
 [visitorRangeSelect, visitorSourceSelect].forEach((control) => control?.addEventListener("change", renderAnalytics));
 visitorSearchInput?.addEventListener("input", renderAnalytics);
+document.querySelector("#analyticsTrafficSourceBreakdown")?.addEventListener("click", (event) => {
+  const sourceButton = event.target.closest("[data-visitor-source]");
+  if (!sourceButton || !visitorSourceSelect) return;
+  visitorSourceSelect.value = sourceButton.dataset.visitorSource || "";
+  renderAnalytics();
+});
 
 managerNavLinks.forEach((link) => {
   link.addEventListener("click", (event) => {

@@ -1058,7 +1058,7 @@ function normalizedReferrer(value) {
   }
 }
 
-function visitorSource(body) {
+function visitorSource(body, request) {
   const supplied = analyticsText(body.utmSource, 100);
   const referrer = normalizedReferrer(body.landingReferrer || body.referrer);
   const sourceText = `${supplied} ${referrer}`.toLowerCase();
@@ -1075,7 +1075,12 @@ function visitorSource(body) {
   if (supplied) return supplied.replace(/[-_]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
   if (!referrer) return "Direct";
   try {
-    return new URL(referrer).hostname.replace(/^www\./, "") || "Referral";
+    const referrerHost = new URL(referrer).hostname.replace(/^www\./, "").toLowerCase();
+    const requestHost = analyticsText(request?.headers?.host, 200).split(":")[0].replace(/^www\./, "").toLowerCase();
+    if (referrerHost === requestHost || referrerHost === "musicbusinessarena.com" || referrerHost.endsWith(".musicbusinessarena.com")) {
+      return "Internal";
+    }
+    return referrerHost || "Referral";
   } catch {
     return "Referral";
   }
@@ -1121,6 +1126,15 @@ async function recordVisitorEvent(request, response) {
     );
     if (recentDuplicate) return recentDuplicate;
 
+    let source = visitorSource(body, request);
+    if (source === "Internal") {
+      const previousExternalVisit = (store.visitorEvents || [])
+        .slice()
+        .reverse()
+        .find((item) => item.visitorId === visitorId && item.source && item.source !== "Internal" && item.source !== "musicbusinessarena.com");
+      source = previousExternalVisit?.source || "Direct";
+    }
+
     const nextEvent = {
       id: `visit-${Date.now()}-${crypto.randomBytes(5).toString("hex")}`,
       visitorId,
@@ -1133,7 +1147,7 @@ async function recordVisitorEvent(request, response) {
       artistName: artist?.name || artist?.handle || analyticsText(body.artistName, 160),
       releaseId: release?.id || releaseId,
       releaseTitle: release?.title || analyticsText(body.releaseTitle, 200),
-      source: visitorSource(body),
+      source,
       referrer: normalizedReferrer(body.landingReferrer || body.referrer),
       ipAddress,
       city: location.city,

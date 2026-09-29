@@ -1641,6 +1641,74 @@ h3 {
   margin-top: 16px;
 }
 
+.traffic-source-card-panel {
+  grid-column: 1 / -1;
+}
+
+.visitor-source-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.visitor-source-card {
+  align-items: flex-start;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  min-height: 92px;
+  padding: 14px;
+  text-align: left;
+}
+
+.visitor-source-card:hover,
+.visitor-source-card:focus-visible,
+.visitor-source-card.is-active {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+  outline: 0;
+}
+
+.visitor-source-card strong {
+  font-size: 0.96rem;
+}
+
+.visitor-source-card span,
+.visitor-source-card small,
+.visitor-source-group-heading span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.visitor-source-group {
+  display: grid;
+  gap: 10px;
+}
+
+.visitor-source-group + .visitor-source-group {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 22px;
+}
+
+.visitor-source-group-heading {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: space-between;
+}
+
+.visitor-source-group-heading h4 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
 .manager-card-note {
   color: var(--muted);
   font-size: 0.86rem;
