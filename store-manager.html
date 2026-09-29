@@ -211,6 +211,10 @@
               </div>
               <label>Status <select name="status"><option>approved</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
               <label>Description <textarea name="songBio" rows="4"></textarea></label>
+              <details class="manager-streaming-editor" open>
+                <summary>Streaming platforms and embedded players</summary>
+                <div class="manager-streaming-fields" id="managerStreamingFields"></div>
+              </details>
               <button class="primary-button" type="submit">Save Release</button>
               <p class="form-message" id="managerSongMessage" role="status"></p>
             </form>

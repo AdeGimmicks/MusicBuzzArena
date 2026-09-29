@@ -2449,6 +2449,12 @@ h3 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.distribution-subheading {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding-top: 22px;
+}
+
 .upload-form-footer {
   align-items: center;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -4424,6 +4430,12 @@ select:focus {
   width: 100%;
 }
 
+.service-platform {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 .service-row {
   align-items: center;
   background: rgba(255, 255, 255, 0.86);
@@ -4435,6 +4447,10 @@ select:focus {
   justify-content: space-between;
   min-height: 76px;
   padding: 13px 16px;
+}
+
+.service-platform .service-row {
+  background: transparent;
 }
 
 .service-brand {
@@ -4463,6 +4479,7 @@ select:focus {
 }
 
 .service-action {
+  border: 0;
   background: #e8ebf1;
   border-radius: 6px;
   color: #11141b;
@@ -4472,6 +4489,120 @@ select:focus {
   min-width: 86px;
   padding: 13px 16px;
   text-align: center;
+}
+
+.service-player-toggle {
+  cursor: pointer;
+  font: inherit;
+}
+
+.service-player-toggle[aria-expanded="true"] {
+  background: var(--gold);
+}
+
+.service-embed-panel {
+  border-top: 1px solid rgba(17, 20, 27, 0.1);
+  padding: 14px 16px 16px;
+}
+
+.service-embed-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.service-embed-toolbar strong {
+  color: #11141b;
+  font-size: 0.92rem;
+}
+
+.service-open-link {
+  color: #11141b;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.service-embed-frame {
+  background: #11141b;
+  border-radius: 8px;
+  min-height: 152px;
+  overflow: hidden;
+}
+
+.service-embed-frame iframe {
+  border: 0;
+  display: block;
+  min-height: 152px;
+  width: 100%;
+}
+
+.service-platform[data-platform-key="appleMusic"] .service-embed-frame iframe,
+.service-platform[data-platform-key="amazonMusic"] .service-embed-frame iframe {
+  min-height: 450px;
+}
+
+.service-platform[data-platform-key="youtubeMusic"] .service-embed-frame iframe,
+.service-platform[data-platform-key="deezer"] .service-embed-frame iframe,
+.service-platform[data-platform-key="tidal"] .service-embed-frame iframe {
+  aspect-ratio: 16 / 9;
+  min-height: 200px;
+}
+
+.service-platform[data-platform-key="audiomack"] .service-embed-frame iframe {
+  min-height: 252px;
+}
+
+.service-platform[data-platform-key="soundcloud"] .service-embed-frame iframe {
+  min-height: 166px;
+}
+
+.manager-streaming-editor {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 16px 16px;
+}
+
+.manager-streaming-editor summary {
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+  padding: 16px 0;
+}
+
+.manager-streaming-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.manager-streaming-platform {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  min-width: 0;
+  padding: 14px;
+}
+
+.manager-streaming-platform legend {
+  align-items: center;
+  color: var(--text);
+  display: flex;
+  font-weight: 900;
+  gap: 8px;
+  padding: 0 6px;
+}
+
+.manager-streaming-platform legend img {
+  border-radius: 5px;
+  height: 24px;
+  object-fit: contain;
+  width: 24px;
 }
 
 .service-row:hover .service-action {
@@ -5450,6 +5581,15 @@ select:focus {
   .service-action {
     min-width: 82px;
     padding: 13px 12px;
+  }
+
+  .service-embed-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .manager-streaming-fields {
+    grid-template-columns: 1fr;
   }
 
   .creator-upload-layout {

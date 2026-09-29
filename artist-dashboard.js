@@ -27,6 +27,7 @@ const releaseForm = document.querySelector("#releaseForm");
 const videoForm = document.querySelector("#videoForm");
 const socialFields = document.querySelector("#socialFields");
 const streamingFields = document.querySelector("#streamingFields");
+const streamingEmbedFields = document.querySelector("#streamingEmbedFields");
 const trackManager = document.querySelector("#trackManager");
 const trackManagerHelp = document.querySelector("#trackManagerHelp");
 const trackManagerList = document.querySelector("#trackManagerList");
@@ -472,24 +473,34 @@ function setFrameFromUrl(frame, url) {
   if (nextSrc && frame.src !== nextSrc) frame.src = nextSrc;
 }
 
-function renderLinkInputs(container, links, values = {}) {
+function renderLinkInputs(container, links, values = {}, options = {}) {
+  if (!container) return;
+  const namePrefix = options.namePrefix || "";
+  const placeholder = options.placeholder || "https://... or @username";
   container.replaceChildren();
   links.forEach(([label, key, icon]) => {
     const field = document.createElement("label");
     field.className = "link-input";
     field.innerHTML = `
-      <span>${icon ? `<img src="${icon}" alt="">` : ""}${label}</span>
-      <input name="${key}" type="text" placeholder="https://... or @username" value="${values[key] || ""}">
+      <span>${icon ? `<img src="${escapeAttr(icon)}" alt="">` : ""}${escapeText(label)}</span>
+      <input name="${escapeAttr(`${namePrefix}${key}`)}" type="text" placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(values[key] || "")}">
     `;
     container.append(field);
   });
 }
 
-function formLinks(form, links) {
+function formLinks(form, links, namePrefix = "") {
   return links.reduce((result, [, key]) => {
-    result[key] = normalizeLink(form[key]?.value);
+    result[key] = normalizeLink(form[`${namePrefix}${key}`]?.value);
     return result;
   }, {});
+}
+
+function renderStreamingEmbedInputs(values = {}) {
+  renderLinkInputs(streamingEmbedFields, STREAMING_LINKS, values, {
+    namePrefix: "embed_",
+    placeholder: "Official embed URL or iframe code",
+  });
 }
 
 /* ===================================================
@@ -622,6 +633,7 @@ async function autoSaveReleaseDraft() {
   }
   release.location = [release.cityState, release.country].filter(Boolean).join(", ");
   release.streaming = formLinks(releaseForm, STREAMING_LINKS);
+  release.streamingEmbeds = formLinks(releaseForm, STREAMING_LINKS, "embed_");
   if (cover) release.cover = cover;
   if (isMultiTrackRelease(type)) {
     release.tracks = await serializedTracks();
@@ -644,8 +656,9 @@ async function autoSaveReleaseDraft() {
   else currentStore.releases.unshift(release);
   currentStore = await window.MBA.saveStore(currentStore, {
     clears: [
-      { collection: "releases", id: release.id, fields: ["streaming", "mood", "tracks"], value: null },
+      { collection: "releases", id: release.id, fields: ["streaming", "streamingEmbeds", "mood", "tracks"], value: null },
       { collection: "releases", id: release.id, fields: ["streaming"], value: release.streaming },
+      { collection: "releases", id: release.id, fields: ["streamingEmbeds"], value: release.streamingEmbeds },
       { collection: "releases", id: release.id, fields: ["mood"], value: release.mood || [] },
       { collection: "releases", id: release.id, fields: ["tracks"], value: release.tracks || [] },
     ],
@@ -890,6 +903,7 @@ function clearReleaseForm() {
   releaseForm.audio.required = true;
   songBioCount.textContent = "0";
   renderLinkInputs(streamingFields, STREAMING_LINKS);
+  renderStreamingEmbedInputs();
   applyReleaseTypeMode();
   updateHomePreview();
   updateUploadStatus();
@@ -1094,6 +1108,7 @@ function fillReleaseForm(release) {
   renderTrackManager();
   songBioCount.textContent = String(releaseForm.songBio.value.length);
   renderLinkInputs(streamingFields, STREAMING_LINKS, release.streaming || {});
+  renderStreamingEmbedInputs(release.streamingEmbeds || {});
   updateHomePreview(release.cover || "");
   renderDashboardReleases();
   updateUploadStatus();
@@ -1997,6 +2012,7 @@ releaseForm.addEventListener("submit", async (event) => {
     release.donationAmount = 0;
     release.donationLink = "";
     release.streaming = formLinks(releaseForm, STREAMING_LINKS);
+    release.streamingEmbeds = formLinks(releaseForm, STREAMING_LINKS, "embed_");
     if (cover) release.cover = cover;
     if (isMultiTrackRelease(type)) {
       release.tracks = await serializedTracks();
@@ -2024,6 +2040,7 @@ releaseForm.addEventListener("submit", async (event) => {
     currentStore = await window.MBA.saveStore(currentStore, {
       clears: [
         { collection: "releases", id: release.id, fields: ["streaming"], value: release.streaming },
+        { collection: "releases", id: release.id, fields: ["streamingEmbeds"], value: release.streamingEmbeds },
         { collection: "releases", id: release.id, fields: ["mood"], value: release.mood || [] },
         { collection: "releases", id: release.id, fields: ["tracks"], value: release.tracks || [] },
       ],
@@ -2315,6 +2332,7 @@ async function initDashboard() {
   fillArtistForm();
   fillVideoForm();
   renderLinkInputs(streamingFields, STREAMING_LINKS);
+  renderStreamingEmbedInputs();
   updateHomePreview();
   renderDashboardReleases();
   const params = new URLSearchParams(window.location.search);

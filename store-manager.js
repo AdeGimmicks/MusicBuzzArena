@@ -56,6 +56,7 @@ const managerSupportTable = document.querySelector("#managerSupportTable");
 const managerReportTable = document.querySelector("#managerReportTable");
 const managerArtistForm = document.querySelector("#managerArtistForm");
 const managerSongForm = document.querySelector("#managerSongForm");
+const managerStreamingFields = document.querySelector("#managerStreamingFields");
 const subscriberMessageForm = document.querySelector("#subscriberMessageForm");
 const managerArtistMessage = document.querySelector("#managerArtistMessage");
 const managerSongMessage = document.querySelector("#managerSongMessage");
@@ -177,6 +178,38 @@ function escapeText(value) {
 function escapeAttr(value) {
   return escapeText(value).replace(/"/g, "&quot;");
 }
+
+const MANAGER_EMBED_PLATFORM_KEYS = new Set([
+  "spotify",
+  "appleMusic",
+  "youtubeMusic",
+  "audiomack",
+  "soundcloud",
+  "deezer",
+  "tidal",
+  "amazonMusic",
+]);
+
+function renderManagerStreamingFields() {
+  if (!managerStreamingFields) return;
+  managerStreamingFields.innerHTML = STREAMING_LINKS.map(([label, key, icon]) => `
+    <fieldset class="manager-streaming-platform">
+      <legend><img src="${escapeAttr(icon)}" alt="">${escapeText(label)}</legend>
+      <label>
+        Track URL
+        <input name="streaming_${escapeAttr(key)}" type="url" inputmode="url" placeholder="https://" />
+      </label>
+      ${MANAGER_EMBED_PLATFORM_KEYS.has(key)
+        ? `<label>
+            Official embed URL
+            <input name="embed_${escapeAttr(key)}" type="text" inputmode="url" placeholder="Optional embed URL or iframe code" />
+          </label>`
+        : ""}
+    </fieldset>
+  `).join("");
+}
+
+renderManagerStreamingFields();
 
 function message(node, text, type = "success") {
   if (!node) return;
@@ -1657,6 +1690,13 @@ managerSongTable?.addEventListener("click", async (event) => {
     managerSongForm.price.value = release.price || 0;
     managerSongForm.status.value = release.status || "pending";
     managerSongForm.songBio.value = release.songBio || "";
+    STREAMING_LINKS.forEach(([, key]) => {
+      const streamingInput = managerSongForm.elements[`streaming_${key}`];
+      const embedInput = managerSongForm.elements[`embed_${key}`];
+      if (streamingInput) streamingInput.value = release.streaming?.[key] || "";
+      if (embedInput) embedInput.value = release.streamingEmbeds?.[key] || "";
+    });
+    managerSongForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   if (event.target.closest("[data-release-analytics]")) {
@@ -1697,6 +1737,14 @@ managerSongForm?.addEventListener("submit", async (event) => {
   release.price = Number(managerSongForm.price.value || 0);
   release.status = managerSongForm.status.value;
   release.songBio = managerSongForm.songBio.value.trim();
+  release.streaming = release.streaming || {};
+  release.streamingEmbeds = release.streamingEmbeds || {};
+  STREAMING_LINKS.forEach(([, key]) => {
+    const streamingInput = managerSongForm.elements[`streaming_${key}`];
+    const embedInput = managerSongForm.elements[`embed_${key}`];
+    if (streamingInput) release.streaming[key] = normalizeLink(streamingInput.value);
+    if (embedInput) release.streamingEmbeds[key] = normalizeLink(embedInput.value);
+  });
   release.updatedAt = new Date().toISOString();
   await saveAndRender();
   message(managerSongMessage, "Release saved.");

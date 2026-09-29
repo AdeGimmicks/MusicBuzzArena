@@ -84,6 +84,97 @@ function money(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
 }
 
+function escapeAttribute(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function urlFromEmbedInput(value) {
+  const input = String(value || "").trim();
+  const iframeSrc = input.match(/\bsrc=["']([^"']+)["']/i)?.[1];
+  const candidate = (iframeSrc || input).replace(/&amp;/gi, "&");
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function platformEmbedUrl(platformKey, savedEmbed) {
+  const source = urlFromEmbedInput(savedEmbed);
+  if (!source) return "";
+  const host = source.hostname.toLowerCase().replace(/^www\./, "");
+  const parts = source.pathname.split("/").filter(Boolean);
+
+  if (platformKey === "spotify" && host === "open.spotify.com") {
+    const offset = parts[0] === "embed" ? 1 : 0;
+    const type = parts[offset];
+    const id = parts[offset + 1];
+    if (["track", "album", "playlist", "episode", "show", "artist"].includes(type) && id) {
+      return `https://open.spotify.com/embed/${type}/${encodeURIComponent(id)}`;
+    }
+  }
+
+  if (platformKey === "appleMusic" && ["music.apple.com", "embed.music.apple.com"].includes(host)) {
+    const path = source.pathname.replace(/^\/embed(?=\/)/, "");
+    if (path && path !== "/") return `https://embed.music.apple.com${path}${source.search}`;
+  }
+
+  if (platformKey === "youtubeMusic") {
+    const isYouTubeHost = ["youtube.com", "music.youtube.com", "m.youtube.com", "youtu.be", "youtube-nocookie.com"].includes(host);
+    if (isYouTubeHost) {
+      const videoId = host === "youtu.be"
+        ? parts[0]
+        : source.searchParams.get("v") || (parts[0] === "embed" ? parts[1] : "");
+      if (/^[A-Za-z0-9_-]{6,}$/.test(videoId || "")) {
+        return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}`;
+      }
+    }
+  }
+
+  if (platformKey === "audiomack" && host === "audiomack.com") {
+    const embedParts = parts[0] === "embed" ? parts.slice(1) : parts;
+    if (embedParts.length >= 3 && ["song", "album", "playlist"].includes(embedParts[1])) {
+      return `https://audiomack.com/embed/${embedParts.map(encodeURIComponent).join("/")}`;
+    }
+  }
+
+  if (platformKey === "soundcloud") {
+    if (host === "w.soundcloud.com" && source.pathname.startsWith("/player")) return source.href;
+    if (host === "soundcloud.com" && parts.length >= 2) {
+      return `https://w.soundcloud.com/player/?url=${encodeURIComponent(source.href)}&auto_play=false&show_artwork=true`;
+    }
+  }
+
+  if (platformKey === "deezer" && ["deezer.com", "widget.deezer.com"].includes(host)) {
+    if (host === "widget.deezer.com" && source.pathname.startsWith("/widget/")) return source.href;
+    const typeIndex = parts.findIndex((part) => ["track", "album", "playlist", "artist"].includes(part));
+    const type = parts[typeIndex];
+    const id = parts[typeIndex + 1];
+    if (type && /^\d+$/.test(id || "")) return `https://widget.deezer.com/widget/dark/${type}/${id}`;
+  }
+
+  if (platformKey === "tidal" && ["tidal.com", "embed.tidal.com"].includes(host)) {
+    if (host === "embed.tidal.com") return source.href;
+    const typeIndex = parts.findIndex((part) => ["track", "album", "playlist", "video"].includes(part));
+    const type = parts[typeIndex];
+    const id = parts[typeIndex + 1];
+    const embedType = { track: "tracks", album: "albums", playlist: "playlists", video: "videos" }[type];
+    if (embedType && id) return `https://embed.tidal.com/${embedType}/${encodeURIComponent(id)}`;
+  }
+
+  if (platformKey === "amazonMusic" && host === "music.amazon.com" && parts[0] === "embed") {
+    return source.href;
+  }
+
+  return "";
+}
+
 function streamingLinks(release) {
   const wrap = document.createElement("div");
   wrap.className = "streaming-list";
@@ -535,19 +626,49 @@ function linkHubPage(release, artist) {
     const href = release.streaming?.[key];
     if (!href) return "";
     const actionLabel = key === "itunes" ? "Download" : "Play";
+    const embedUrl = platformEmbedUrl(key, release.streamingEmbeds?.[key]);
+    if (!embedUrl) {
+      return `
+        <div class="service-platform">
+          <a class="service-row streaming-link"
+             data-release-id="${escapeAttribute(release.id)}"
+             data-platform-key="${escapeAttribute(key)}"
+             href="${escapeAttribute(href)}"
+             target="_blank"
+             rel="noopener noreferrer">
+            <span class="service-brand">
+              <img src="${escapeAttribute(icon)}" alt="">
+              <strong>${label}</strong>
+            </span>
+            <span class="service-action">${actionLabel}</span>
+          </a>
+        </div>
+      `;
+    }
     return `
-      <a class="service-row streaming-link"
-   data-release-id="${release.id}"
-   data-platform-key="${key}"
-   href="${href}"
-   target="_blank"
-   rel="noopener noreferrer">
-        <span class="service-brand">
-          <img src="${icon}" alt="">
-          <strong>${label}</strong>
-        </span>
-        <span class="service-action">${actionLabel}</span>
-      </a>
+      <div class="service-platform" data-platform-player data-platform-key="${escapeAttribute(key)}">
+        <div class="service-row">
+          <span class="service-brand">
+            <img src="${escapeAttribute(icon)}" alt="">
+            <strong>${label}</strong>
+          </span>
+          <button class="service-action service-player-toggle streaming-link" type="button"
+                  data-release-id="${escapeAttribute(release.id)}"
+                  data-platform-key="${escapeAttribute(key)}"
+                  data-platform-label="${escapeAttribute(label)}"
+                  data-embed-url="${escapeAttribute(embedUrl)}"
+                  aria-expanded="false">Play</button>
+        </div>
+        <div class="service-embed-panel" hidden>
+          <div class="service-embed-toolbar">
+            <strong>${label} player</strong>
+            <a class="service-open-link streaming-link" data-release-id="${escapeAttribute(release.id)}"
+               data-platform-key="${escapeAttribute(key)}" href="${escapeAttribute(href)}"
+               target="_blank" rel="noopener noreferrer">Open in ${label} ↗</a>
+          </div>
+          <div class="service-embed-frame" data-embed-frame></div>
+        </div>
+      </div>
     `;
   }).join("");
   const paymentSection =
@@ -865,8 +986,7 @@ function linkHubPage(release, artist) {
     });
   });
 
-  wrap.querySelectorAll(".streaming-link").forEach((link) => {
-    link.addEventListener("click", () => {
+  const recordStreamingClick = (link) => {
       const releaseId = link.dataset.releaseId;
       const platformKey = link.dataset.platformKey;
       if (!releaseId || !platformKey) return;
@@ -891,6 +1011,58 @@ function linkHubPage(release, artist) {
           if (response.ok) window.MBA.loadStore({ force: true });
         })
         .catch(() => {});
+  };
+
+  let openPlatformPlayer = null;
+  const closePlatformPlayer = (platform) => {
+    if (!platform) return;
+    const panel = platform.querySelector(".service-embed-panel");
+    const frame = platform.querySelector("[data-embed-frame]");
+    const toggle = platform.querySelector(".service-player-toggle");
+    if (frame) frame.replaceChildren();
+    if (panel) panel.hidden = true;
+    if (toggle) {
+      toggle.textContent = "Play";
+      toggle.setAttribute("aria-expanded", "false");
+    }
+    platform.classList.remove("is-open");
+    if (openPlatformPlayer === platform) openPlatformPlayer = null;
+  };
+
+  wrap.querySelectorAll(".service-player-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const platform = button.closest("[data-platform-player]");
+      if (!platform) return;
+      if (openPlatformPlayer === platform) {
+        closePlatformPlayer(platform);
+        return;
+      }
+
+      closePlatformPlayer(openPlatformPlayer);
+      const panel = platform.querySelector(".service-embed-panel");
+      const frame = platform.querySelector("[data-embed-frame]");
+      const embedUrl = button.dataset.embedUrl;
+      if (!panel || !frame || !embedUrl) return;
+
+      const iframe = document.createElement("iframe");
+      iframe.src = embedUrl;
+      iframe.title = `${button.dataset.platformLabel || "Streaming"} player`;
+      iframe.loading = "lazy";
+      iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+      iframe.setAttribute("allowfullscreen", "");
+      frame.replaceChildren(iframe);
+      panel.hidden = false;
+      platform.classList.add("is-open");
+      button.textContent = "Hide Player";
+      button.setAttribute("aria-expanded", "true");
+      openPlatformPlayer = platform;
+      recordStreamingClick(button);
+    });
+  });
+
+  wrap.querySelectorAll("a.streaming-link").forEach((link) => {
+    link.addEventListener("click", () => {
+      recordStreamingClick(link);
     });
   });
 
