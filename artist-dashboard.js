@@ -497,11 +497,63 @@ function formLinks(form, links, namePrefix = "") {
 }
 
 function renderStreamingEmbedInputs(values = {}) {
-  renderLinkInputs(streamingEmbedFields, STREAMING_LINKS, values, {
-    namePrefix: "embed_",
-    placeholder: "Official embed URL or iframe code",
+  if (!streamingEmbedFields) return;
+  streamingEmbedFields.replaceChildren();
+  STREAMING_LINKS.forEach(([label, key, icon]) => {
+    const field = document.createElement("div");
+    field.className = "link-input embed-link-input";
+    const inputId = `embed-${key}`;
+    const canGenerate = AUTOMATIC_EMBED_PLATFORM_KEYS.has(key);
+    field.innerHTML = `
+      <label for="${escapeAttr(inputId)}">
+        <span>${icon ? `<img src="${escapeAttr(icon)}" alt="">` : ""}${escapeText(label)}</span>
+      </label>
+      <input id="${escapeAttr(inputId)}" name="embed_${escapeAttr(key)}" type="text"
+             placeholder="Official embed URL or iframe code" value="${escapeAttr(values[key] || "")}">
+      ${canGenerate
+        ? `<button class="embed-generate-button" type="button" data-generate-embed="${escapeAttr(key)}">Generate Automatically</button>
+           <small class="embed-generate-status" data-embed-status="${escapeAttr(key)}" aria-live="polite"></small>`
+        : ""}
+    `;
+    streamingEmbedFields.append(field);
+
+    if (canGenerate) {
+      const sourceInput = releaseForm.elements[key];
+      const button = field.querySelector("[data-generate-embed]");
+      if (button) button.disabled = !String(sourceInput?.value || "").trim();
+    }
   });
 }
+
+streamingEmbedFields?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-generate-embed]");
+  if (!button) return;
+  const platformKey = button.dataset.generateEmbed;
+  const platform = STREAMING_LINKS.find(([, key]) => key === platformKey);
+  const sourceInput = releaseForm.elements[platformKey];
+  const embedInput = releaseForm.elements[`embed_${platformKey}`];
+  const status = streamingEmbedFields.querySelector(`[data-embed-status="${platformKey}"]`);
+  const generatedUrl = officialEmbedUrlForPlatform(platformKey, sourceInput?.value);
+
+  if (!generatedUrl) {
+    if (status) status.textContent = `Enter a supported ${platform?.[0] || "platform"} streaming URL above.`;
+    sourceInput?.focus();
+    return;
+  }
+
+  embedInput.value = generatedUrl;
+  embedInput.dispatchEvent(new Event("input", { bubbles: true }));
+  if (status) status.textContent = "Official embed link generated.";
+});
+
+releaseForm?.addEventListener("input", (event) => {
+  const platformKey = event.target?.name;
+  if (!AUTOMATIC_EMBED_PLATFORM_KEYS.has(platformKey)) return;
+  const button = streamingEmbedFields?.querySelector(`[data-generate-embed="${platformKey}"]`);
+  const status = streamingEmbedFields?.querySelector(`[data-embed-status="${platformKey}"]`);
+  if (button) button.disabled = !String(event.target.value || "").trim();
+  if (status) status.textContent = "";
+});
 
 /* ===================================================
    UPLOAD WIZARD NAVIGATION

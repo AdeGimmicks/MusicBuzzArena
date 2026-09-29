@@ -92,87 +92,8 @@ function escapeAttribute(value) {
     .replace(/>/g, "&gt;");
 }
 
-function urlFromEmbedInput(value) {
-  const input = String(value || "").trim();
-  const iframeSrc = input.match(/\bsrc=["']([^"']+)["']/i)?.[1];
-  const candidate = (iframeSrc || input).replace(/&amp;/gi, "&");
-  if (!candidate) return null;
-  try {
-    const url = new URL(candidate);
-    return url.protocol === "https:" ? url : null;
-  } catch {
-    return null;
-  }
-}
-
 function platformEmbedUrl(platformKey, savedEmbed) {
-  const source = urlFromEmbedInput(savedEmbed);
-  if (!source) return "";
-  const host = source.hostname.toLowerCase().replace(/^www\./, "");
-  const parts = source.pathname.split("/").filter(Boolean);
-
-  if (platformKey === "spotify" && host === "open.spotify.com") {
-    const offset = parts[0] === "embed" ? 1 : 0;
-    const type = parts[offset];
-    const id = parts[offset + 1];
-    if (["track", "album", "playlist", "episode", "show", "artist"].includes(type) && id) {
-      return `https://open.spotify.com/embed/${type}/${encodeURIComponent(id)}`;
-    }
-  }
-
-  if (platformKey === "appleMusic" && ["music.apple.com", "embed.music.apple.com"].includes(host)) {
-    const path = source.pathname.replace(/^\/embed(?=\/)/, "");
-    if (path && path !== "/") return `https://embed.music.apple.com${path}${source.search}`;
-  }
-
-  if (platformKey === "youtubeMusic") {
-    const isYouTubeHost = ["youtube.com", "music.youtube.com", "m.youtube.com", "youtu.be", "youtube-nocookie.com"].includes(host);
-    if (isYouTubeHost) {
-      const videoId = host === "youtu.be"
-        ? parts[0]
-        : source.searchParams.get("v") || (parts[0] === "embed" ? parts[1] : "");
-      if (/^[A-Za-z0-9_-]{6,}$/.test(videoId || "")) {
-        return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}`;
-      }
-    }
-  }
-
-  if (platformKey === "audiomack" && host === "audiomack.com") {
-    const embedParts = parts[0] === "embed" ? parts.slice(1) : parts;
-    if (embedParts.length >= 3 && ["song", "album", "playlist"].includes(embedParts[1])) {
-      return `https://audiomack.com/embed/${embedParts.map(encodeURIComponent).join("/")}`;
-    }
-  }
-
-  if (platformKey === "soundcloud") {
-    if (host === "w.soundcloud.com" && source.pathname.startsWith("/player")) return source.href;
-    if (host === "soundcloud.com" && parts.length >= 2) {
-      return `https://w.soundcloud.com/player/?url=${encodeURIComponent(source.href)}&auto_play=false&show_artwork=true`;
-    }
-  }
-
-  if (platformKey === "deezer" && ["deezer.com", "widget.deezer.com"].includes(host)) {
-    if (host === "widget.deezer.com" && source.pathname.startsWith("/widget/")) return source.href;
-    const typeIndex = parts.findIndex((part) => ["track", "album", "playlist", "artist"].includes(part));
-    const type = parts[typeIndex];
-    const id = parts[typeIndex + 1];
-    if (type && /^\d+$/.test(id || "")) return `https://widget.deezer.com/widget/dark/${type}/${id}`;
-  }
-
-  if (platformKey === "tidal" && ["tidal.com", "embed.tidal.com"].includes(host)) {
-    if (host === "embed.tidal.com") return source.href;
-    const typeIndex = parts.findIndex((part) => ["track", "album", "playlist", "video"].includes(part));
-    const type = parts[typeIndex];
-    const id = parts[typeIndex + 1];
-    const embedType = { track: "tracks", album: "albums", playlist: "playlists", video: "videos" }[type];
-    if (embedType && id) return `https://embed.tidal.com/${embedType}/${encodeURIComponent(id)}`;
-  }
-
-  if (platformKey === "amazonMusic" && host === "music.amazon.com" && parts[0] === "embed") {
-    return source.href;
-  }
-
-  return "";
+  return officialEmbedUrlForPlatform(platformKey, savedEmbed);
 }
 
 function streamingLinks(release) {

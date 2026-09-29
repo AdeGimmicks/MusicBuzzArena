@@ -2455,6 +2455,44 @@ h3 {
   padding-top: 22px;
 }
 
+.embed-link-input {
+  align-content: start;
+  display: grid;
+  gap: 8px;
+}
+
+.embed-generate-button {
+  background: #11141b;
+  border: 1px solid #11141b;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+  min-height: 38px;
+  padding: 9px 12px;
+}
+
+.embed-generate-button:hover:not(:disabled),
+.embed-generate-button:focus-visible {
+  background: var(--gold);
+  border-color: var(--gold-dark);
+  color: #11141b;
+}
+
+.embed-generate-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.embed-generate-status {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  min-height: 1.1em;
+}
+
 .upload-form-footer {
   align-items: center;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
