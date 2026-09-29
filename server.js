@@ -1682,6 +1682,7 @@ async function subscribeToArtist(request, response) {
 
     if (existing) {
       const wasUnsubscribed = existing.status === "unsubscribed";
+      const needsWelcomeEmail = wasUnsubscribed || !existing.welcomeEmailSentAt;
       existing.status = "active";
       existing.updatedAt = now;
       existing.lastSourceUrl = sourceUrl;
@@ -1691,8 +1692,9 @@ async function subscribeToArtist(request, response) {
         : [];
       return {
         ok: true,
+        subscriberId: existing.id,
         alreadySubscribed: true,
-        sendWelcomeEmail: wasUnsubscribed,
+        sendWelcomeEmail: needsWelcomeEmail,
         artist,
         release,
         artistName: artist.name || "this artist",
@@ -1704,8 +1706,9 @@ async function subscribeToArtist(request, response) {
       };
     }
 
+    const subscriberId = `artist-subscriber-${Date.now().toString(36)}-${crypto.randomBytes(6).toString("hex")}`;
     store.artistSubscribers.push({
-      id: `artist-subscriber-${Date.now().toString(36)}-${crypto.randomBytes(6).toString("hex")}`,
+      id: subscriberId,
       artistId,
       artistName: artist.name || "",
       releaseId,
@@ -1721,6 +1724,7 @@ async function subscribeToArtist(request, response) {
     artist.followers = Number(artist.followers || artist.follows || 0) + 1;
     return {
       ok: true,
+      subscriberId,
       alreadySubscribed: false,
       sendWelcomeEmail: true,
       artist,
@@ -1739,9 +1743,23 @@ async function subscribeToArtist(request, response) {
     return;
   }
 
-  const welcomeEmailSent = result?.sendWelcomeEmail
+  const welcomeEmailAttempted = Boolean(result?.sendWelcomeEmail);
+  const welcomeEmailSent = welcomeEmailAttempted
     ? await sendSubscriberWelcomeEmail(request, email, result.artist, result.release)
     : false;
+
+  if (welcomeEmailAttempted && result?.subscriberId) {
+    await mutateStore((store) => {
+      const subscriber = (store.artistSubscribers || []).find(
+        (item) => String(item.id || "") === String(result.subscriberId)
+      );
+      if (!subscriber) return;
+      const now = new Date().toISOString();
+      subscriber.welcomeEmailLastAttemptAt = now;
+      subscriber.welcomeEmailStatus = welcomeEmailSent ? "sent" : "failed";
+      if (welcomeEmailSent) subscriber.welcomeEmailSentAt = now;
+    });
+  }
 
   sendJson(response, 200, {
     ok: true,
@@ -1750,12 +1768,13 @@ async function subscribeToArtist(request, response) {
     followerCount: Number(result?.followerCount || result?.subscriberCount || 0),
     subscriberCount: Number(result?.subscriberCount || 0),
     complimentaryListenCompleted: Boolean(result?.complimentaryListenCompleted),
+    welcomeEmailAttempted,
     welcomeEmailSent,
-    message: result?.alreadySubscribed
-      ? `You are already subscribed to ${result?.artistName || "this artist"}.`
+    message: welcomeEmailAttempted && !welcomeEmailSent
+      ? `Your subscription to ${result?.artistName || "this artist"} was saved, but the welcome email could not be delivered. Check the address and try again.`
       : welcomeEmailSent
         ? `You are subscribed to ${result?.artistName || "this artist"}. Check your email for the song link.`
-        : `You are subscribed to ${result?.artistName || "this artist"}.`,
+        : `You are already subscribed to ${result?.artistName || "this artist"}.`,
   });
 }
 

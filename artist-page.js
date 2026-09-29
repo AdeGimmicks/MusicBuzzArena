@@ -893,7 +893,12 @@ function linkHubPage(release, artist) {
       }
       button.textContent = payload.alreadySubscribed ? "Already Subscribed" : "Subscribed";
       if (status) status.textContent = payload.message || "You are subscribed.";
-      window.setTimeout(closeModals, 1100);
+      if (payload.welcomeEmailAttempted && !payload.welcomeEmailSent) {
+        button.disabled = false;
+        button.textContent = "Retry Email";
+      } else {
+        window.setTimeout(closeModals, 1100);
+      }
     } catch (error) {
       if (status) status.textContent = error.message || "Subscription could not be saved.";
       button.disabled = false;
@@ -999,6 +1004,8 @@ let musicPageVisitRecorded = false;
    and renders the correct artist music or listen page.
 =================================================== */
 async function renderArtistPage(force = false) {
+  const embeddedPlayerIsOpen = Boolean(document.querySelector(".service-platform.is-open iframe"));
+  if (embeddedPlayerIsOpen) return;
   const previewSessionActive = activePreviewAudio && !activePreviewAudio.ended;
   const audioIsPlaying =
     [...document.querySelectorAll("audio")].some((audio) => !audio.paused) ||
