@@ -1674,8 +1674,14 @@ async function subscribeToArtist(request, response) {
     const existing = store.artistSubscribers.find(
       (subscriber) => String(subscriber.artistId || "") === artistId && normalizeEmail(subscriber.email) === email
     );
+    const release = releaseId
+      ? (store.releases || []).find(
+          (item) => String(item.id || "") === releaseId && String(item.artistId || "") === artistId
+        )
+      : null;
 
     if (existing) {
+      const wasUnsubscribed = existing.status === "unsubscribed";
       existing.status = "active";
       existing.updatedAt = now;
       existing.lastSourceUrl = sourceUrl;
@@ -1686,6 +1692,9 @@ async function subscribeToArtist(request, response) {
       return {
         ok: true,
         alreadySubscribed: true,
+        sendWelcomeEmail: wasUnsubscribed,
+        artist,
+        release,
         artistName: artist.name || "this artist",
         followerCount: Number(artist.followers || artist.follows || 0),
         subscriberCount: store.artistSubscribers.filter(
@@ -1713,6 +1722,9 @@ async function subscribeToArtist(request, response) {
     return {
       ok: true,
       alreadySubscribed: false,
+      sendWelcomeEmail: true,
+      artist,
+      release,
       artistName: artist.name || "this artist",
       followerCount: Number(artist.followers || artist.follows || 0),
       subscriberCount: store.artistSubscribers.filter(
@@ -1727,6 +1739,10 @@ async function subscribeToArtist(request, response) {
     return;
   }
 
+  const welcomeEmailSent = result?.sendWelcomeEmail
+    ? await sendSubscriberWelcomeEmail(request, email, result.artist, result.release)
+    : false;
+
   sendJson(response, 200, {
     ok: true,
     alreadySubscribed: Boolean(result?.alreadySubscribed),
@@ -1734,9 +1750,12 @@ async function subscribeToArtist(request, response) {
     followerCount: Number(result?.followerCount || result?.subscriberCount || 0),
     subscriberCount: Number(result?.subscriberCount || 0),
     complimentaryListenCompleted: Boolean(result?.complimentaryListenCompleted),
+    welcomeEmailSent,
     message: result?.alreadySubscribed
       ? `You are already subscribed to ${result?.artistName || "this artist"}.`
-      : `You are subscribed to ${result?.artistName || "this artist"}.`,
+      : welcomeEmailSent
+        ? `You are subscribed to ${result?.artistName || "this artist"}. Check your email for the song link.`
+        : `You are subscribed to ${result?.artistName || "this artist"}.`,
   });
 }
 
@@ -1825,6 +1844,52 @@ function subscriberReleaseUrl(request, artist, release) {
   const releasePart = slugify(release.slug || release.title || release.id);
   const type = release.downloadOnly === true || release.releaseType === "Beat / Instrumental" ? "download" : "listen";
   return `${requestOrigin(request)}/${type}/${artistPart}/${releasePart}`;
+}
+
+async function sendSubscriberWelcomeEmail(request, email, artist, release) {
+  if (!email || !artist) return false;
+  const artistName = artist.name || artist.handle || "this artist";
+  const releaseTitle = release?.title || "the artist's music";
+  const destinationUrl = release
+    ? subscriberReleaseUrl(request, artist, release)
+    : subscriberArtistUrl(request, artist);
+  const coverUrl = release?.cover ? checkoutImageUrl(requestOrigin(request), release.cover) : "";
+  const subject = `Thank you for subscribing to ${artistName}`;
+  const emailBody = [
+    `Thank you for subscribing to ${artistName} on MusicBusiness Arena.`,
+    "",
+    release ? `You were listening to ${releaseTitle}.` : `Visit ${artistName}'s page for music and updates.`,
+    `Listen here: ${destinationUrl}`,
+    "",
+    `We will send you new music and important updates from ${artistName}.`,
+    "You are receiving this because you subscribed to this artist on MusicBusiness Arena.",
+    "If you no longer want these updates, reply to this email with unsubscribe.",
+  ].join("\n");
+  const releaseBlock = release
+    ? `
+      <div style="border:1px solid #e5e7eb;border-radius:14px;margin:24px 0;overflow:hidden;background:#ffffff;">
+        ${coverUrl ? `<img src="${escapeEmailHtml(coverUrl)}" alt="${escapeEmailHtml(releaseTitle)} cover" style="display:block;width:100%;max-height:420px;object-fit:cover;">` : ""}
+        <div style="padding:18px;">
+          <p style="color:#6b7280;font-size:13px;font-weight:700;letter-spacing:.08em;margin:0 0 8px;text-transform:uppercase;">${escapeEmailHtml(release.releaseType || "Release")}</p>
+          <h2 style="color:#111827;font-size:24px;line-height:1.25;margin:0;">${escapeEmailHtml(releaseTitle)}</h2>
+        </div>
+      </div>
+    `
+    : "";
+  const emailHtml = `
+    <div style="background:#f5f1e4;padding:24px;">
+      <div style="background:#ffffff;border-radius:16px;color:#111827;font-family:Arial,sans-serif;margin:0 auto;max-width:640px;padding:28px;">
+        <p style="color:#f4bd27;font-size:13px;font-weight:800;letter-spacing:.12em;margin:0 0 10px;text-transform:uppercase;">MusicBusiness Arena</p>
+        <h1 style="font-size:28px;line-height:1.2;margin:0 0 18px;">Thank you for subscribing to ${escapeEmailHtml(artistName)}</h1>
+        <p style="color:#374151;font-size:16px;line-height:1.65;margin:0;">You will receive new music and important updates from ${escapeEmailHtml(artistName)}.</p>
+        ${releaseBlock}
+        <p style="margin:24px 0;"><a href="${escapeEmailHtml(destinationUrl)}" style="background:#111827;border-radius:999px;color:#ffffff;display:inline-block;font-weight:800;padding:12px 20px;text-decoration:none;">${release ? "Listen to the song" : "Visit artist page"}</a></p>
+        <hr style="border:0;border-top:1px solid #e5e7eb;margin:24px 0;">
+        <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">You are receiving this because you subscribed to updates for ${escapeEmailHtml(artistName)} on MusicBusiness Arena. If you no longer want these updates, reply to this email with unsubscribe.</p>
+      </div>
+    </div>
+  `;
+  return sendContactEmail(email, subject, emailBody, CONTACT_GENERAL_EMAIL, emailHtml);
 }
 
 function subscriberArtistCatalogUrl(request, artist, releases = []) {
@@ -3399,6 +3464,53 @@ function cleanReleaseRouteForPath(pathname) {
   return null;
 }
 
+async function releaseSocialContextForPath(request, pathname) {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length < 2 || parts.length > 3 || !["listen", "download"].includes(parts[0])) return null;
+  const artistPart = parts.length === 3 ? parts[1] : "";
+  const releasePart = parts.length === 3 ? parts[2] : parts[1];
+  const store = await readStore();
+  const artist = artistPart ? artistBySlug(store, artistPart) : null;
+  const release = (store.releases || []).find((item) => {
+    if ((item.status || "approved") !== "approved" || releaseSlug(item) !== slugify(releasePart)) return false;
+    return artist ? String(item.artistId || "") === String(artist.id || "") : true;
+  });
+  const releaseArtist = artist || (store.artists || []).find((item) => String(item.id || "") === String(release?.artistId || ""));
+  if (!release || !releaseArtist) return null;
+
+  const canonicalUrl = `${requestOrigin(request)}${releasePublicPath(parts[0], release, releaseArtist)}`;
+  const artistName = releaseArtist.name || release.artistName || "Independent Artist";
+  const releaseTitle = release.title || "Music release";
+  const description = `Listen to ${releaseTitle} by ${artistName} on MusicBusiness Arena.`;
+  const imageUrl = checkoutImageUrl(requestOrigin(request), release.cover || store.site?.logo || "");
+  return { artistName, canonicalUrl, description, imageUrl, releaseTitle };
+}
+
+function applyReleaseSocialMetadata(html, context) {
+  if (!context) return html;
+  const title = `${context.releaseTitle} by ${context.artistName} | MusicBusiness Arena`;
+  const imageTags = context.imageUrl
+    ? `
+    <meta property="og:image" content="${escapeEmailHtml(context.imageUrl)}" />
+    <meta property="og:image:alt" content="${escapeEmailHtml(`${context.releaseTitle} cover`)}" />
+    <meta name="twitter:image" content="${escapeEmailHtml(context.imageUrl)}" />`
+    : "";
+  const metadata = `
+    <meta name="description" content="${escapeEmailHtml(context.description)}" />
+    <link rel="canonical" href="${escapeEmailHtml(context.canonicalUrl)}" />
+    <meta property="og:type" content="music.song" />
+    <meta property="og:site_name" content="MusicBusiness Arena" />
+    <meta property="og:title" content="${escapeEmailHtml(title)}" />
+    <meta property="og:description" content="${escapeEmailHtml(context.description)}" />
+    <meta property="og:url" content="${escapeEmailHtml(context.canonicalUrl)}" />${imageTags}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeEmailHtml(title)}" />
+    <meta name="twitter:description" content="${escapeEmailHtml(context.description)}" />`;
+  return html
+    .replace(/<title>[^<]*<\/title>/i, `<title>${escapeEmailHtml(title)}</title>`)
+    .replace(/<\/head>/i, `${metadata}\n  </head>`);
+}
+
 async function artistRouteForPath(pathname) {
   const parts = pathname.split("/").filter(Boolean);
   if (!parts.length || parts.length > 2) return null;
@@ -3538,7 +3650,11 @@ async function serveStatic(request, response) {
       return;
     }
 
-    const file = await fs.readFile(filePath);
+    let file = await fs.readFile(filePath);
+    if (ext === ".html" && cleanReleaseRoute) {
+      const context = await releaseSocialContextForPath(request, requestedPath);
+      file = Buffer.from(applyReleaseSocialMetadata(file.toString("utf8"), context));
+    }
     response.writeHead(200, { ...headers, "Content-Length": file.length });
     if (request.method === "HEAD") response.end();
     else response.end(file);
