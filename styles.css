@@ -4529,12 +4529,20 @@ select:focus {
   text-align: center;
 }
 
-.service-player-toggle {
+.service-player-row {
+  border: 0;
   cursor: pointer;
   font: inherit;
+  text-align: left;
+  width: 100%;
 }
 
-.service-player-toggle[aria-expanded="true"] {
+.service-player-row:focus-visible {
+  outline: 3px solid #1769d2;
+  outline-offset: -3px;
+}
+
+.service-player-row[aria-expanded="true"] .service-action {
   background: var(--gold);
 }
 

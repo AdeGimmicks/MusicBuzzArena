@@ -568,18 +568,18 @@ function linkHubPage(release, artist) {
     }
     return `
       <div class="service-platform" data-platform-player data-platform-key="${escapeAttribute(key)}">
-        <div class="service-row">
+        <button class="service-row service-player-row streaming-link" type="button"
+                data-release-id="${escapeAttribute(release.id)}"
+                data-platform-key="${escapeAttribute(key)}"
+                data-platform-label="${escapeAttribute(label)}"
+                data-embed-url="${escapeAttribute(embedUrl)}"
+                aria-expanded="false">
           <span class="service-brand">
             <img src="${escapeAttribute(icon)}" alt="">
             <strong>${label}</strong>
           </span>
-          <button class="service-action service-player-toggle streaming-link" type="button"
-                  data-release-id="${escapeAttribute(release.id)}"
-                  data-platform-key="${escapeAttribute(key)}"
-                  data-platform-label="${escapeAttribute(label)}"
-                  data-embed-url="${escapeAttribute(embedUrl)}"
-                  aria-expanded="false">Play</button>
-        </div>
+          <span class="service-action service-player-toggle-label">Play</span>
+        </button>
         <div class="service-embed-panel" hidden>
           <div class="service-embed-toolbar">
             <strong>${label} player</strong>
@@ -939,20 +939,19 @@ function linkHubPage(release, artist) {
     if (!platform) return;
     const panel = platform.querySelector(".service-embed-panel");
     const frame = platform.querySelector("[data-embed-frame]");
-    const toggle = platform.querySelector(".service-player-toggle");
+    const row = platform.querySelector(".service-player-row");
+    const label = platform.querySelector(".service-player-toggle-label");
     if (frame) frame.replaceChildren();
     if (panel) panel.hidden = true;
-    if (toggle) {
-      toggle.textContent = "Play";
-      toggle.setAttribute("aria-expanded", "false");
-    }
+    if (label) label.textContent = "Play";
+    if (row) row.setAttribute("aria-expanded", "false");
     platform.classList.remove("is-open");
     if (openPlatformPlayer === platform) openPlatformPlayer = null;
   };
 
-  wrap.querySelectorAll(".service-player-toggle").forEach((button) => {
-    button.addEventListener("click", () => {
-      const platform = button.closest("[data-platform-player]");
+  wrap.querySelectorAll(".service-player-row").forEach((row) => {
+    row.addEventListener("click", () => {
+      const platform = row.closest("[data-platform-player]");
       if (!platform) return;
       if (openPlatformPlayer === platform) {
         closePlatformPlayer(platform);
@@ -962,22 +961,23 @@ function linkHubPage(release, artist) {
       closePlatformPlayer(openPlatformPlayer);
       const panel = platform.querySelector(".service-embed-panel");
       const frame = platform.querySelector("[data-embed-frame]");
-      const embedUrl = button.dataset.embedUrl;
+      const embedUrl = row.dataset.embedUrl;
       if (!panel || !frame || !embedUrl) return;
 
       const iframe = document.createElement("iframe");
       iframe.src = embedUrl;
-      iframe.title = `${button.dataset.platformLabel || "Streaming"} player`;
+      iframe.title = `${row.dataset.platformLabel || "Streaming"} player`;
       iframe.loading = "lazy";
       iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
       iframe.setAttribute("allowfullscreen", "");
       frame.replaceChildren(iframe);
       panel.hidden = false;
       platform.classList.add("is-open");
-      button.textContent = "Hide Player";
-      button.setAttribute("aria-expanded", "true");
+      const label = platform.querySelector(".service-player-toggle-label");
+      if (label) label.textContent = "Hide Player";
+      row.setAttribute("aria-expanded", "true");
       openPlatformPlayer = platform;
-      recordStreamingClick(button);
+      recordStreamingClick(row);
     });
   });
 
