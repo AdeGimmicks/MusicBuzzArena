@@ -1226,26 +1226,69 @@ function filteredVisitorEvents(events, options = {}) {
   });
 }
 
+const VISITOR_SOURCE_CATEGORIES = [
+  "Direct",
+  "Facebook",
+  "Instagram",
+  "X",
+  "Threads",
+  "YouTube",
+  "TikTok",
+  "LinkedIn",
+  "Snapchat",
+  "Telegram",
+  "Reddit",
+  "Pinterest",
+  "Twitch",
+  "Discord",
+  "Spotify",
+  "Google",
+  "Bing",
+  "Apple Music",
+  "Audiomack",
+  "Deezer",
+  "Amazon",
+  "Pandora",
+  "iHeartRadio",
+  "SoundCloud",
+  "WhatsApp",
+];
+
 function populateVisitorSourceFilter(events) {
   if (!visitorSourceSelect) return;
   const selected = visitorSourceSelect.value;
-  const sources = [...new Set(events.map((event) => event.source).filter(Boolean))].sort();
+  const recordedSources = [...new Set(events.map((event) => event.source).filter(Boolean))];
+  const sources = [
+    ...VISITOR_SOURCE_CATEGORIES,
+    ...recordedSources.filter((source) => !VISITOR_SOURCE_CATEGORIES.includes(source)).sort(),
+  ];
   visitorSourceSelect.replaceChildren(new Option("All sources", ""));
   sources.forEach((source) => visitorSourceSelect.append(new Option(source, source)));
   visitorSourceSelect.value = sources.includes(selected) ? selected : "";
 }
 
-function visitorSourceItems(events) {
-  const counts = events.reduce((totals, event) => {
+function visitorSourceItems(events, options = {}) {
+  const counts = {};
+  if (options.includeEmpty) {
+    VISITOR_SOURCE_CATEGORIES.forEach((source) => {
+      counts[source] = { visits: 0, visitors: new Set() };
+    });
+  }
+  events.forEach((event) => {
     const source = event.source || "Direct";
-    if (!totals[source]) totals[source] = { visits: 0, visitors: new Set() };
-    totals[source].visits += 1;
-    totals[source].visitors.add(event.visitorId || event.ipAddress || event.id);
-    return totals;
-  }, {});
+    if (!counts[source]) counts[source] = { visits: 0, visitors: new Set() };
+    counts[source].visits += 1;
+    counts[source].visitors.add(event.visitorId || event.ipAddress || event.id);
+  });
   return Object.entries(counts)
     .map(([title, count]) => ({ title, visits: count.visits, uniqueVisitors: count.visitors.size }))
-    .sort((a, b) => b.visits - a.visits || a.title.localeCompare(b.title));
+    .sort((a, b) => {
+      if (!options.includeEmpty) return b.visits - a.visits || a.title.localeCompare(b.title);
+      const aIndex = VISITOR_SOURCE_CATEGORIES.indexOf(a.title);
+      const bIndex = VISITOR_SOURCE_CATEGORIES.indexOf(b.title);
+      if (aIndex >= 0 || bIndex >= 0) return (aIndex < 0 ? 999 : aIndex) - (bIndex < 0 ? 999 : bIndex);
+      return b.visits - a.visits || a.title.localeCompare(b.title);
+    });
 }
 
 function visitorRowsMarkup(events) {
@@ -1336,6 +1379,7 @@ function renderAnalytics() {
   const sourceScopeEvents = filteredVisitorEvents(scopedEvents, { ignoreSource: true });
   const visitorEvents = filteredVisitorEvents(scopedEvents);
   const sourceItems = visitorSourceItems(sourceScopeEvents);
+  const sourceCategoryItems = visitorSourceItems(sourceScopeEvents, { includeEmpty: true });
   const today = new Date().toDateString();
   const todayVisits = scopedEvents.filter((event) => new Date(event.createdAt || 0).toDateString() === today).length;
 
@@ -1424,7 +1468,7 @@ function renderAnalytics() {
       })),
     "Artist analytics will appear after artists join."
   );
-  renderVisitorSourceCards(sourceItems.slice(0, 20), sourceScopeEvents);
+  renderVisitorSourceCards(sourceCategoryItems, sourceScopeEvents);
   renderVisitorActivity(visitorEvents);
 }
 

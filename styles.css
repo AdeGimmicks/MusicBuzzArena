@@ -1638,7 +1638,67 @@ h3 {
 }
 
 .analytics-visitor-card {
-  margin-top: 16px;
+  margin-top: 0;
+}
+
+.analytics-collapsible {
+  gap: 0;
+  padding: 0;
+}
+
+.analytics-collapsible:not([open]) > :not(summary) {
+  display: none;
+}
+
+.analytics-collapsible > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 68px;
+  padding: 18px 24px;
+}
+
+.analytics-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.analytics-collapsible > summary::after {
+  color: var(--text);
+  content: "+";
+  flex: 0 0 auto;
+  font-size: 1.5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.analytics-collapsible[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.analytics-collapsible[open] > summary::after {
+  content: "−";
+}
+
+.analytics-collapsible > summary span {
+  color: var(--text);
+  font-size: 1.18rem;
+  font-weight: 1000;
+}
+
+.analytics-collapsible > summary small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-left: auto;
+  text-align: right;
+}
+
+.analytics-collapsible-content {
+  margin: 0;
+  padding: 20px 24px 24px;
 }
 
 .traffic-source-card-panel {

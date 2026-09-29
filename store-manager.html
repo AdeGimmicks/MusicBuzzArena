@@ -297,49 +297,62 @@
         ================================================== -->
         <section class="manager-dashboard-section" id="managerAnalytics" data-section-title="Analytics">
           <div class="manager-section-heading"><div><p class="eyebrow">Platform growth</p><h2>Analytics</h2></div></div>
-          <section class="manager-console-card">
-            <div class="manager-tools">
+          <details class="manager-console-card analytics-collapsible" open>
+            <summary><span>Analytics Filters</span><small>Choose artist, period, source, or search</small></summary>
+            <div class="manager-tools analytics-collapsible-content">
               <label>View Artist Analytics <select id="managerAnalyticsArtistSelect"><option value="">All artists</option></select></label>
               <label>Visit Period <select id="visitorRangeSelect"><option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="all">All recorded visits</option></select></label>
               <label>Traffic Source <select id="visitorSourceSelect"><option value="">All sources</option></select></label>
               <label>Search Visits <input id="visitorSearchInput" type="search" placeholder="IP, artist, song, country" /></label>
             </div>
-          </section>
-          <section class="manager-metric-grid analytics-grid">
-            <article><span>Total Artists</span><strong id="analyticsTotalArtists">0</strong></article>
-            <article><span>Total Releases</span><strong id="analyticsTotalSongs">0</strong></article>
-            <article><span>Total Downloads</span><strong id="analyticsTotalDownloads">0</strong></article>
-            <article><span>Total Revenue</span><strong id="analyticsTotalRevenue">$0.00</strong></article>
-            <article><span>Top Artists</span><strong id="analyticsTopArtist">None</strong></article>
-            <article><span>Top Releases</span><strong id="analyticsTopSong">None</strong></article>
-            <article><span>Top Download Countries</span><strong id="analyticsTopCountry">None</strong></article>
-            <article><span>Most Clicked Streaming Platforms</span><strong id="analyticsTopPlatform">None</strong></article>
-            <article><span>Profile Views</span><strong id="analyticsProfileViews">0</strong></article>
-            <article><span>Artist Page Visits</span><strong id="analyticsArtistVisits">0</strong></article>
-            <article><span>Music / Beats Visits</span><strong id="analyticsMusicVisits">0</strong></article>
-            <article><span>Video Visits</span><strong id="analyticsVideoVisits">0</strong></article>
-            <article><span>Download Page Visits</span><strong id="analyticsDownloadVisits">0</strong></article>
-            <article><span>Streaming Clicks</span><strong id="analyticsStreamingClicks">0</strong></article>
-            <article><span>Net Artist Earnings</span><strong id="analyticsNetEarnings">$0.00</strong></article>
-            <article><span>Platform Fees</span><strong id="analyticsPlatformFees">$0.00</strong></article>
-            <article><span>Traffic Sources</span><strong id="analyticsTrafficSources">Direct</strong></article>
-            <article><span>Recorded Visits</span><strong id="analyticsRecordedVisits">0</strong></article>
-            <article><span>Unique Visitors</span><strong id="analyticsUniqueVisitors">0</strong></article>
-            <article><span>Visits Today</span><strong id="analyticsTodayVisits">0</strong></article>
-          </section>
-          <section class="manager-dashboard-grid">
-            <article class="manager-console-card"><h3>Top Releases</h3><div class="manager-list" id="analyticsTopReleaseList"></div></article>
-            <article class="manager-console-card"><h3>Revenue Breakdown</h3><div class="manager-list" id="analyticsRevenueBreakdown"></div></article>
-            <article class="manager-console-card"><h3>Streaming Platforms</h3><div class="manager-list" id="analyticsPlatformBreakdown"></div></article>
-            <article class="manager-console-card"><h3>Page Visits</h3><div class="manager-list" id="analyticsVisitBreakdown"></div></article>
-            <article class="manager-console-card"><h3>Recent Downloads</h3><div class="manager-list" id="analyticsRecentDownloads"></div></article>
-            <article class="manager-console-card"><h3>Artist Summary</h3><div class="manager-list" id="analyticsArtistSummary"></div></article>
-            <article class="manager-console-card traffic-source-card-panel"><h3>Traffic Source Breakdown</h3><div class="visitor-source-grid" id="analyticsTrafficSourceBreakdown"></div></article>
-          </section>
-          <section class="manager-console-card analytics-visitor-card">
-            <div><h3 id="analyticsVisitorActivityTitle">Visitor Activity by Source</h3><p class="manager-card-note">Times are shown in your current device timezone. Locations are approximate IP-based locations.</p></div>
-            <div class="manager-table" id="analyticsVisitorTable"></div>
-          </section>
+          </details>
+          <details class="manager-console-card analytics-collapsible" open>
+            <summary><span>Analytics Overview</span><small>Platform totals and visitor counts</small></summary>
+            <section class="manager-metric-grid analytics-grid analytics-collapsible-content">
+              <article><span>Total Artists</span><strong id="analyticsTotalArtists">0</strong></article>
+              <article><span>Total Releases</span><strong id="analyticsTotalSongs">0</strong></article>
+              <article><span>Total Downloads</span><strong id="analyticsTotalDownloads">0</strong></article>
+              <article><span>Total Revenue</span><strong id="analyticsTotalRevenue">$0.00</strong></article>
+              <article><span>Top Artists</span><strong id="analyticsTopArtist">None</strong></article>
+              <article><span>Top Releases</span><strong id="analyticsTopSong">None</strong></article>
+              <article><span>Top Download Countries</span><strong id="analyticsTopCountry">None</strong></article>
+              <article><span>Most Clicked Streaming Platforms</span><strong id="analyticsTopPlatform">None</strong></article>
+              <article><span>Profile Views</span><strong id="analyticsProfileViews">0</strong></article>
+              <article><span>Artist Page Visits</span><strong id="analyticsArtistVisits">0</strong></article>
+              <article><span>Music / Beats Visits</span><strong id="analyticsMusicVisits">0</strong></article>
+              <article><span>Video Visits</span><strong id="analyticsVideoVisits">0</strong></article>
+              <article><span>Download Page Visits</span><strong id="analyticsDownloadVisits">0</strong></article>
+              <article><span>Streaming Clicks</span><strong id="analyticsStreamingClicks">0</strong></article>
+              <article><span>Net Artist Earnings</span><strong id="analyticsNetEarnings">$0.00</strong></article>
+              <article><span>Platform Fees</span><strong id="analyticsPlatformFees">$0.00</strong></article>
+              <article><span>Traffic Sources</span><strong id="analyticsTrafficSources">Direct</strong></article>
+              <article><span>Recorded Visits</span><strong id="analyticsRecordedVisits">0</strong></article>
+              <article><span>Unique Visitors</span><strong id="analyticsUniqueVisitors">0</strong></article>
+              <article><span>Visits Today</span><strong id="analyticsTodayVisits">0</strong></article>
+            </section>
+          </details>
+          <details class="manager-console-card analytics-collapsible">
+            <summary><span>Performance Reports</span><small>Releases, revenue, platforms, pages, downloads, and artists</small></summary>
+            <section class="manager-dashboard-grid analytics-collapsible-content">
+              <article class="manager-console-card"><h3>Top Releases</h3><div class="manager-list" id="analyticsTopReleaseList"></div></article>
+              <article class="manager-console-card"><h3>Revenue Breakdown</h3><div class="manager-list" id="analyticsRevenueBreakdown"></div></article>
+              <article class="manager-console-card"><h3>Streaming Platforms</h3><div class="manager-list" id="analyticsPlatformBreakdown"></div></article>
+              <article class="manager-console-card"><h3>Page Visits</h3><div class="manager-list" id="analyticsVisitBreakdown"></div></article>
+              <article class="manager-console-card"><h3>Recent Downloads</h3><div class="manager-list" id="analyticsRecentDownloads"></div></article>
+              <article class="manager-console-card"><h3>Artist Summary</h3><div class="manager-list" id="analyticsArtistSummary"></div></article>
+            </section>
+          </details>
+          <details class="manager-console-card analytics-collapsible" open>
+            <summary><span>Traffic Source Breakdown</span><small>Visits and unique visitors for each platform</small></summary>
+            <div class="visitor-source-grid analytics-collapsible-content" id="analyticsTrafficSourceBreakdown"></div>
+          </details>
+          <details class="manager-console-card analytics-collapsible analytics-visitor-card" open>
+            <summary><span id="analyticsVisitorActivityTitle">Visitor Activity by Source</span><small>Time, IP, location, artist, song, and action</small></summary>
+            <div class="analytics-collapsible-content">
+              <p class="manager-card-note">Times are shown in your current device timezone. Locations are approximate IP-based locations.</p>
+              <div class="manager-table" id="analyticsVisitorTable"></div>
+            </div>
+          </details>
         </section>
 
         <!-- ==================================================

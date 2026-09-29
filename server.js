@@ -1065,7 +1065,10 @@ function visitorSource(body, request) {
   const sources = [
     ["instagram", "Instagram"], ["facebook", "Facebook"], ["fb.com", "Facebook"],
     ["tiktok", "TikTok"], ["youtube", "YouTube"], ["youtu.be", "YouTube"],
-    ["twitter", "X"], ["x.com", "X"], ["google", "Google"], ["bing", "Bing"],
+    ["twitter", "X"], ["x.com", "X"], ["t.co", "X"], ["threads", "Threads"],
+    ["linkedin", "LinkedIn"], ["snapchat", "Snapchat"], ["telegram", "Telegram"], ["t.me", "Telegram"],
+    ["reddit", "Reddit"], ["pinterest", "Pinterest"], ["twitch", "Twitch"], ["discord", "Discord"],
+    ["google", "Google"], ["bing", "Bing"],
     ["spotify", "Spotify"], ["audiomack", "Audiomack"], ["deezer", "Deezer"],
     ["music.apple", "Apple Music"], ["amazon", "Amazon"], ["pandora", "Pandora"],
     ["iheart", "iHeartRadio"], ["soundcloud", "SoundCloud"], ["whatsapp", "WhatsApp"],
