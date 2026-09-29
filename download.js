@@ -513,6 +513,18 @@ async function init() {
       if (result) artist.downloadPageVisits = result.value;
     }
 
+    if (release) {
+      window.MBA.trackVisitorEvent({
+        eventType: "page_view",
+        activity: "Viewed download page",
+        pageType: "download_page",
+        artistId: artist?.id,
+        artistName: artist?.name,
+        releaseId: release.id,
+        releaseTitle: release.title,
+      });
+    }
+
     const downloadState = await loadDownloadState(release?.id);
     renderPage(store, downloadState);
   } catch (error) {

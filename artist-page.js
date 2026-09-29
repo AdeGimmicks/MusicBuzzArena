@@ -214,6 +214,13 @@ function releasePlatformLinks(release) {
   }).join("");
 }
 
+function platformLabel(key) {
+  return String(key || "Streaming platform")
+    .replace(/[-_]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function releaseTracks(release) {
   const tracks = Array.isArray(release.tracks) ? release.tracks : [];
   if (tracks.length) {
@@ -331,8 +338,40 @@ function trackRow(release, artist, artistReleases = []) {
     }
   `;
 
+  row.querySelector(".music-capsule-listen")?.addEventListener("click", () => {
+    window.MBA.trackVisitorEvent({
+      eventType: "listen_click",
+      activity: "Clicked Listen",
+      pageType: "music_page",
+      artistId: artist?.id,
+      artistName: artist?.name,
+      releaseId: release.id,
+      releaseTitle: release.title,
+    });
+  });
+  row.querySelector(".music-capsule-download")?.addEventListener("click", () => {
+    window.MBA.trackVisitorEvent({
+      eventType: "download_click",
+      activity: "Clicked Download",
+      pageType: "music_page",
+      artistId: artist?.id,
+      artistName: artist?.name,
+      releaseId: release.id,
+      releaseTitle: release.title,
+    });
+  });
+
   row.querySelectorAll(".streaming-link").forEach((link) => {
     link.addEventListener("click", () => {
+      window.MBA.trackVisitorEvent({
+        eventType: "streaming_click",
+        activity: `Opened ${platformLabel(link.dataset.platformKey)}`,
+        pageType: "music_page",
+        artistId: artist?.id,
+        artistName: artist?.name,
+        releaseId: release.id,
+        releaseTitle: release.title,
+      });
       fetch("/api/streaming-click", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -832,6 +871,16 @@ function linkHubPage(release, artist) {
       const platformKey = link.dataset.platformKey;
       if (!releaseId || !platformKey) return;
 
+      window.MBA.trackVisitorEvent({
+        eventType: "streaming_click",
+        activity: `Opened ${platformLabel(platformKey)}`,
+        pageType: "listen_page",
+        artistId: artist?.id,
+        artistName: artist?.name,
+        releaseId: release.id,
+        releaseTitle: release.title,
+      });
+
       fetch("/api/streaming-click", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -903,6 +952,19 @@ async function renderArtistPage(force = false) {
   }
 
   const releases = approvedReleases.filter((release) => release.artistId === artist.id);
+  const viewedRelease = selectedRelease(releases);
+  if (viewedRelease) {
+    const listeningPage = window.location.pathname.startsWith("/listen/");
+    window.MBA.trackVisitorEvent({
+      eventType: "page_view",
+      activity: listeningPage ? "Viewed listening links" : "Viewed song",
+      pageType: listeningPage ? "listen_page" : "music_page",
+      artistId: artist.id,
+      artistName: artist.name,
+      releaseId: viewedRelease.id,
+      releaseTitle: viewedRelease.title,
+    });
+  }
   renderTopTracks(releases, artist);
   if (!artistReleaseList) return;
 

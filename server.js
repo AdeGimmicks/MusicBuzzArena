@@ -21,6 +21,7 @@
 =================================================== */
 const http = require("http");
 const crypto = require("crypto");
+const net = require("net");
 const fsSync = require("fs");
 const fs = require("fs/promises");
 const path = require("path");
@@ -96,6 +97,7 @@ let mongoClient;
 let storeCollection;
 let cachedStore = null;
 let storeWriteQueue = Promise.resolve();
+const visitorGeoCache = new Map();
 const adminSessions = new Map();
 const artistSessions = new Map();
 const stripe = STRIPE_SECRET_KEY && Stripe ? Stripe(STRIPE_SECRET_KEY) : null;
@@ -353,6 +355,7 @@ function defaultStore() {
     analyticsArchive: [],
     auditLogs: [],
     contactMessages: [],
+    visitorEvents: [],
     artistSubscribers: [],
     artistAccounts: [],
     storeManagerAccounts: [],
@@ -413,6 +416,7 @@ function mergeStore(store) {
     analyticsArchive: Array.isArray(store?.analyticsArchive) ? store.analyticsArchive : [],
     auditLogs: Array.isArray(store?.auditLogs) ? store.auditLogs : [],
     contactMessages: Array.isArray(store?.contactMessages) ? store.contactMessages : [],
+    visitorEvents: Array.isArray(store?.visitorEvents) ? store.visitorEvents : [],
     artistSubscribers: Array.isArray(store?.artistSubscribers) ? store.artistSubscribers : [],
     artistAccounts: Array.isArray(store?.artistAccounts) ? store.artistAccounts : [],
     storeManagerAccounts: Array.isArray(store?.storeManagerAccounts) ? store.storeManagerAccounts : [],
@@ -559,6 +563,7 @@ function withoutClientAnalytics(store) {
   sanitized.analyticsArchive = [];
   sanitized.auditLogs = [];
   sanitized.contactMessages = [];
+  sanitized.visitorEvents = [];
   sanitized.artistSubscribers = [];
   return sanitized;
 }
@@ -603,6 +608,7 @@ function mergePersistentStore(existingStore, incomingStore, options = {}) {
     donations: mergeEntityLists(existing.donations, incoming.donations || [], options),
     transactions: mergeEntityLists(existing.transactions, incoming.transactions || [], options),
     auditLogs: mergeEntityLists(existing.auditLogs, incoming.auditLogs || [], options),
+    visitorEvents: mergeEntityLists(existing.visitorEvents, incoming.visitorEvents || [], options),
     artistSubscribers: mergeEntityLists(existing.artistSubscribers, incoming.artistSubscribers || [], options),
     artistAccounts: mergeEntityLists(existing.artistAccounts, incoming.artistAccounts || [], options),
     storeManagerAccounts: mergeEntityLists(existing.storeManagerAccounts, incoming.storeManagerAccounts || [], options),
@@ -971,6 +977,182 @@ async function incrementAnalytics(request, response) {
   sendJson(response, 200, { ok: true, entityType, entityId, field, value: result.value });
 }
 
+const VISITOR_EVENT_TYPES = new Set(["page_view", "listen_click", "download_click", "streaming_click", "video_click"]);
+const VISITOR_EVENT_LIMIT = 7500;
+
+function analyticsText(value, maxLength = 240) {
+  return String(value || "").trim().slice(0, maxLength);
+}
+
+function requestIpAddress(request) {
+  const forwarded = analyticsText(request.headers["x-forwarded-for"], 200).split(",")[0].trim();
+  const candidate = analyticsText(
+    request.headers["cf-connecting-ip"] || request.headers["true-client-ip"] || forwarded || request.socket?.remoteAddress,
+    100
+  );
+  const normalized = candidate.replace(/^::ffff:/, "").replace(/^\[|\]$/g, "");
+  return net.isIP(normalized) ? normalized : "Unknown";
+}
+
+function isPublicVisitorIp(ip) {
+  if (!net.isIP(ip)) return false;
+  return !(
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip.startsWith("10.") ||
+    ip.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
+    ip.startsWith("fc") ||
+    ip.startsWith("fd") ||
+    ip.startsWith("fe80:")
+  );
+}
+
+function requestHeaderLocation(request) {
+  return {
+    city: analyticsText(request.headers["x-vercel-ip-city"] || request.headers["x-appengine-city"], 100),
+    region: analyticsText(request.headers["x-vercel-ip-country-region"] || request.headers["x-appengine-region"], 100),
+    country: analyticsText(
+      request.headers["cf-ipcountry"] || request.headers["x-vercel-ip-country"] || request.headers["x-appengine-country"],
+      100
+    ),
+  };
+}
+
+async function visitorLocation(request, ip) {
+  const headerLocation = requestHeaderLocation(request);
+  if (headerLocation.city || headerLocation.region || headerLocation.country) return headerLocation;
+  if (!isPublicVisitorIp(ip)) return { city: "", region: "", country: "" };
+  if (visitorGeoCache.has(ip)) return visitorGeoCache.get(ip);
+
+  let location = { city: "", region: "", country: "" };
+  try {
+    const lookup = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(2200),
+    });
+    const payload = lookup.ok ? await lookup.json() : null;
+    if (payload?.success !== false) {
+      location = {
+        city: analyticsText(payload?.city, 100),
+        region: analyticsText(payload?.region, 100),
+        country: analyticsText(payload?.country, 100),
+      };
+    }
+  } catch {
+    // The visit is still recorded when a location provider is unavailable.
+  }
+  if (visitorGeoCache.size >= 2000) visitorGeoCache.delete(visitorGeoCache.keys().next().value);
+  visitorGeoCache.set(ip, location);
+  return location;
+}
+
+function normalizedReferrer(value) {
+  const text = analyticsText(value, 800);
+  if (!text) return "";
+  try {
+    const url = new URL(text);
+    return `${url.origin}${url.pathname}`.slice(0, 500);
+  } catch {
+    return text.slice(0, 500);
+  }
+}
+
+function visitorSource(body) {
+  const supplied = analyticsText(body.utmSource, 100);
+  const referrer = normalizedReferrer(body.landingReferrer || body.referrer);
+  const sourceText = `${supplied} ${referrer}`.toLowerCase();
+  const sources = [
+    ["instagram", "Instagram"], ["facebook", "Facebook"], ["fb.com", "Facebook"],
+    ["tiktok", "TikTok"], ["youtube", "YouTube"], ["youtu.be", "YouTube"],
+    ["twitter", "X"], ["x.com", "X"], ["google", "Google"], ["bing", "Bing"],
+    ["spotify", "Spotify"], ["audiomack", "Audiomack"], ["deezer", "Deezer"],
+    ["music.apple", "Apple Music"], ["amazon", "Amazon"], ["pandora", "Pandora"],
+    ["iheart", "iHeartRadio"], ["soundcloud", "SoundCloud"], ["whatsapp", "WhatsApp"],
+  ];
+  const match = sources.find(([needle]) => sourceText.includes(needle));
+  if (match) return match[1];
+  if (supplied) return supplied.replace(/[-_]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  if (!referrer) return "Direct";
+  try {
+    return new URL(referrer).hostname.replace(/^www\./, "") || "Referral";
+  } catch {
+    return "Referral";
+  }
+}
+
+function visitorDevice(userAgent) {
+  const ua = String(userAgent || "");
+  const device = /ipad|tablet/i.test(ua) ? "Tablet" : /mobile|iphone|android/i.test(ua) ? "Mobile" : "Desktop";
+  const browser = /edg\//i.test(ua) ? "Edge" : /opr\//i.test(ua) ? "Opera" : /chrome|crios/i.test(ua) ? "Chrome" : /firefox|fxios/i.test(ua) ? "Firefox" : /safari/i.test(ua) ? "Safari" : "Other";
+  const operatingSystem = /iphone|ipad|ios/i.test(ua) ? "iOS" : /android/i.test(ua) ? "Android" : /windows/i.test(ua) ? "Windows" : /macintosh|mac os/i.test(ua) ? "macOS" : /linux/i.test(ua) ? "Linux" : "Other";
+  return { device, browser, operatingSystem };
+}
+
+async function recordVisitorEvent(request, response) {
+  const bodyText = await readRequestBody(request);
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const eventType = VISITOR_EVENT_TYPES.has(body.eventType) ? body.eventType : "page_view";
+  const visitorId = analyticsText(body.visitorId, 100);
+  const pagePath = analyticsText(body.pagePath, 500);
+  if (!visitorId || !pagePath.startsWith("/")) {
+    sendJson(response, 400, { error: "A visitor ID and public page path are required." });
+    return;
+  }
+
+  const userAgent = analyticsText(request.headers["user-agent"], 500);
+  if (/bot|crawler|spider|slurp|preview|facebookexternalhit|headless/i.test(userAgent)) {
+    sendJson(response, 200, { ok: true, ignored: true });
+    return;
+  }
+
+  const ipAddress = requestIpAddress(request);
+  const location = await visitorLocation(request, ipAddress);
+  const device = visitorDevice(userAgent);
+  const now = new Date();
+  const event = await mutateStore((store) => {
+    const artistId = analyticsText(body.artistId, 120);
+    const releaseId = analyticsText(body.releaseId, 120);
+    const artist = (store.artists || []).find((item) => String(item.id) === artistId);
+    const release = (store.releases || []).find((item) => String(item.id) === releaseId);
+    const recentDuplicate = (store.visitorEvents || []).slice(-20).find((item) =>
+      item.visitorId === visitorId && item.eventType === eventType && item.pagePath === pagePath &&
+      now.getTime() - new Date(item.createdAt || 0).getTime() < 5000
+    );
+    if (recentDuplicate) return recentDuplicate;
+
+    const nextEvent = {
+      id: `visit-${Date.now()}-${crypto.randomBytes(5).toString("hex")}`,
+      visitorId,
+      eventType,
+      activity: analyticsText(body.activity, 120) || eventType.replaceAll("_", " "),
+      pageType: analyticsText(body.pageType, 80) || "page",
+      pagePath,
+      pageTitle: analyticsText(body.pageTitle, 200),
+      artistId: artist?.id || artistId,
+      artistName: artist?.name || artist?.handle || analyticsText(body.artistName, 160),
+      releaseId: release?.id || releaseId,
+      releaseTitle: release?.title || analyticsText(body.releaseTitle, 200),
+      source: visitorSource(body),
+      referrer: normalizedReferrer(body.landingReferrer || body.referrer),
+      ipAddress,
+      city: location.city,
+      region: location.region,
+      country: location.country,
+      device: device.device,
+      browser: device.browser,
+      operatingSystem: device.operatingSystem,
+      language: analyticsText(body.language, 40),
+      timezone: analyticsText(body.timezone, 100),
+      createdAt: now.toISOString(),
+    };
+    store.visitorEvents = [...(store.visitorEvents || []), nextEvent].slice(-VISITOR_EVENT_LIMIT);
+    return nextEvent;
+  });
+
+  sendJson(response, 200, { ok: true, eventId: event.id });
+}
+
 /* ===================================================
    AUTHENTICATION, PASSWORDS, AND SESSIONS
 
@@ -1022,6 +1204,7 @@ function publicStore(store) {
   delete sanitized.storeManagerAccounts;
   delete sanitized.auditLogs;
   delete sanitized.contactMessages;
+  delete sanitized.visitorEvents;
   delete sanitized.artistSubscribers;
   if (sanitized.site) delete sanitized.site.subscriberTemplates;
   sanitized.artists = (sanitized.artists || []).map((artist) => {
@@ -3594,6 +3777,11 @@ async function handleRequest(request, response) {
 
     if (url.pathname === "/api/streaming-click" && request.method === "POST") {
       await recordStreamingClick(request, response);
+      return;
+    }
+
+    if (url.pathname === "/api/visitor-event" && request.method === "POST") {
+      await recordVisitorEvent(request, response);
       return;
     }
 

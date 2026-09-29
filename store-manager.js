@@ -38,6 +38,10 @@ const downloadSearchInput = document.querySelector("#downloadSearchInput");
 const downloadArtistFilter = document.querySelector("#downloadArtistFilter");
 const downloadCountryFilter = document.querySelector("#downloadCountryFilter");
 const managerAnalyticsArtistSelect = document.querySelector("#managerAnalyticsArtistSelect");
+const visitorRangeSelect = document.querySelector("#visitorRangeSelect");
+const visitorSourceSelect = document.querySelector("#visitorSourceSelect");
+const visitorSearchInput = document.querySelector("#visitorSearchInput");
+const analyticsVisitorTable = document.querySelector("#analyticsVisitorTable");
 const subscriberArtistSelect = document.querySelector("#subscriberArtistSelect");
 const subscriberSearchInput = document.querySelector("#subscriberSearchInput");
 const subscriberStatusFilter = document.querySelector("#subscriberStatusFilter");
@@ -298,6 +302,20 @@ function formatDate(value) {
   } catch {
     return value;
   }
+}
+
+function formatDateTime(value) {
+  if (!value) return "Not recorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
 }
 
 function releaseRevenue(release) {
@@ -1169,6 +1187,75 @@ function renderSubscribers() {
     : emptyState("Subscribers will appear here after visitors subscribe on artist listen pages.");
 }
 
+function scopedVisitorEvents() {
+  const selectedArtist = scopedAnalyticsArtist();
+  const events = currentStore.visitorEvents || [];
+  return selectedArtist
+    ? events.filter((event) => String(event.artistId || "") === String(selectedArtist.id))
+    : events;
+}
+
+function visitorLocationLabel(event) {
+  const parts = [event.city, event.region, event.country].filter(Boolean);
+  return [...new Set(parts)].join(", ") || "Unknown";
+}
+
+function filteredVisitorEvents(events) {
+  const range = visitorRangeSelect?.value || "30";
+  const source = visitorSourceSelect?.value || "";
+  const query = String(visitorSearchInput?.value || "").trim().toLowerCase();
+  const cutoff = range === "all" ? 0 : Date.now() - Number(range || 30) * 24 * 60 * 60 * 1000;
+  return events.filter((event) => {
+    if (cutoff && new Date(event.createdAt || 0).getTime() < cutoff) return false;
+    if (source && event.source !== source) return false;
+    if (!query) return true;
+    return [event.ipAddress, event.visitorId, event.source, event.country, event.region, event.city, event.artistName, event.releaseTitle, event.activity, event.pagePath]
+      .some((value) => String(value || "").toLowerCase().includes(query));
+  });
+}
+
+function populateVisitorSourceFilter(events) {
+  if (!visitorSourceSelect) return;
+  const selected = visitorSourceSelect.value;
+  const sources = [...new Set(events.map((event) => event.source).filter(Boolean))].sort();
+  visitorSourceSelect.replaceChildren(new Option("All sources", ""));
+  sources.forEach((source) => visitorSourceSelect.append(new Option(source, source)));
+  visitorSourceSelect.value = sources.includes(selected) ? selected : "";
+}
+
+function visitorSourceItems(events) {
+  const counts = events.reduce((totals, event) => {
+    const source = event.source || "Direct";
+    totals[source] = Number(totals[source] || 0) + 1;
+    return totals;
+  }, {});
+  return Object.entries(counts)
+    .map(([title, visits]) => ({ title, visits }))
+    .sort((a, b) => b.visits - a.visits || a.title.localeCompare(b.title));
+}
+
+function renderVisitorActivity(events) {
+  if (!analyticsVisitorTable) return;
+  const rows = events.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 500);
+  analyticsVisitorTable.innerHTML = rows.length
+    ? `
+      <div class="manager-table-header visitor-columns"><span>Date & Time</span><span>IP / Visitor</span><span>Source</span><span>Location</span><span>Artist / Song</span><span>Activity</span><span>Device</span><span>Page</span></div>
+      ${rows.map((event) => `
+        <article class="manager-table-row visitor-columns">
+          <strong>${escapeText(formatDateTime(event.createdAt))}</strong>
+          <span title="${escapeAttr(event.visitorId || "")}">${escapeText(event.ipAddress || "Unknown")}<small>${escapeText(String(event.visitorId || "Unknown").slice(0, 13))}</small></span>
+          <mark>${escapeText(event.source || "Direct")}</mark>
+          <span>${escapeText(visitorLocationLabel(event))}</span>
+          <span>${escapeText(event.artistName || "Platform")}<small>${escapeText(event.releaseTitle || "No song selected")}</small></span>
+          <span>${escapeText(event.activity || "Page view")}</span>
+          <span>${escapeText(`${event.device || "Unknown"} · ${event.browser || "Unknown"}`)}</span>
+          <span title="${escapeAttr(event.pagePath || "")}">${escapeText(event.pagePath || "/")}</span>
+        </article>
+      `).join("")}
+    `
+    : emptyState("Visitor activity will appear here after new public website visits are recorded.");
+}
+
 /* ===================================================
    PLATFORM ANALYTICS
 
@@ -1188,6 +1275,12 @@ function renderAnalytics() {
   const topCountry = releases.find((release) => release.country)?.country || "None";
   const downloads = releases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
   const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
+  const scopedEvents = scopedVisitorEvents();
+  populateVisitorSourceFilter(scopedEvents);
+  const visitorEvents = filteredVisitorEvents(scopedEvents);
+  const sourceItems = visitorSourceItems(visitorEvents);
+  const today = new Date().toDateString();
+  const todayVisits = scopedEvents.filter((event) => new Date(event.createdAt || 0).toDateString() === today).length;
 
   setText("#analyticsTotalArtists", String(selectedArtist ? 1 : (currentStore.artists || []).length));
   setText("#analyticsTotalSongs", String(releases.length));
@@ -1205,7 +1298,10 @@ function renderAnalytics() {
   setText("#analyticsStreamingClicks", String(streamingClicks));
   setText("#analyticsNetEarnings", money(financials.net));
   setText("#analyticsPlatformFees", money(financials.platformFees + financials.processingFees + financials.operationsFees));
-  setText("#analyticsTrafficSources", selectedArtist?.trafficSources || "Direct");
+  setText("#analyticsTrafficSources", sourceItems[0]?.title || selectedArtist?.trafficSources || "None");
+  setText("#analyticsRecordedVisits", String(visitorEvents.length));
+  setText("#analyticsUniqueVisitors", String(new Set(visitorEvents.map((event) => event.visitorId || event.ipAddress).filter(Boolean)).size));
+  setText("#analyticsTodayVisits", String(todayVisits));
 
   renderList(
     "#analyticsTopReleaseList",
@@ -1271,6 +1367,12 @@ function renderAnalytics() {
       })),
     "Artist analytics will appear after artists join."
   );
+  renderList(
+    "#analyticsTrafficSourceBreakdown",
+    sourceItems.slice(0, 12).map((item) => ({ title: item.title, meta: `${item.visits} visit${item.visits === 1 ? "" : "s"}` })),
+    "Traffic sources will appear after new public website visits are recorded."
+  );
+  renderVisitorActivity(visitorEvents);
 }
 
 /* ===================================================
@@ -1658,6 +1760,8 @@ subscriberMessageForm?.addEventListener("submit", async (event) => {
 });
 
 managerAnalyticsArtistSelect?.addEventListener("change", renderAnalytics);
+[visitorRangeSelect, visitorSourceSelect].forEach((control) => control?.addEventListener("change", renderAnalytics));
+visitorSearchInput?.addEventListener("input", renderAnalytics);
 
 managerNavLinks.forEach((link) => {
   link.addEventListener("click", (event) => {

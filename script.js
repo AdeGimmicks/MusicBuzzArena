@@ -186,6 +186,17 @@ function releaseCard(release, artist) {
       </div>
     </div>
   `;
+  card.querySelector(".listen-action")?.addEventListener("click", () => {
+    window.MBA.trackVisitorEvent({
+      eventType: isDownloadOnlyRelease(release) ? "download_click" : "listen_click",
+      activity: isDownloadOnlyRelease(release) ? "Clicked Download" : "Clicked Listen",
+      pageType: "artist_home",
+      artistId: artist?.id,
+      artistName: artist?.name,
+      releaseId: release.id,
+      releaseTitle: release.title,
+    });
+  });
   card.addEventListener("click", (event) => {
     if (event.target.closest("a")) return;
     window.location.href = actionUrl;
@@ -306,6 +317,15 @@ async function renderHome(force = false) {
     pageArtist.publicCatalogLabel = window.MBAPublicContext?.catalogLabelForArtist(pageArtist, approved) || "Music";
   }
   setArtistNav(pageArtist);
+  if (pageArtist) {
+    window.MBA.trackVisitorEvent({
+      eventType: "page_view",
+      activity: "Viewed artist profile",
+      pageType: "artist_home",
+      artistId: pageArtist.id,
+      artistName: pageArtist.name,
+    });
+  }
     const brand = document.querySelector(".brand");
 
   if (brand && pageArtist) {

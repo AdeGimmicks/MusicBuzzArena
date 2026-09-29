@@ -136,6 +136,13 @@ async function renderVideos() {
       "videoPageVisits"
     );
     if (result) artist.videoPageVisits = result.value;
+    window.MBA.trackVisitorEvent({
+      eventType: "page_view",
+      activity: "Viewed artist videos",
+      pageType: "video_page",
+      artistId: artist.id,
+      artistName: artist.name,
+    });
   }
 
   const videos = artist?.videos || {};

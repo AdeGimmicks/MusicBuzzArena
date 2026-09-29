@@ -364,6 +364,87 @@ async function incrementAnalytics(entityType, entityId, field) {
   return response.json();
 }
 
+const recordedVisitorPageViews = new Set();
+
+function visitorId() {
+  const key = "mba-anonymous-visitor-id";
+  try {
+    let value = localStorage.getItem(key);
+    if (!value) {
+      value = crypto.randomUUID?.() || `visitor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      localStorage.setItem(key, value);
+    }
+    return value;
+  } catch {
+    return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+}
+
+function visitorLandingContext() {
+  const key = "mba-visitor-landing";
+  const params = new URLSearchParams(window.location.search);
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(key) || "null");
+    if (saved) return saved;
+    const context = {
+      referrer: document.referrer || "",
+      utmSource:
+        params.get("utm_source") ||
+        (params.has("gclid") ? "Google Ads" : "") ||
+        (params.has("fbclid") ? "Facebook" : "") ||
+        (params.has("ttclid") ? "TikTok" : ""),
+    };
+    sessionStorage.setItem(key, JSON.stringify(context));
+    return context;
+  } catch {
+    return {
+      referrer: document.referrer || "",
+      utmSource:
+        params.get("utm_source") ||
+        (params.has("gclid") ? "Google Ads" : "") ||
+        (params.has("fbclid") ? "Facebook" : "") ||
+        (params.has("ttclid") ? "TikTok" : ""),
+    };
+  }
+}
+
+async function trackVisitorEvent(details = {}) {
+  const eventType = details.eventType || "page_view";
+  const pagePath = `${window.location.pathname}${window.location.search}`;
+  const dedupeKey = `${eventType}:${pagePath}:${details.artistId || ""}:${details.releaseId || ""}`;
+  if (eventType === "page_view" && recordedVisitorPageViews.has(dedupeKey)) return null;
+  if (eventType === "page_view") recordedVisitorPageViews.add(dedupeKey);
+  const landing = visitorLandingContext();
+
+  try {
+    const response = await fetch(apiUrl("/api/visitor-event"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        visitorId: visitorId(),
+        eventType,
+        activity: details.activity || "",
+        pageType: details.pageType || "page",
+        pagePath,
+        pageTitle: document.title,
+        artistId: details.artistId || "",
+        artistName: details.artistName || "",
+        releaseId: details.releaseId || "",
+        releaseTitle: details.releaseTitle || "",
+        referrer: document.referrer || "",
+        landingReferrer: landing.referrer || "",
+        utmSource: landing.utmSource || "",
+        language: navigator.language || "",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      }),
+      keepalive: true,
+    });
+    return response.ok ? response.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 /* ===================================================
    SHARED RELEASE HELPERS
 
@@ -382,6 +463,7 @@ window.MBA = {
   loadStore,
   saveStore,
   incrementAnalytics,
+  trackVisitorEvent,
   uid,
   approvedReleases,
   defaults: cloneDefaultStore,
