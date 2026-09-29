@@ -896,8 +896,6 @@ function linkHubPage(release, artist) {
       if (payload.welcomeEmailAttempted && !payload.welcomeEmailSent) {
         button.disabled = false;
         button.textContent = "Retry Email";
-      } else {
-        window.setTimeout(closeModals, 1100);
       }
     } catch (error) {
       if (status) status.textContent = error.message || "Subscription could not be saved.";
@@ -906,11 +904,6 @@ function linkHubPage(release, artist) {
     }
   });
   wrap.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModals));
-  wrap.querySelectorAll(".link-modal").forEach((modal) => {
-    modal.addEventListener("click", (event) => {
-      if (event.target === modal) closeModals();
-    });
-  });
 
   const recordStreamingClick = (link) => {
       const releaseId = link.dataset.releaseId;
@@ -1005,7 +998,8 @@ let musicPageVisitRecorded = false;
 =================================================== */
 async function renderArtistPage(force = false) {
   const embeddedPlayerIsOpen = Boolean(document.querySelector(".service-platform.is-open iframe"));
-  if (embeddedPlayerIsOpen) return;
+  const modalIsOpen = Boolean(document.querySelector('.link-modal[aria-hidden="false"]'));
+  if (embeddedPlayerIsOpen || modalIsOpen) return;
   const previewSessionActive = activePreviewAudio && !activePreviewAudio.ended;
   const audioIsPlaying =
     [...document.querySelectorAll("audio")].some((audio) => !audio.paused) ||
