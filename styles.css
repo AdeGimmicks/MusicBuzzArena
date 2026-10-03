@@ -1641,6 +1641,15 @@ h3 {
   margin-top: 0;
 }
 
+.analytics-export-actions {
+  justify-content: flex-end;
+}
+
+.analytics-export-message {
+  min-height: 1.25em;
+  text-align: right;
+}
+
 .analytics-collapsible {
   gap: 0;
   padding: 0;

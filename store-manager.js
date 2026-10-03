@@ -42,6 +42,9 @@ const visitorRangeSelect = document.querySelector("#visitorRangeSelect");
 const visitorSourceSelect = document.querySelector("#visitorSourceSelect");
 const visitorSearchInput = document.querySelector("#visitorSearchInput");
 const analyticsVisitorTable = document.querySelector("#analyticsVisitorTable");
+const exportFilteredVisitorsCsvButton = document.querySelector("#exportFilteredVisitorsCsv");
+const exportAllVisitorsCsvButton = document.querySelector("#exportAllVisitorsCsv");
+const visitorExportMessage = document.querySelector("#visitorExportMessage");
 const subscriberArtistSelect = document.querySelector("#subscriberArtistSelect");
 const subscriberSearchInput = document.querySelector("#subscriberSearchInput");
 const subscriberStatusFilter = document.querySelector("#subscriberStatusFilter");
@@ -1220,10 +1223,9 @@ function renderSubscribers() {
     : emptyState("Subscribers will appear here after visitors subscribe on artist listen pages.");
 }
 
-function scopedVisitorEvents() {
-  const selectedArtist = scopedAnalyticsArtist();
+function attributedVisitorEvents() {
   const lastExternalSourceByVisitor = new Map();
-  const events = (currentStore.visitorEvents || [])
+  return (currentStore.visitorEvents || [])
     .slice()
     .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
     .map((event) => {
@@ -1235,9 +1237,74 @@ function scopedVisitorEvents() {
       if (event.visitorId && attributedSource !== "Direct") lastExternalSourceByVisitor.set(event.visitorId, attributedSource);
       return { ...event, source: attributedSource };
     });
+}
+
+function scopedVisitorEvents() {
+  const selectedArtist = scopedAnalyticsArtist();
+  const events = attributedVisitorEvents();
   return selectedArtist
     ? events.filter((event) => String(event.artistId || "") === String(selectedArtist.id))
     : events;
+}
+
+function visitorCsvRows(events) {
+  return events
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .map((event) => [
+      event.id,
+      formatDateTime(event.createdAt),
+      event.createdAt,
+      event.visitorId,
+      event.ipAddress,
+      event.source || "Direct",
+      event.referrer,
+      event.city,
+      event.region,
+      event.country,
+      event.artistName || "Platform",
+      event.releaseTitle,
+      event.activity || "Page view",
+      event.eventType,
+      event.pageType,
+      event.pagePath,
+      event.pageTitle,
+      event.device,
+      event.browser,
+      event.operatingSystem,
+      event.language,
+      event.timezone,
+    ]);
+}
+
+function exportVisitorCsv(events, scope) {
+  const header = [
+    "Visit ID",
+    "Date & Time (Device Timezone)",
+    "Timestamp (UTC)",
+    "Visitor ID",
+    "IP Address",
+    "Traffic Source",
+    "Referrer",
+    "City",
+    "Region",
+    "Country",
+    "Artist",
+    "Song / Release",
+    "Activity",
+    "Event Type",
+    "Page Type",
+    "Page Path",
+    "Page Title",
+    "Device",
+    "Browser",
+    "Operating System",
+    "Language",
+    "Visitor Timezone",
+  ];
+  const date = new Date().toISOString().slice(0, 10);
+  downloadCsv(`musicbusinessarena-visitors-${scope}-${date}.csv`, header, visitorCsvRows(events));
+  message(visitorExportMessage, `Downloaded ${events.length} ${scope === "all" ? "recorded" : "filtered"} visit${events.length === 1 ? "" : "s"}.`);
 }
 
 function visitorLocationLabel(event) {
@@ -1907,6 +1974,12 @@ subscriberMessageForm?.addEventListener("submit", async (event) => {
 managerAnalyticsArtistSelect?.addEventListener("change", renderAnalytics);
 [visitorRangeSelect, visitorSourceSelect].forEach((control) => control?.addEventListener("change", renderAnalytics));
 visitorSearchInput?.addEventListener("input", renderAnalytics);
+exportFilteredVisitorsCsvButton?.addEventListener("click", () => {
+  exportVisitorCsv(filteredVisitorEvents(scopedVisitorEvents()), "filtered");
+});
+exportAllVisitorsCsvButton?.addEventListener("click", () => {
+  exportVisitorCsv(attributedVisitorEvents(), "all");
+});
 document.querySelector("#analyticsTrafficSourceBreakdown")?.addEventListener("click", (event) => {
   const sourceButton = event.target.closest("[data-visitor-source]");
   if (!sourceButton || !visitorSourceSelect) return;

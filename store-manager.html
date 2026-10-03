@@ -300,7 +300,14 @@
              This does not reset analytics. It only displays recorded data.
         ================================================== -->
         <section class="manager-dashboard-section" id="managerAnalytics" data-section-title="Analytics">
-          <div class="manager-section-heading"><div><p class="eyebrow">Platform growth</p><h2>Analytics</h2></div></div>
+          <div class="manager-section-heading">
+            <div><p class="eyebrow">Platform growth</p><h2>Analytics</h2></div>
+            <div class="manager-topbar-actions analytics-export-actions">
+              <button class="secondary-button" id="exportFilteredVisitorsCsv" type="button">Download Filtered Visits</button>
+              <button class="secondary-button" id="exportAllVisitorsCsv" type="button">Download All Visits</button>
+            </div>
+          </div>
+          <p class="form-message analytics-export-message" id="visitorExportMessage" role="status"></p>
           <details class="manager-console-card analytics-collapsible" open>
             <summary><span>Analytics Filters</span><small>Choose artist, period, source, or search</small></summary>
             <div class="manager-tools analytics-collapsible-content">
