@@ -19,6 +19,8 @@
 =================================================== */
 const artistTrackList = document.querySelector("#artistTrackList");
 const artistReleaseList = document.querySelector("#artistReleaseList");
+const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
+const siteNav = document.querySelector("#siteNav");
 let activePreviewAudio = null;
 let activePreviewButton = null;
 let renderedMusicReleases = [];
@@ -66,7 +68,22 @@ function artistCatalogPath(artist) {
 function setArtistNav(artist) {
   if (!artist) return;
   window.MBAPublicContext?.applyPublicArtistNavigation(artist);
+  const mobilePageTitle = document.querySelector(".mobile-page-title");
+  if (mobilePageTitle) mobilePageTitle.textContent = artist.publicCatalogLabel || "Music";
 }
+
+mobileNavToggle?.addEventListener("click", () => {
+  const open = !siteNav?.classList.contains("is-open");
+  siteNav?.classList.toggle("is-open", open);
+  mobileNavToggle.setAttribute("aria-expanded", String(open));
+  mobileNavToggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+});
+
+siteNav?.addEventListener("click", () => {
+  siteNav.classList.remove("is-open");
+  mobileNavToggle?.setAttribute("aria-expanded", "false");
+  mobileNavToggle?.setAttribute("aria-label", "Open navigation");
+});
 
 /* ===================================================
    NAVIGATION AND SITE BRANDING
@@ -297,6 +314,7 @@ function trackRow(release, artist, artistReleases = []) {
     : "";
 
   row.innerHTML = `
+    <a class="music-mobile-back" href="/${artistSlug(artist)}" aria-label="Back to ${artistName}">Back to ${artistName}</a>
     <section class="music-release-hero" aria-label="${title} release">
       <div class="music-release-artwork">
         <img class="music-release-cover" src="${release.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${title} cover" loading="eager" decoding="async">
@@ -336,11 +354,15 @@ function trackRow(release, artist, artistReleases = []) {
               ${otherReleases
                 .map(
                   (item) => `
-                    <a class="music-more-card" href="${artistCatalogPath(artist)}?release=${encodeURIComponent(item.id)}" data-release-id="${item.id}">
-                      <img src="${item.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${item.title || "Song"} cover" loading="lazy" decoding="async">
-                      <strong>${item.title || "Untitled track"}</strong>
-                      <span>${releaseYear(item)}</span>
-                    </a>
+                    <article class="music-more-card" data-release-id="${item.id}">
+                      <button class="music-more-select" type="button" data-release-id="${item.id}" aria-label="Show ${escapeAttribute(item.title || "song")}">
+                        <img src="${item.cover || "Mba Logos/MusicBusiness Logo.png"}" alt="${item.title || "Song"} cover" loading="lazy" decoding="async">
+                        <strong>${item.title || "Untitled track"}</strong>
+                        <span class="music-more-year">${releaseYear(item)}</span>
+                        <span class="music-more-artist">${artistName}</span>
+                      </button>
+                      <a class="music-more-listen" href="${isDownloadOnlyRelease(item) ? releasePublicUrl("download", item, artist) : releasePublicUrl("listen", item, artist)}" data-related-listen data-release-id="${item.id}">Listen</a>
+                    </article>
                   `,
                 )
                 .join("")}
@@ -420,10 +442,10 @@ function renderTopTracks(releases, artist) {
     releases[0];
   document.title = `${selectedRelease.title || "Music"} | MusicBusiness Arena`;
   artistTrackList.append(trackRow(selectedRelease, artist, releases));
-  artistTrackList.querySelectorAll(".music-more-card").forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      const releaseId = link.dataset.releaseId;
+  artistTrackList.querySelectorAll(".music-more-card").forEach((card) => {
+    card.addEventListener("click", (event) => {
+      if (event.target.closest("[data-related-listen]")) return;
+      const releaseId = card.dataset.releaseId;
       if (!releaseId) return;
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.set("release", releaseId);
@@ -431,6 +453,20 @@ function renderTopTracks(releases, artist) {
       window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}`);
       renderTopTracks(releases, artist);
       document.querySelector(".music-release-hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  artistTrackList.querySelectorAll("[data-related-listen]").forEach((link) => {
+    link.addEventListener("click", () => {
+      const relatedRelease = releases.find((release) => String(release.id) === String(link.dataset.releaseId));
+      window.MBA.trackVisitorEvent({
+        eventType: "listen_click",
+        activity: "Clicked related song Listen",
+        pageType: "music_page",
+        artistId: artist?.id,
+        artistName: artist?.name,
+        releaseId: relatedRelease?.id || link.dataset.releaseId,
+        releaseTitle: relatedRelease?.title || "",
+      });
     });
   });
 }
