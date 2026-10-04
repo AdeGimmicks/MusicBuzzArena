@@ -1177,6 +1177,20 @@ function linkHubPage(release, artist) {
     platformName: platformLabel(platformKey),
   });
 
+  const recordPlatformSelection = (releaseId, platformKey) => {
+    if (!releaseId || !platformKey) return;
+    fetch("/api/streaming-click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ releaseId, platformKey }),
+      keepalive: true,
+    })
+      .then((response) => {
+        if (response.ok) window.MBA.loadStore({ force: true });
+      })
+      .catch(() => {});
+  };
+
   const recordExternalPlatformClick = (link) => {
     const releaseId = link.dataset.releaseId;
     const platformKey = link.dataset.platformKey;
@@ -1188,17 +1202,7 @@ function linkHubPage(release, artist) {
       activity: `Opened ${platformLabel(platformKey)} website/app`,
       playbackMeasurement: "not_applicable",
     });
-
-    fetch("/api/streaming-click", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ releaseId, platformKey }),
-      keepalive: true,
-    })
-      .then((response) => {
-        if (response.ok) window.MBA.loadStore({ force: true });
-      })
-      .catch(() => {});
+    recordPlatformSelection(releaseId, platformKey);
   };
 
   let openPlatformPlayer = null;
@@ -1251,6 +1255,7 @@ function linkHubPage(release, artist) {
         activity: `Opened ${context.platformName} embedded player`,
         playbackMeasurement: measurementSupported ? "supported" : "unavailable",
       });
+      recordPlatformSelection(row.dataset.releaseId, platformKey);
       if (!measurementSupported) {
         window.MBA.trackVisitorEvent({
           ...context,

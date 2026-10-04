@@ -1743,7 +1743,7 @@ function renderAnalytics() {
       .slice(0, 8)
       .map((release) => ({
         title: release.title || "Untitled release",
-        meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${releaseActivity.get(release.id)?.listeningPageVisits || 0} listening-page visits | ${releaseActivity.get(release.id)?.embeddedPlayerOpens || 0} player opens | ${Number(release.streamingClicks || 0)} external platform clicks | ${money(releaseRevenue(release))}`,
+        meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${releaseActivity.get(release.id)?.listeningPageVisits || 0} listening-page visits | ${releaseActivity.get(release.id)?.embeddedPlayerOpens || 0} player opens | ${Number(release.streamingClicks || 0)} platform selections | ${money(releaseRevenue(release))}`,
       })),
     "Release analytics will appear after artists upload audio."
   );
@@ -1762,7 +1762,7 @@ function renderAnalytics() {
     "#analyticsPlatformBreakdown",
     platformItems.slice(0, 8).map((item) => ({
       title: item.title,
-      meta: `${item.clicks} external clicks | ${platformEmbeddedPlayerOpens(scopedEvents, item.platform)} embedded player opens`,
+      meta: `${item.clicks} platform selections | ${platformEmbeddedPlayerOpens(scopedEvents, item.platform)} embedded player opens`,
     })),
     "Streaming click analytics will appear after fans click platform links."
   );
