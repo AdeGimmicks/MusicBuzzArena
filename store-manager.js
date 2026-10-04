@@ -1394,7 +1394,7 @@ function visitorLocationLabel(event) {
 }
 
 function filteredVisitorEvents(events, options = {}) {
-  const range = visitorRangeSelect?.value || "30";
+  const range = visitorRangeSelect?.value || "all";
   const source = visitorSourceSelect?.value || "";
   const query = String(visitorSearchInput?.value || "").trim().toLowerCase();
   const cutoff = range === "all" ? 0 : Date.now() - Number(range || 30) * 24 * 60 * 60 * 1000;
@@ -1473,7 +1473,7 @@ function visitorSourceItems(events, options = {}) {
 }
 
 function visitorRowsMarkup(events) {
-  const rows = events.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 500);
+  const rows = events.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   return rows.length
     ? `
       <div class="manager-table-header visitor-columns"><span>Date & Time</span><span>IP / Visitor</span><span>Source</span><span>Location</span><span>Artist / Song</span><span>Activity</span><span>Device</span><span>Page</span></div>
@@ -1696,8 +1696,7 @@ function renderStreamingPlatformActivity(events) {
 
   const rows = activityEvents
     .slice()
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .slice(0, 500);
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   analyticsStreamingActivityTable.innerHTML = rows.length
     ? `
       <div class="manager-table-header streaming-activity-columns"><span>Date & Time</span><span>Visitor / Session</span><span>Original Source</span><span>Artist / Song</span><span>Platform</span><span>Activity</span><span>Result / Listening</span></div>
