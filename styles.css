@@ -1828,6 +1828,54 @@ h3 {
   margin: 0;
 }
 
+.visitor-date-groups {
+  display: grid;
+  gap: 8px;
+}
+
+.visitor-date-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.visitor-date-group > summary {
+  align-items: center;
+  background: #f8fafc;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  list-style: none;
+  padding: 12px 14px;
+}
+
+.visitor-date-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.visitor-date-group > summary::after {
+  content: "+";
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.visitor-date-group[open] > summary::after {
+  content: "−";
+}
+
+.visitor-date-group > summary span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-left: auto;
+}
+
+.visitor-date-table {
+  border-top: 1px solid var(--line);
+  padding: 10px;
+}
+
 .manager-card-note {
   color: var(--muted);
   font-size: 0.86rem;

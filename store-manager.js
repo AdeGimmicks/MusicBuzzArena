@@ -1439,6 +1439,48 @@ function visitorActivityLabel(event) {
     : activity;
 }
 
+function visitorActivityDateKey(value) {
+  const date = new Date(value || 0);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function visitorActivityDateLabel(key) {
+  if (key === "unknown") return "Unknown date";
+  const [year, month, day] = key.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const today = visitorActivityDateKey(new Date());
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = visitorActivityDateKey(yesterdayDate);
+  if (key === today) return `Today · ${date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`;
+  if (key === yesterday) return `Yesterday · ${date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`;
+  return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+
+function visitorDateGroupsMarkup(events) {
+  const groups = events.reduce((items, event) => {
+    const key = visitorActivityDateKey(event.createdAt);
+    if (!items.has(key)) items.set(key, []);
+    items.get(key).push(event);
+    return items;
+  }, new Map());
+  return [...groups.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([key, dayEvents], index) => `
+      <details class="visitor-date-group" ${index === 0 ? "open" : ""}>
+        <summary>
+          <strong>${escapeText(visitorActivityDateLabel(key))}</strong>
+          <span>${dayEvents.length} activit${dayEvents.length === 1 ? "y" : "ies"}</span>
+        </summary>
+        <div class="manager-table visitor-date-table">${visitorRowsMarkup(dayEvents)}</div>
+      </details>
+    `).join("");
+}
+
 function renderVisitorSourceCards(items, totalEvents) {
   const container = document.querySelector("#analyticsTrafficSourceBreakdown");
   if (!container) return;
@@ -1464,7 +1506,9 @@ function renderVisitorActivity(events) {
   const selectedSource = visitorSourceSelect?.value || "";
   setText("#analyticsVisitorActivityTitle", selectedSource ? `${selectedSource} Visitor Activity` : "Visitor Activity by Source");
   if (selectedSource || !events.length) {
-    analyticsVisitorTable.innerHTML = visitorRowsMarkup(events);
+    analyticsVisitorTable.innerHTML = events.length
+      ? visitorDateGroupsMarkup(events)
+      : visitorRowsMarkup(events);
     return;
   }
   const sourceGroups = visitorSourceItems(events);
@@ -1476,7 +1520,7 @@ function renderVisitorActivity(events) {
           <h4>${escapeText(source.title)} Visitors</h4>
           <span>${source.visits} recorded activities · ${source.uniqueVisitors} unique visitors</span>
         </div>
-        <div class="manager-table">${visitorRowsMarkup(sourceEvents)}</div>
+        <div class="visitor-date-groups">${visitorDateGroupsMarkup(sourceEvents)}</div>
       </section>
     `;
   }).join("");
