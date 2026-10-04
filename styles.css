@@ -1637,6 +1637,19 @@ h3 {
   margin-top: 3px;
 }
 
+.streaming-activity-columns {
+  grid-template-columns: 175px 155px 120px 190px 130px minmax(220px, 1.2fr) 110px;
+  min-width: 1220px;
+}
+
+.streaming-activity-columns small {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-top: 3px;
+}
+
 .analytics-visitor-card {
   margin-top: 0;
 }
@@ -1744,6 +1757,43 @@ h3 {
 
 .visitor-source-card strong {
   font-size: 0.96rem;
+}
+
+.streaming-analytics-content {
+  display: grid;
+  gap: 18px;
+}
+
+.streaming-activity-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.streaming-activity-card {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+}
+
+.streaming-activity-card strong {
+  font-size: 1rem;
+}
+
+.streaming-activity-card span,
+.streaming-activity-card small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.streaming-activity-card small {
+  border-top: 1px solid var(--line);
+  margin-top: 5px;
+  padding-top: 8px;
 }
 
 .visitor-source-card span,
@@ -5289,7 +5339,8 @@ select:focus {
     grid-template-columns: 76px minmax(0, 1fr);
   }
 
-  .visitor-columns {
+  .visitor-columns,
+  .streaming-activity-columns {
     grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr);
     min-width: 0;
   }

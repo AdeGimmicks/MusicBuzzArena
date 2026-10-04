@@ -376,13 +376,16 @@ function trackRow(release, artist, artistReleases = []) {
   row.querySelectorAll(".streaming-link").forEach((link) => {
     link.addEventListener("click", () => {
       window.MBA.trackVisitorEvent({
-        eventType: "streaming_click",
-        activity: `Opened ${platformLabel(link.dataset.platformKey)}`,
+        eventType: "platform_external_click",
+        activity: `Opened ${platformLabel(link.dataset.platformKey)} website/app`,
         pageType: "music_page",
         artistId: artist?.id,
         artistName: artist?.name,
         releaseId: release.id,
         releaseTitle: release.title,
+        platformKey: link.dataset.platformKey,
+        platformName: platformLabel(link.dataset.platformKey),
+        playbackMeasurement: "not_applicable",
       });
       fetch("/api/streaming-click", {
         method: "POST",
@@ -502,6 +505,242 @@ function releasePanel(release) {
    Builds the dedicated listen page where fans can open the
    artist's streaming platform links.
 =================================================== */
+const MEASURABLE_EMBED_PLATFORMS = new Set(["spotify", "youtubeMusic", "soundcloud"]);
+let spotifyIframeApiPromise = null;
+let youtubeIframeApiPromise = null;
+let soundCloudWidgetApiPromise = null;
+
+function appendPlayerScript(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.addEventListener("load", resolve, { once: true });
+    script.addEventListener("error", reject, { once: true });
+    document.head.append(script);
+  });
+}
+
+function loadSpotifyIframeApi() {
+  if (window.SpotifyIframeApi) return Promise.resolve(window.SpotifyIframeApi);
+  if (spotifyIframeApiPromise) return spotifyIframeApiPromise;
+  spotifyIframeApiPromise = new Promise((resolve, reject) => {
+    const previousReady = window.onSpotifyIframeApiReady;
+    window.onSpotifyIframeApiReady = (api) => {
+      previousReady?.(api);
+      window.SpotifyIframeApi = api;
+      resolve(api);
+    };
+    appendPlayerScript("https://open.spotify.com/embed/iframe-api/v1")
+      .catch(reject);
+  });
+  return spotifyIframeApiPromise;
+}
+
+function loadYouTubeIframeApi() {
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (youtubeIframeApiPromise) return youtubeIframeApiPromise;
+  youtubeIframeApiPromise = new Promise((resolve, reject) => {
+    const previousReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      previousReady?.();
+      resolve(window.YT);
+    };
+    appendPlayerScript("https://www.youtube.com/iframe_api").catch(reject);
+  });
+  return youtubeIframeApiPromise;
+}
+
+function loadSoundCloudWidgetApi() {
+  if (window.SC?.Widget) return Promise.resolve(window.SC);
+  if (!soundCloudWidgetApiPromise) {
+    soundCloudWidgetApiPromise = appendPlayerScript("https://w.soundcloud.com/player/api.js").then(() => window.SC);
+  }
+  return soundCloudWidgetApiPromise;
+}
+
+function createStandardEmbed(frame, embedUrl, title) {
+  const iframe = document.createElement("iframe");
+  iframe.src = embedUrl;
+  iframe.title = title;
+  iframe.loading = "lazy";
+  iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+  iframe.setAttribute("allowfullscreen", "");
+  frame.replaceChildren(iframe);
+  return iframe;
+}
+
+function spotifyUriFromEmbed(embedUrl) {
+  try {
+    const parts = new URL(embedUrl).pathname.split("/").filter(Boolean);
+    const offset = parts[0] === "embed" ? 1 : 0;
+    return parts[offset] && parts[offset + 1] ? `spotify:${parts[offset]}:${parts[offset + 1]}` : "";
+  } catch {
+    return "";
+  }
+}
+
+function youtubeEmbedWithApi(embedUrl) {
+  try {
+    const url = new URL(embedUrl);
+    url.searchParams.set("enablejsapi", "1");
+    url.searchParams.set("origin", window.location.origin);
+    url.searchParams.set("playsinline", "1");
+    return url.href;
+  } catch {
+    return embedUrl;
+  }
+}
+
+function createPlaybackReporter(context) {
+  const playbackSessionId = crypto.randomUUID?.() || `playback-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  let listeningSeconds = 0;
+  let playingSince = 0;
+  let lastReportedSeconds = 0;
+  let positionSeconds = 0;
+  let durationSeconds = 0;
+  let started = false;
+  let playing = false;
+
+  const totalListeningSeconds = () => listeningSeconds + (playingSince ? (Date.now() - playingSince) / 1000 : 0);
+  const commitPlayingTime = () => {
+    if (!playingSince) return;
+    listeningSeconds += (Date.now() - playingSince) / 1000;
+    playingSince = 0;
+  };
+  const report = (eventType, activity) => window.MBA.trackVisitorEvent({
+    ...context,
+    eventType,
+    activity,
+    playbackSessionId,
+    playbackMeasurement: "supported",
+    listeningSeconds: Math.round(totalListeningSeconds() * 10) / 10,
+    playbackPositionSeconds: Math.round(positionSeconds * 10) / 10,
+    mediaDurationSeconds: Math.round(durationSeconds * 10) / 10,
+  });
+  const progress = (force = false) => {
+    const seconds = totalListeningSeconds();
+    if (seconds < 1 || (!force && seconds - lastReportedSeconds < 4.5)) return;
+    lastReportedSeconds = seconds;
+    report("platform_playback_progress", `Listened on ${context.platformName}`);
+  };
+  const pageHide = () => progress(true);
+  const timer = window.setInterval(progress, 5000);
+  window.addEventListener("pagehide", pageHide);
+
+  return {
+    sample(position, duration) {
+      if (Number.isFinite(Number(position))) positionSeconds = Number(position);
+      if (Number.isFinite(Number(duration))) durationSeconds = Number(duration);
+    },
+    play() {
+      if (playing) return;
+      playing = true;
+      playingSince = Date.now();
+      report(started ? "platform_playback_resume" : "platform_playback_start", `${started ? "Resumed" : "Started"} ${context.platformName} playback`);
+      started = true;
+    },
+    pause() {
+      if (!playing) return;
+      commitPlayingTime();
+      playing = false;
+      progress(true);
+      report("platform_playback_pause", `Paused ${context.platformName} playback`);
+    },
+    complete() {
+      commitPlayingTime();
+      playing = false;
+      progress(true);
+      report("platform_playback_complete", `Completed ${context.platformName} playback`);
+    },
+    destroy() {
+      commitPlayingTime();
+      playing = false;
+      progress(true);
+      window.clearInterval(timer);
+      window.removeEventListener("pagehide", pageHide);
+    },
+  };
+}
+
+async function createTrackedPlatformPlayer(frame, row, context) {
+  const { platformKey, platformName } = context;
+  const embedUrl = row.dataset.embedUrl;
+  const title = `${platformName} player`;
+  const reporter = createPlaybackReporter(context);
+
+  try {
+  if (platformKey === "spotify") {
+    const uri = spotifyUriFromEmbed(embedUrl);
+    if (!uri) throw new Error("Spotify track URI is unavailable.");
+    const api = await loadSpotifyIframeApi();
+    return new Promise((resolve) => {
+      api.createController(frame, { uri }, (controller) => {
+        let lastPaused = true;
+        controller.addListener("playback_started", () => reporter.play());
+        controller.addListener("playback_update", ({ data = {} }) => {
+          reporter.sample(Number(data.position || 0) / 1000, Number(data.duration || 0) / 1000);
+          if (!data.isPaused && !data.isBuffering) reporter.play();
+          if (data.isPaused && !lastPaused) {
+            if (Number(data.duration || 0) > 0 && Number(data.position || 0) >= Number(data.duration || 0) - 500) reporter.complete();
+            else reporter.pause();
+          }
+          lastPaused = Boolean(data.isPaused);
+        });
+        resolve({ destroy: () => { reporter.destroy(); controller.destroy(); } });
+      });
+    });
+  }
+
+  if (platformKey === "youtubeMusic") {
+    const iframe = createStandardEmbed(frame, youtubeEmbedWithApi(embedUrl), title);
+    const YT = await loadYouTubeIframeApi();
+    let sampleTimer = 0;
+    const player = new YT.Player(iframe, {
+      events: {
+        onReady: ({ target }) => {
+          sampleTimer = window.setInterval(() => reporter.sample(target.getCurrentTime(), target.getDuration()), 1000);
+        },
+        onStateChange: ({ data, target }) => {
+          reporter.sample(target.getCurrentTime(), target.getDuration());
+          if (data === YT.PlayerState.PLAYING) reporter.play();
+          if (data === YT.PlayerState.PAUSED) reporter.pause();
+          if (data === YT.PlayerState.ENDED) reporter.complete();
+        },
+      },
+    });
+    return { destroy: () => { window.clearInterval(sampleTimer); reporter.destroy(); player.destroy(); } };
+  }
+
+  if (platformKey === "soundcloud") {
+    const iframe = createStandardEmbed(frame, embedUrl, title);
+    const SC = await loadSoundCloudWidgetApi();
+    const widget = SC.Widget(iframe);
+    widget.bind(SC.Widget.Events.PLAY, () => reporter.play());
+    widget.bind(SC.Widget.Events.PAUSE, () => reporter.pause());
+    widget.bind(SC.Widget.Events.FINISH, () => reporter.complete());
+    widget.bind(SC.Widget.Events.PLAY_PROGRESS, (event = {}) => {
+      reporter.sample(Number(event.currentPosition || 0) / 1000);
+      widget.getDuration((duration) => reporter.sample(Number(event.currentPosition || 0) / 1000, Number(duration || 0) / 1000));
+    });
+    return { destroy: () => { reporter.destroy(); Object.values(SC.Widget.Events).forEach((eventName) => widget.unbind(eventName)); iframe.remove(); } };
+  }
+
+  reporter.destroy();
+  const iframe = createStandardEmbed(frame, embedUrl, title);
+  return { destroy: () => iframe.remove() };
+  } catch (error) {
+    reporter.destroy();
+    throw error;
+  }
+}
+
 function linkHubPage(release, artist) {
   if (isDownloadOnlyRelease(release) && window.location.pathname.split("/").filter(Boolean)[0] === "listen") {
     window.location.replace(releasePublicUrl("download", release, artist));
@@ -928,40 +1167,52 @@ function linkHubPage(release, artist) {
   });
   wrap.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", closeModals));
 
-  const recordStreamingClick = (link) => {
-      const releaseId = link.dataset.releaseId;
-      const platformKey = link.dataset.platformKey;
-      if (!releaseId || !platformKey) return;
+  const platformEventContext = (platformKey) => ({
+    pageType: "listen_page",
+    artistId: artist?.id,
+    artistName: artist?.name,
+    releaseId: release.id,
+    releaseTitle: release.title,
+    platformKey,
+    platformName: platformLabel(platformKey),
+  });
 
-      window.MBA.trackVisitorEvent({
-        eventType: "streaming_click",
-        activity: `Opened ${platformLabel(platformKey)}`,
-        pageType: "listen_page",
-        artistId: artist?.id,
-        artistName: artist?.name,
-        releaseId: release.id,
-        releaseTitle: release.title,
-      });
+  const recordExternalPlatformClick = (link) => {
+    const releaseId = link.dataset.releaseId;
+    const platformKey = link.dataset.platformKey;
+    if (!releaseId || !platformKey) return;
 
-      fetch("/api/streaming-click", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ releaseId, platformKey }),
-        keepalive: true,
+    window.MBA.trackVisitorEvent({
+      ...platformEventContext(platformKey),
+      eventType: "platform_external_click",
+      activity: `Opened ${platformLabel(platformKey)} website/app`,
+      playbackMeasurement: "not_applicable",
+    });
+
+    fetch("/api/streaming-click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ releaseId, platformKey }),
+      keepalive: true,
+    })
+      .then((response) => {
+        if (response.ok) window.MBA.loadStore({ force: true });
       })
-        .then((response) => {
-          if (response.ok) window.MBA.loadStore({ force: true });
-        })
-        .catch(() => {});
+      .catch(() => {});
   };
 
   let openPlatformPlayer = null;
+  let openPlayerController = null;
+  let playerRequestId = 0;
   const closePlatformPlayer = (platform) => {
     if (!platform) return;
+    playerRequestId += 1;
     const panel = platform.querySelector(".service-embed-panel");
     const frame = platform.querySelector("[data-embed-frame]");
     const row = platform.querySelector(".service-player-row");
     const label = platform.querySelector(".service-player-toggle-label");
+    openPlayerController?.destroy?.();
+    openPlayerController = null;
     if (frame) frame.replaceChildren();
     if (panel) panel.hidden = true;
     if (label) label.textContent = "Play";
@@ -971,7 +1222,7 @@ function linkHubPage(release, artist) {
   };
 
   wrap.querySelectorAll(".service-player-row").forEach((row) => {
-    row.addEventListener("click", () => {
+    row.addEventListener("click", async () => {
       const platform = row.closest("[data-platform-player]");
       if (!platform) return;
       if (openPlatformPlayer === platform) {
@@ -985,26 +1236,53 @@ function linkHubPage(release, artist) {
       const embedUrl = row.dataset.embedUrl;
       if (!panel || !frame || !embedUrl) return;
 
-      const iframe = document.createElement("iframe");
-      iframe.src = embedUrl;
-      iframe.title = `${row.dataset.platformLabel || "Streaming"} player`;
-      iframe.loading = "lazy";
-      iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
-      iframe.setAttribute("allowfullscreen", "");
-      frame.replaceChildren(iframe);
       panel.hidden = false;
       platform.classList.add("is-open");
       const label = platform.querySelector(".service-player-toggle-label");
       if (label) label.textContent = "Hide Player";
       row.setAttribute("aria-expanded", "true");
       openPlatformPlayer = platform;
-      recordStreamingClick(row);
+      const platformKey = row.dataset.platformKey;
+      const context = platformEventContext(platformKey);
+      const measurementSupported = MEASURABLE_EMBED_PLATFORMS.has(platformKey);
+      window.MBA.trackVisitorEvent({
+        ...context,
+        eventType: "platform_embed_open",
+        activity: `Opened ${context.platformName} embedded player`,
+        playbackMeasurement: measurementSupported ? "supported" : "unavailable",
+      });
+      if (!measurementSupported) {
+        window.MBA.trackVisitorEvent({
+          ...context,
+          eventType: "platform_measurement_unavailable",
+          activity: `${context.platformName} playback measurement unavailable`,
+          playbackMeasurement: "unavailable",
+        });
+      }
+      const requestId = ++playerRequestId;
+      try {
+        const controller = await createTrackedPlatformPlayer(frame, row, context);
+        if (openPlatformPlayer !== platform || requestId !== playerRequestId) {
+          controller?.destroy?.();
+          return;
+        }
+        openPlayerController = controller;
+      } catch {
+        if (openPlatformPlayer !== platform || requestId !== playerRequestId) return;
+        createStandardEmbed(frame, embedUrl, `${context.platformName} player`);
+        window.MBA.trackVisitorEvent({
+          ...context,
+          eventType: "platform_measurement_unavailable",
+          activity: `${context.platformName} playback measurement unavailable`,
+          playbackMeasurement: "unavailable",
+        });
+      }
     });
   });
 
   wrap.querySelectorAll("a.streaming-link").forEach((link) => {
     link.addEventListener("click", () => {
-      recordStreamingClick(link);
+      recordExternalPlatformClick(link);
     });
   });
 
@@ -1020,7 +1298,7 @@ let musicPageVisitRecorded = false;
    and renders the correct artist music or listen page.
 =================================================== */
 async function renderArtistPage(force = false) {
-  const embeddedPlayerIsOpen = Boolean(document.querySelector(".service-platform.is-open iframe"));
+  const embeddedPlayerIsOpen = Boolean(document.querySelector(".service-platform.is-open"));
   const modalIsOpen = Boolean(document.querySelector('.link-modal[aria-hidden="false"]'));
   if (embeddedPlayerIsOpen || modalIsOpen) return;
   const previewSessionActive = activePreviewAudio && !activePreviewAudio.ended;

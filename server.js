@@ -977,11 +977,31 @@ async function incrementAnalytics(request, response) {
   sendJson(response, 200, { ok: true, entityType, entityId, field, value: result.value });
 }
 
-const VISITOR_EVENT_TYPES = new Set(["page_view", "listen_click", "download_click", "streaming_click", "video_click"]);
+const VISITOR_EVENT_TYPES = new Set([
+  "page_view",
+  "listen_click",
+  "download_click",
+  "streaming_click",
+  "video_click",
+  "platform_embed_open",
+  "platform_playback_start",
+  "platform_playback_pause",
+  "platform_playback_resume",
+  "platform_playback_progress",
+  "platform_playback_complete",
+  "platform_external_click",
+  "platform_measurement_unavailable",
+]);
 const VISITOR_EVENT_LIMIT = 7500;
 
 function analyticsText(value, maxLength = 240) {
   return String(value || "").trim().slice(0, maxLength);
+}
+
+function analyticsNumber(value, max = 24 * 60 * 60) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) return 0;
+  return Math.min(number, max);
 }
 
 function requestIpAddress(request) {
@@ -1123,8 +1143,9 @@ async function recordVisitorEvent(request, response) {
     const releaseId = analyticsText(body.releaseId, 120);
     const artist = (store.artists || []).find((item) => String(item.id) === artistId);
     const release = (store.releases || []).find((item) => String(item.id) === releaseId);
-    const recentDuplicate = (store.visitorEvents || []).slice(-20).find((item) =>
+    const recentDuplicate = eventType === "platform_playback_progress" ? null : (store.visitorEvents || []).slice(-20).find((item) =>
       item.visitorId === visitorId && item.eventType === eventType && item.pagePath === pagePath &&
+      String(item.playbackSessionId || "") === analyticsText(body.playbackSessionId, 120) &&
       now.getTime() - new Date(item.createdAt || 0).getTime() < 5000
     );
     if (recentDuplicate) return recentDuplicate;
@@ -1141,6 +1162,7 @@ async function recordVisitorEvent(request, response) {
     const nextEvent = {
       id: `visit-${Date.now()}-${crypto.randomBytes(5).toString("hex")}`,
       visitorId,
+      sessionId: analyticsText(body.sessionId, 120),
       eventType,
       activity: analyticsText(body.activity, 120) || eventType.replaceAll("_", " "),
       pageType: analyticsText(body.pageType, 80) || "page",
@@ -1150,6 +1172,13 @@ async function recordVisitorEvent(request, response) {
       artistName: artist?.name || artist?.handle || analyticsText(body.artistName, 160),
       releaseId: release?.id || releaseId,
       releaseTitle: release?.title || analyticsText(body.releaseTitle, 200),
+      platformKey: analyticsText(body.platformKey, 80),
+      platformName: analyticsText(body.platformName, 120),
+      playbackSessionId: analyticsText(body.playbackSessionId, 120),
+      playbackMeasurement: analyticsText(body.playbackMeasurement, 40),
+      listeningSeconds: analyticsNumber(body.listeningSeconds),
+      playbackPositionSeconds: analyticsNumber(body.playbackPositionSeconds),
+      mediaDurationSeconds: analyticsNumber(body.mediaDurationSeconds),
       source,
       referrer: normalizedReferrer(body.landingReferrer || body.referrer),
       ipAddress,
@@ -1163,7 +1192,18 @@ async function recordVisitorEvent(request, response) {
       timezone: analyticsText(body.timezone, 100),
       createdAt: now.toISOString(),
     };
-    store.visitorEvents = [...(store.visitorEvents || []), nextEvent].slice(-VISITOR_EVENT_LIMIT);
+    const playbackSessionId = nextEvent.playbackSessionId;
+    const existingProgressIndex = eventType === "platform_playback_progress" && playbackSessionId
+      ? (store.visitorEvents || []).findIndex((item) =>
+          item.eventType === "platform_playback_progress" && item.playbackSessionId === playbackSessionId
+        )
+      : -1;
+    if (existingProgressIndex >= 0) {
+      nextEvent.id = store.visitorEvents[existingProgressIndex].id;
+      store.visitorEvents[existingProgressIndex] = nextEvent;
+    } else {
+      store.visitorEvents = [...(store.visitorEvents || []), nextEvent].slice(-VISITOR_EVENT_LIMIT);
+    }
     return nextEvent;
   });
 

@@ -42,6 +42,8 @@ const visitorRangeSelect = document.querySelector("#visitorRangeSelect");
 const visitorSourceSelect = document.querySelector("#visitorSourceSelect");
 const visitorSearchInput = document.querySelector("#visitorSearchInput");
 const analyticsVisitorTable = document.querySelector("#analyticsVisitorTable");
+const analyticsStreamingActivitySummary = document.querySelector("#analyticsStreamingActivitySummary");
+const analyticsStreamingActivityTable = document.querySelector("#analyticsStreamingActivityTable");
 const exportFilteredVisitorsCsvButton = document.querySelector("#exportFilteredVisitorsCsv");
 const exportAllVisitorsCsvButton = document.querySelector("#exportAllVisitorsCsv");
 const visitorExportMessage = document.querySelector("#visitorExportMessage");
@@ -1256,6 +1258,7 @@ function visitorCsvRows(events) {
       formatDateTime(event.createdAt),
       event.createdAt,
       event.visitorId,
+      event.sessionId,
       event.ipAddress,
       event.source || "Direct",
       event.referrer,
@@ -1264,8 +1267,14 @@ function visitorCsvRows(events) {
       event.country,
       event.artistName || "Platform",
       event.releaseTitle,
+      event.platformName,
       event.activity || "Page view",
       event.eventType,
+      event.playbackMeasurement,
+      event.playbackSessionId,
+      event.listeningSeconds,
+      event.playbackPositionSeconds,
+      event.mediaDurationSeconds,
       event.pageType,
       event.pagePath,
       event.pageTitle,
@@ -1283,6 +1292,7 @@ function exportVisitorCsv(events, scope) {
     "Date & Time (Device Timezone)",
     "Timestamp (UTC)",
     "Visitor ID",
+    "Session ID",
     "IP Address",
     "Traffic Source",
     "Referrer",
@@ -1291,8 +1301,14 @@ function exportVisitorCsv(events, scope) {
     "Country",
     "Artist",
     "Song / Release",
+    "Streaming Platform",
     "Activity",
     "Event Type",
+    "Playback Measurement",
+    "Playback Session ID",
+    "Listening Seconds",
+    "Playback Position Seconds",
+    "Media Duration Seconds",
     "Page Type",
     "Page Path",
     "Page Title",
@@ -1321,7 +1337,7 @@ function filteredVisitorEvents(events, options = {}) {
     if (cutoff && new Date(event.createdAt || 0).getTime() < cutoff) return false;
     if (!options.ignoreSource && source && event.source !== source) return false;
     if (!query) return true;
-    return [event.ipAddress, event.visitorId, event.source, event.country, event.region, event.city, event.artistName, event.releaseTitle, event.activity, event.pagePath]
+    return [event.ipAddress, event.visitorId, event.sessionId, event.source, event.country, event.region, event.city, event.artistName, event.releaseTitle, event.platformName, event.activity, event.pagePath]
       .some((value) => String(value || "").toLowerCase().includes(query));
   });
 }
@@ -1455,6 +1471,98 @@ function renderVisitorActivity(events) {
   }).join("");
 }
 
+const STREAMING_ACTIVITY_EVENT_TYPES = new Set([
+  "platform_embed_open",
+  "platform_playback_start",
+  "platform_playback_pause",
+  "platform_playback_resume",
+  "platform_playback_progress",
+  "platform_playback_complete",
+  "platform_external_click",
+  "platform_measurement_unavailable",
+]);
+
+function formatListeningTime(value) {
+  const seconds = Math.max(0, Math.round(Number(value || 0)));
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes ? `${minutes}m ${remainder}s` : `${remainder}s`;
+}
+
+function streamingActivityEvents(events) {
+  return events.filter((event) => STREAMING_ACTIVITY_EVENT_TYPES.has(event.eventType));
+}
+
+function streamingActivitySummaries(events) {
+  const platformDefinitions = STREAMING_LINKS.map(([title, key]) => [key, title]);
+  const recordedDefinitions = events
+    .filter((event) => event.platformKey)
+    .map((event) => [event.platformKey, event.platformName || platformLabel(event.platformKey)]);
+  const definitions = new Map([...platformDefinitions, ...recordedDefinitions]);
+
+  return [...definitions.entries()].map(([key, title]) => {
+    const platformEvents = events.filter((event) => event.platformKey === key);
+    const listeningBySession = new Map();
+    platformEvents.forEach((event) => {
+      if (!event.playbackSessionId) return;
+      listeningBySession.set(
+        event.playbackSessionId,
+        Math.max(listeningBySession.get(event.playbackSessionId) || 0, Number(event.listeningSeconds || 0))
+      );
+    });
+    const measurementUnavailable = platformEvents.some((event) => event.playbackMeasurement === "unavailable");
+    const measurementSupported = platformEvents.some((event) => event.playbackMeasurement === "supported") || ["spotify", "youtubeMusic", "soundcloud"].includes(key);
+    return {
+      key,
+      title,
+      embedOpens: platformEvents.filter((event) => event.eventType === "platform_embed_open").length,
+      playbackStarts: platformEvents.filter((event) => event.eventType === "platform_playback_start").length,
+      completions: platformEvents.filter((event) => event.eventType === "platform_playback_complete").length,
+      externalClicks: platformEvents.filter((event) => event.eventType === "platform_external_click").length,
+      listeningSeconds: [...listeningBySession.values()].reduce((sum, seconds) => sum + seconds, 0),
+      measurementSupported: measurementSupported && !measurementUnavailable,
+    };
+  });
+}
+
+function renderStreamingPlatformActivity(events) {
+  if (!analyticsStreamingActivitySummary || !analyticsStreamingActivityTable) return;
+  const activityEvents = streamingActivityEvents(events);
+  const summaries = streamingActivitySummaries(activityEvents);
+  analyticsStreamingActivitySummary.innerHTML = summaries.map((item) => `
+    <article class="streaming-activity-card">
+      <strong>${escapeText(item.title)}</strong>
+      <span>${item.embedOpens} embedded player open${item.embedOpens === 1 ? "" : "s"}</span>
+      <span>${item.playbackStarts} measured playback start${item.playbackStarts === 1 ? "" : "s"}</span>
+      <span>${formatListeningTime(item.listeningSeconds)} measured listening</span>
+      <span>${item.completions} completion${item.completions === 1 ? "" : "s"}</span>
+      <span>${item.externalClicks} external click${item.externalClicks === 1 ? "" : "s"}</span>
+      <small>${item.measurementSupported ? "Playback measurement supported" : "Playback measurement unavailable"}</small>
+    </article>
+  `).join("");
+
+  const rows = activityEvents
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, 500);
+  analyticsStreamingActivityTable.innerHTML = rows.length
+    ? `
+      <div class="manager-table-header streaming-activity-columns"><span>Date & Time</span><span>Visitor / Session</span><span>Original Source</span><span>Artist / Song</span><span>Platform</span><span>Activity</span><span>Listening</span></div>
+      ${rows.map((event) => `
+        <article class="manager-table-row streaming-activity-columns">
+          <strong>${escapeText(formatDateTime(event.createdAt))}</strong>
+          <span title="${escapeAttr(event.visitorId || "")}">${escapeText(String(event.visitorId || "Unknown").slice(0, 13))}<small>${escapeText(String(event.sessionId || "No session").slice(0, 13))}</small></span>
+          <mark>${escapeText(event.source || "Direct")}</mark>
+          <span>${escapeText(event.artistName || "Platform")}<small>${escapeText(event.releaseTitle || "No song selected")}</small></span>
+          <strong>${escapeText(event.platformName || platformLabel(event.platformKey) || "Unknown")}</strong>
+          <span>${escapeText(event.activity || event.eventType || "Activity")}</span>
+          <span>${event.playbackMeasurement === "unavailable" ? "Unavailable" : formatListeningTime(event.listeningSeconds)}</span>
+        </article>
+      `).join("")}
+    `
+    : emptyState("Streaming activity will appear after visitors use platform players or external links on a song's Listen page.");
+}
+
 /* ===================================================
    PLATFORM ANALYTICS
 
@@ -1476,12 +1584,17 @@ function renderAnalytics() {
   const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
   const scopedEvents = scopedVisitorEvents();
   populateVisitorSourceFilter(scopedEvents);
-  const sourceScopeEvents = filteredVisitorEvents(scopedEvents, { ignoreSource: true });
-  const visitorEvents = filteredVisitorEvents(scopedEvents);
+  const sourceScopeEvents = filteredVisitorEvents(scopedEvents, { ignoreSource: true })
+    .filter((event) => !STREAMING_ACTIVITY_EVENT_TYPES.has(event.eventType));
+  const filteredEvents = filteredVisitorEvents(scopedEvents);
+  const visitorEvents = filteredEvents.filter((event) => !STREAMING_ACTIVITY_EVENT_TYPES.has(event.eventType));
+  const platformActivityEvents = streamingActivityEvents(filteredEvents);
   const sourceItems = visitorSourceItems(sourceScopeEvents);
   const sourceCategoryItems = visitorSourceItems(sourceScopeEvents, { includeEmpty: true });
   const today = new Date().toDateString();
-  const todayVisits = scopedEvents.filter((event) => new Date(event.createdAt || 0).toDateString() === today).length;
+  const todayVisits = scopedEvents.filter((event) =>
+    !STREAMING_ACTIVITY_EVENT_TYPES.has(event.eventType) && new Date(event.createdAt || 0).toDateString() === today
+  ).length;
 
   setText("#analyticsTotalArtists", String(selectedArtist ? 1 : (currentStore.artists || []).length));
   setText("#analyticsTotalSongs", String(releases.length));
@@ -1570,6 +1683,7 @@ function renderAnalytics() {
   );
   renderVisitorSourceCards(sourceCategoryItems, sourceScopeEvents);
   renderVisitorActivity(visitorEvents);
+  renderStreamingPlatformActivity(platformActivityEvents);
 }
 
 /* ===================================================

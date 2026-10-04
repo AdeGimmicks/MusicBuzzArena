@@ -380,6 +380,20 @@ function visitorId() {
   }
 }
 
+function visitorSessionId() {
+  const key = "mba-visitor-session-id";
+  try {
+    let value = sessionStorage.getItem(key);
+    if (!value) {
+      value = crypto.randomUUID?.() || `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      sessionStorage.setItem(key, value);
+    }
+    return value;
+  } catch {
+    return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+}
+
 function visitorLandingContext() {
   const key = "mba-visitor-landing";
   const params = new URLSearchParams(window.location.search);
@@ -422,6 +436,7 @@ async function trackVisitorEvent(details = {}) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         visitorId: visitorId(),
+        sessionId: visitorSessionId(),
         eventType,
         activity: details.activity || "",
         pageType: details.pageType || "page",
@@ -431,6 +446,13 @@ async function trackVisitorEvent(details = {}) {
         artistName: details.artistName || "",
         releaseId: details.releaseId || "",
         releaseTitle: details.releaseTitle || "",
+        platformKey: details.platformKey || "",
+        platformName: details.platformName || "",
+        playbackSessionId: details.playbackSessionId || "",
+        playbackMeasurement: details.playbackMeasurement || "",
+        listeningSeconds: details.listeningSeconds,
+        playbackPositionSeconds: details.playbackPositionSeconds,
+        mediaDurationSeconds: details.mediaDurationSeconds,
         referrer: document.referrer || "",
         landingReferrer: landing.referrer || "",
         utmSource: landing.utmSource || "",
