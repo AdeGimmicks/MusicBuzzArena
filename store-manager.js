@@ -551,23 +551,47 @@ function isListeningPageVisit(event) {
   );
 }
 
+function isPlatformSelectionEvent(event) {
+  return ["streaming_click", "platform_embed_open", "platform_external_click"].includes(event?.eventType);
+}
+
+function isToday(value) {
+  const date = new Date(value || 0);
+  return !Number.isNaN(date.getTime()) && date.toDateString() === new Date().toDateString();
+}
+
 function releaseActivityTotals(release, events) {
   return events.reduce(
     (totals, event) => {
       if (!eventMatchesRelease(event, release)) return totals;
-      if (isListeningPageVisit(event)) totals.listeningPageVisits += 1;
+      if (isListeningPageVisit(event)) {
+        totals.listeningPageVisits += 1;
+        if (isToday(event.createdAt)) totals.todayListeningPageVisits += 1;
+      }
+      if (isPlatformSelectionEvent(event)) {
+        totals.platformSelections += 1;
+        if (isToday(event.createdAt)) totals.todayPlatformSelections += 1;
+      }
       if (event.eventType === "platform_embed_open") totals.embeddedPlayerOpens += 1;
       return totals;
     },
-    { listeningPageVisits: 0, embeddedPlayerOpens: 0 }
+    { listeningPageVisits: 0, todayListeningPageVisits: 0, platformSelections: 0, todayPlatformSelections: 0, embeddedPlayerOpens: 0 }
   );
 }
 
-function platformEmbeddedPlayerOpens(events, platformKey) {
-  return events.filter((event) =>
-    event.eventType === "platform_embed_open" &&
-    streamingEventPlatformKey(event) === platformKey
-  ).length;
+function platformPerformanceActivity(events, platformKey) {
+  const platformEvents = events.filter((event) => streamingEventPlatformKey(event) === platformKey);
+  const todaySelections = platformEvents.filter((event) => isToday(event.createdAt) && isPlatformSelectionEvent(event));
+  const todaySources = Object.entries(todaySelections.reduce((totals, event) => {
+    const source = event.source || "Direct";
+    totals[source] = Number(totals[source] || 0) + 1;
+    return totals;
+  }, {})).sort((a, b) => b[1] - a[1]);
+  return {
+    embeddedPlayerOpens: platformEvents.filter((event) => event.eventType === "platform_embed_open").length,
+    todaySelections: todaySelections.length,
+    todaySources,
+  };
 }
 
 function platformLabel(key) {
@@ -1741,10 +1765,13 @@ function renderAnalytics() {
       .slice()
       .sort((a, b) => Number(b.downloads || 0) - Number(a.downloads || 0) || Number(b.streamingClicks || 0) - Number(a.streamingClicks || 0))
       .slice(0, 8)
-      .map((release) => ({
-        title: release.title || "Untitled release",
-        meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${releaseActivity.get(release.id)?.listeningPageVisits || 0} listening-page visits | ${releaseActivity.get(release.id)?.embeddedPlayerOpens || 0} player opens | ${Number(release.streamingClicks || 0)} platform selections | ${money(releaseRevenue(release))}`,
-      })),
+      .map((release) => {
+        const activity = releaseActivity.get(release.id) || {};
+        return {
+          title: release.title || "Untitled release",
+          meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${activity.listeningPageVisits || 0} listening-page visits (${activity.todayListeningPageVisits || 0} today) | ${activity.todayPlatformSelections || 0} platform selections today | ${Number(release.streamingClicks || 0)} lifetime platform selections | ${money(releaseRevenue(release))}`,
+        };
+      }),
     "Release analytics will appear after artists upload audio."
   );
   renderList(
@@ -1760,10 +1787,16 @@ function renderAnalytics() {
   );
   renderList(
     "#analyticsPlatformBreakdown",
-    platformItems.slice(0, 8).map((item) => ({
-      title: item.title,
-      meta: `${item.clicks} platform selections | ${platformEmbeddedPlayerOpens(scopedEvents, item.platform)} embedded player opens`,
-    })),
+    platformItems.slice(0, 8).map((item) => {
+      const activity = platformPerformanceActivity(scopedEvents, item.platform);
+      const sourceSummary = activity.todaySources.length
+        ? ` | today: ${activity.todaySources.map(([source, count]) => `${source} ${count}`).join(", ")}`
+        : "";
+      return {
+        title: item.title,
+        meta: `${item.clicks} lifetime platform selections | ${activity.todaySelections} today | ${activity.embeddedPlayerOpens} embedded player opens${sourceSummary}`,
+      };
+    }),
     "Streaming click analytics will appear after fans click platform links."
   );
   renderList(
