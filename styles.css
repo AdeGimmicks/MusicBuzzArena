@@ -6057,6 +6057,23 @@ select:focus {
     width: 100%;
   }
 
+  .music-page-body .music-capsule-listen,
+  .music-page-body .music-more-listen {
+    background: #0b6ee8;
+    border-color: #0b6ee8;
+    box-shadow: 0 10px 22px rgba(11, 110, 232, 0.24);
+    color: #fff;
+  }
+
+  .music-page-body .music-capsule-listen:hover,
+  .music-page-body .music-capsule-listen:focus-visible,
+  .music-page-body .music-more-listen:hover,
+  .music-page-body .music-more-listen:focus-visible {
+    background: #095bbc;
+    border-color: #095bbc;
+    color: #fff;
+  }
+
   .music-capsule-listen::before,
   .music-more-listen::before {
     border-bottom: 6px solid transparent;
