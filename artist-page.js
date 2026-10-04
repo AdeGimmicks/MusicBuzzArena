@@ -19,8 +19,6 @@
 =================================================== */
 const artistTrackList = document.querySelector("#artistTrackList");
 const artistReleaseList = document.querySelector("#artistReleaseList");
-const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
-const siteNav = document.querySelector("#siteNav");
 let activePreviewAudio = null;
 let activePreviewButton = null;
 let renderedMusicReleases = [];
@@ -68,22 +66,7 @@ function artistCatalogPath(artist) {
 function setArtistNav(artist) {
   if (!artist) return;
   window.MBAPublicContext?.applyPublicArtistNavigation(artist);
-  const mobilePageTitle = document.querySelector(".mobile-page-title");
-  if (mobilePageTitle) mobilePageTitle.textContent = artist.publicCatalogLabel || "Music";
 }
-
-mobileNavToggle?.addEventListener("click", () => {
-  const open = !siteNav?.classList.contains("is-open");
-  siteNav?.classList.toggle("is-open", open);
-  mobileNavToggle.setAttribute("aria-expanded", String(open));
-  mobileNavToggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
-});
-
-siteNav?.addEventListener("click", () => {
-  siteNav.classList.remove("is-open");
-  mobileNavToggle?.setAttribute("aria-expanded", "false");
-  mobileNavToggle?.setAttribute("aria-label", "Open navigation");
-});
 
 /* ===================================================
    NAVIGATION AND SITE BRANDING
