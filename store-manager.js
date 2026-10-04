@@ -589,7 +589,7 @@ function platformPerformanceActivity(events, platformKey) {
   }, {})).sort((a, b) => b[1] - a[1]);
   return {
     embeddedPlayerOpens: platformEvents.filter((event) => event.eventType === "platform_embed_open").length,
-    externalClicks: platformEvents.filter((event) => event.eventType === "platform_external_click").length,
+    externalClicks: platformEvents.filter((event) => ["platform_external_click", "streaming_click"].includes(event.eventType)).length,
     todaySelections: todaySelections.length,
     todaySources,
   };
@@ -1616,13 +1616,13 @@ function streamingActivityActionLabel(event) {
   const platform = streamingEventPlatformName(event);
   if (event.eventType === "platform_embed_open") return `Clicked ${platform} Play button - embedded player opened`;
   if (event.eventType === "platform_external_click") return `Clicked ${platform} external link - opened website/app`;
-  if (event.eventType === "streaming_click") return `${platform} platform click (earlier record)`;
+  if (event.eventType === "streaming_click") return `Clicked ${platform} link (earlier record)`;
   return event.activity || event.eventType || "Activity";
 }
 
 function streamingListeningLabel(event) {
   if (event.eventType === "platform_external_click") return "Not applicable";
-  if (event.eventType === "streaming_click") return "Not measured";
+  if (event.eventType === "streaming_click") return "Not applicable";
   if (event.playbackMeasurement === "unavailable") return "Unavailable";
   return formatListeningTime(event.listeningSeconds);
 }
@@ -1663,7 +1663,7 @@ function streamingActivitySummaries(events) {
       embedOpens: platformEvents.filter((event) => event.eventType === "platform_embed_open").length,
       playbackStarts: platformEvents.filter((event) => event.eventType === "platform_playback_start").length,
       completions: platformEvents.filter((event) => event.eventType === "platform_playback_complete").length,
-      externalClicks: platformEvents.filter((event) => event.eventType === "platform_external_click").length,
+      externalClicks: platformEvents.filter((event) => ["platform_external_click", "streaming_click"].includes(event.eventType)).length,
       legacyInteractions: platformEvents.filter((event) => event.eventType === "streaming_click").length,
       listeningSeconds: [...listeningBySession.values()].reduce((sum, seconds) => sum + seconds, 0),
       measurementSupported: measurementSupported && !measurementUnavailable,
@@ -1688,7 +1688,7 @@ function renderStreamingPlatformActivity(events) {
       <span>${formatListeningTime(item.listeningSeconds)} measured listening</span>
       <span>${item.completions} completion${item.completions === 1 ? "" : "s"}</span>
       <span>${item.externalClicks} external-link click${item.externalClicks === 1 ? "" : "s"}</span>
-      ${item.legacyInteractions ? `<span>${item.legacyInteractions} earlier platform interaction${item.legacyInteractions === 1 ? "" : "s"}</span>` : ""}
+      ${item.legacyInteractions ? `<span>${item.legacyInteractions} external-link click${item.legacyInteractions === 1 ? "" : "s"} identified from earlier records</span>` : ""}
       ${item.sources.length ? `<span>Sources: ${item.sources.map(([source, count]) => `${escapeText(source)} ${count}`).join(" · ")}</span>` : ""}
       <small>${item.measurementSupported ? "Playback measurement supported" : "Playback measurement unavailable"}</small>
     </article>
