@@ -313,6 +313,7 @@
             <div class="manager-tools analytics-collapsible-content">
               <label>View Artist Analytics <select id="managerAnalyticsArtistSelect"><option value="">All artists</option></select></label>
               <label>Visit Period <select id="visitorRangeSelect"><option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="all" selected>All recorded visits</option></select></label>
+              <label>Exact Activity Date <input id="visitorDateInput" type="date" /></label>
               <label>Traffic Source <select id="visitorSourceSelect"><option value="">All sources</option></select></label>
               <label>Search Visits <input id="visitorSearchInput" type="search" placeholder="IP, artist, song, country" /></label>
             </div>
@@ -360,7 +361,7 @@
           <details class="manager-console-card analytics-collapsible" open>
             <summary><span>Streaming Platform Activity</span><small>Embedded players, measured listening, and external platform clicks</small></summary>
             <div class="analytics-collapsible-content streaming-analytics-content">
-              <p class="manager-card-note">Playback is measured only when a platform provides a supported player API. Embed opens and external clicks are always reported separately.</p>
+              <p class="manager-card-note" id="streamingActivityScopeNote">Playback is measured only when a platform provides a supported player API. Embed opens and external clicks are always reported separately.</p>
               <div class="streaming-activity-grid" id="analyticsStreamingActivitySummary"></div>
               <div class="manager-table streaming-activity-table" id="analyticsStreamingActivityTable"></div>
             </div>

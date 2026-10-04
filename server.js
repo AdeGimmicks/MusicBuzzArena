@@ -1143,9 +1143,12 @@ async function recordVisitorEvent(request, response) {
     const releaseId = analyticsText(body.releaseId, 120);
     const artist = (store.artists || []).find((item) => String(item.id) === artistId);
     const release = (store.releases || []).find((item) => String(item.id) === releaseId);
+    const platformKey = analyticsText(body.platformKey, 80);
+    const playbackSessionId = analyticsText(body.playbackSessionId, 120);
     const recentDuplicate = eventType === "platform_playback_progress" ? null : (store.visitorEvents || []).slice(-20).find((item) =>
       item.visitorId === visitorId && item.eventType === eventType && item.pagePath === pagePath &&
-      String(item.playbackSessionId || "") === analyticsText(body.playbackSessionId, 120) &&
+      String(item.platformKey || "") === platformKey &&
+      String(item.playbackSessionId || "") === playbackSessionId &&
       now.getTime() - new Date(item.createdAt || 0).getTime() < 5000
     );
     if (recentDuplicate) return recentDuplicate;
@@ -1172,9 +1175,9 @@ async function recordVisitorEvent(request, response) {
       artistName: artist?.name || artist?.handle || analyticsText(body.artistName, 160),
       releaseId: release?.id || releaseId,
       releaseTitle: release?.title || analyticsText(body.releaseTitle, 200),
-      platformKey: analyticsText(body.platformKey, 80),
+      platformKey,
       platformName: analyticsText(body.platformName, 120),
-      playbackSessionId: analyticsText(body.playbackSessionId, 120),
+      playbackSessionId,
       playbackMeasurement: analyticsText(body.playbackMeasurement, 40),
       listeningSeconds: analyticsNumber(body.listeningSeconds),
       playbackPositionSeconds: analyticsNumber(body.playbackPositionSeconds),
@@ -1192,7 +1195,6 @@ async function recordVisitorEvent(request, response) {
       timezone: analyticsText(body.timezone, 100),
       createdAt: now.toISOString(),
     };
-    const playbackSessionId = nextEvent.playbackSessionId;
     const existingProgressIndex = eventType === "platform_playback_progress" && playbackSessionId
       ? (store.visitorEvents || []).findIndex((item) =>
           item.eventType === "platform_playback_progress" && item.playbackSessionId === playbackSessionId

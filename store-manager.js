@@ -39,6 +39,7 @@ const downloadArtistFilter = document.querySelector("#downloadArtistFilter");
 const downloadCountryFilter = document.querySelector("#downloadCountryFilter");
 const managerAnalyticsArtistSelect = document.querySelector("#managerAnalyticsArtistSelect");
 const visitorRangeSelect = document.querySelector("#visitorRangeSelect");
+const visitorDateInput = document.querySelector("#visitorDateInput");
 const visitorSourceSelect = document.querySelector("#visitorSourceSelect");
 const visitorSearchInput = document.querySelector("#visitorSearchInput");
 const analyticsVisitorTable = document.querySelector("#analyticsVisitorTable");
@@ -1395,11 +1396,14 @@ function visitorLocationLabel(event) {
 
 function filteredVisitorEvents(events, options = {}) {
   const range = visitorRangeSelect?.value || "all";
+  const exactDate = visitorDateInput?.value || "";
   const source = visitorSourceSelect?.value || "";
   const query = String(visitorSearchInput?.value || "").trim().toLowerCase();
   const cutoff = range === "all" ? 0 : Date.now() - Number(range || 30) * 24 * 60 * 60 * 1000;
   return events.filter((event) => {
-    if (cutoff && new Date(event.createdAt || 0).getTime() < cutoff) return false;
+    if (exactDate) {
+      if (visitorActivityDateKey(event.createdAt) !== exactDate) return false;
+    } else if (cutoff && new Date(event.createdAt || 0).getTime() < cutoff) return false;
     if (!options.ignoreSource && source && event.source !== source) return false;
     if (!query) return true;
     return [event.ipAddress, event.visitorId, event.sessionId, event.source, event.country, event.region, event.city, event.artistName, event.releaseTitle, event.platformName, event.activity, event.pagePath]
@@ -1680,6 +1684,14 @@ function renderStreamingPlatformActivity(events) {
   if (!analyticsStreamingActivitySummary || !analyticsStreamingActivityTable) return;
   const activityEvents = streamingActivityEvents(events);
   const summaries = streamingActivitySummaries(activityEvents);
+  const exactDate = visitorDateInput?.value || "";
+  const rangeLabel = exactDate
+    ? visitorActivityDateLabel(exactDate)
+    : visitorRangeSelect?.selectedOptions?.[0]?.textContent || "All recorded visits";
+  setText(
+    "#streamingActivityScopeNote",
+    `Showing recorded platform actions for ${rangeLabel}. Play clicks open embedded players; external-link clicks open the platform website or app. Playback time is measured only when the platform provides a supported player API.`
+  );
   analyticsStreamingActivitySummary.innerHTML = summaries.map((item) => `
     <article class="streaming-activity-card">
       <strong>${escapeText(item.title)}</strong>
@@ -2252,7 +2264,7 @@ subscriberMessageForm?.addEventListener("submit", async (event) => {
 });
 
 managerAnalyticsArtistSelect?.addEventListener("change", renderAnalytics);
-[visitorRangeSelect, visitorSourceSelect].forEach((control) => control?.addEventListener("change", renderAnalytics));
+[visitorRangeSelect, visitorDateInput, visitorSourceSelect].forEach((control) => control?.addEventListener("change", renderAnalytics));
 visitorSearchInput?.addEventListener("input", renderAnalytics);
 exportFilteredVisitorsCsvButton?.addEventListener("click", () => {
   exportVisitorCsv(filteredVisitorEvents(scopedVisitorEvents()), "filtered");
