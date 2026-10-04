@@ -525,9 +525,49 @@ function platformClickItems(releases) {
     });
   });
   return Object.entries(totals)
-    .map(([platform, clicks]) => ({ title: platformLabel(platform), clicks }))
+    .map(([platform, clicks]) => ({ platform, title: platformLabel(platform), clicks }))
     .filter((item) => item.clicks > 0)
     .sort((a, b) => b.clicks - a.clicks || a.title.localeCompare(b.title));
+}
+
+function eventMatchesRelease(event, release) {
+  if (!event || !release) return false;
+  if (event.releaseId && release.id) return String(event.releaseId) === String(release.id);
+
+  const eventTitle = String(event.releaseTitle || "").trim().toLowerCase();
+  const releaseTitle = String(release.title || "").trim().toLowerCase();
+  if (!eventTitle || eventTitle !== releaseTitle) return false;
+
+  const eventArtist = String(event.artistName || "").trim().toLowerCase();
+  const releaseArtist = String(release.artistName || "").trim().toLowerCase();
+  return !eventArtist || !releaseArtist || eventArtist === releaseArtist;
+}
+
+function isListeningPageVisit(event) {
+  return event?.eventType === "page_view" && (
+    event.pageType === "listen_page" ||
+    event.activity === "Viewed listening links" ||
+    String(event.pagePath || "").startsWith("/listen/")
+  );
+}
+
+function releaseActivityTotals(release, events) {
+  return events.reduce(
+    (totals, event) => {
+      if (!eventMatchesRelease(event, release)) return totals;
+      if (isListeningPageVisit(event)) totals.listeningPageVisits += 1;
+      if (event.eventType === "platform_embed_open") totals.embeddedPlayerOpens += 1;
+      return totals;
+    },
+    { listeningPageVisits: 0, embeddedPlayerOpens: 0 }
+  );
+}
+
+function platformEmbeddedPlayerOpens(events, platformKey) {
+  return events.filter((event) =>
+    event.eventType === "platform_embed_open" &&
+    streamingEventPlatformKey(event) === platformKey
+  ).length;
 }
 
 function platformLabel(key) {
@@ -1659,6 +1699,7 @@ function renderAnalytics() {
   const downloads = releases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
   const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
   const scopedEvents = scopedVisitorEvents();
+  const releaseActivity = new Map(releases.map((release) => [release.id, releaseActivityTotals(release, scopedEvents)]));
   populateVisitorSourceFilter(scopedEvents);
   const sourceScopeEvents = filteredVisitorEvents(scopedEvents, { ignoreSource: true })
     .filter((event) => !STREAMING_ACTIVITY_EVENT_TYPES.has(event.eventType));
@@ -1702,7 +1743,7 @@ function renderAnalytics() {
       .slice(0, 8)
       .map((release) => ({
         title: release.title || "Untitled release",
-        meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${Number(release.streamingClicks || 0)} stream clicks | ${money(releaseRevenue(release))}`,
+        meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${releaseActivity.get(release.id)?.listeningPageVisits || 0} listening-page visits | ${releaseActivity.get(release.id)?.embeddedPlayerOpens || 0} player opens | ${Number(release.streamingClicks || 0)} external platform clicks | ${money(releaseRevenue(release))}`,
       })),
     "Release analytics will appear after artists upload audio."
   );
@@ -1719,7 +1760,10 @@ function renderAnalytics() {
   );
   renderList(
     "#analyticsPlatformBreakdown",
-    platformItems.slice(0, 8).map((item) => ({ title: item.title, meta: `${item.clicks} clicks` })),
+    platformItems.slice(0, 8).map((item) => ({
+      title: item.title,
+      meta: `${item.clicks} external clicks | ${platformEmbeddedPlayerOpens(scopedEvents, item.platform)} embedded player opens`,
+    })),
     "Streaming click analytics will appear after fans click platform links."
   );
   renderList(
