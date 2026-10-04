@@ -382,7 +382,7 @@ function trackRow(release, artist, artistReleases = []) {
     link.addEventListener("click", () => {
       window.MBA.trackVisitorEvent({
         eventType: "platform_external_click",
-        activity: `Opened ${platformLabel(link.dataset.platformKey)} website/app`,
+        activity: `Clicked ${platformLabel(link.dataset.platformKey)} external link - opened website/app`,
         pageType: "music_page",
         artistId: artist?.id,
         artistName: artist?.name,
@@ -1218,7 +1218,7 @@ function linkHubPage(release, artist) {
     window.MBA.trackVisitorEvent({
       ...platformEventContext(platformKey),
       eventType: "platform_external_click",
-      activity: `Opened ${platformLabel(platformKey)} website/app`,
+      activity: `Clicked ${platformLabel(platformKey)} external link - opened website/app`,
       playbackMeasurement: "not_applicable",
     });
     recordPlatformSelection(releaseId, platformKey);
@@ -1271,7 +1271,7 @@ function linkHubPage(release, artist) {
       window.MBA.trackVisitorEvent({
         ...context,
         eventType: "platform_embed_open",
-        activity: `Opened ${context.platformName} embedded player`,
+        activity: `Clicked ${context.platformName} Play button - embedded player opened`,
         playbackMeasurement: measurementSupported ? "supported" : "unavailable",
       });
       recordPlatformSelection(row.dataset.releaseId, platformKey);

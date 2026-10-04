@@ -589,6 +589,7 @@ function platformPerformanceActivity(events, platformKey) {
   }, {})).sort((a, b) => b[1] - a[1]);
   return {
     embeddedPlayerOpens: platformEvents.filter((event) => event.eventType === "platform_embed_open").length,
+    externalClicks: platformEvents.filter((event) => event.eventType === "platform_external_click").length,
     todaySelections: todaySelections.length,
     todaySources,
   };
@@ -1493,10 +1494,7 @@ function visitorRowsMarkup(events) {
 }
 
 function visitorActivityLabel(event) {
-  if (event.eventType === "streaming_click") {
-    return `${streamingEventPlatformName(event)} platform interaction (earlier record)`;
-  }
-  const activity = event.activity || "Page view";
+  const activity = streamingActivityActionLabel(event);
   const listeningSeconds = Number(event.listeningSeconds || 0);
   return listeningSeconds > 0 && event.eventType?.startsWith("platform_playback_")
     ? `${activity} · ${formatListeningTime(listeningSeconds)}`
@@ -1614,6 +1612,21 @@ function streamingEventPlatformName(event) {
   return event.platformName || (key ? platformLabel(key) : "Unknown platform");
 }
 
+function streamingActivityActionLabel(event) {
+  const platform = streamingEventPlatformName(event);
+  if (event.eventType === "platform_embed_open") return `Clicked ${platform} Play button - embedded player opened`;
+  if (event.eventType === "platform_external_click") return `Clicked ${platform} external link - opened website/app`;
+  if (event.eventType === "streaming_click") return `${platform} platform click (earlier record)`;
+  return event.activity || event.eventType || "Activity";
+}
+
+function streamingListeningLabel(event) {
+  if (event.eventType === "platform_external_click") return "Not applicable";
+  if (event.eventType === "streaming_click") return "Not measured";
+  if (event.playbackMeasurement === "unavailable") return "Unavailable";
+  return formatListeningTime(event.listeningSeconds);
+}
+
 function formatListeningTime(value) {
   const seconds = Math.max(0, Math.round(Number(value || 0)));
   const minutes = Math.floor(seconds / 60);
@@ -1670,11 +1683,11 @@ function renderStreamingPlatformActivity(events) {
   analyticsStreamingActivitySummary.innerHTML = summaries.map((item) => `
     <article class="streaming-activity-card">
       <strong>${escapeText(item.title)}</strong>
-      <span>${item.embedOpens} embedded player open${item.embedOpens === 1 ? "" : "s"}</span>
+      <span>${item.embedOpens} Play click${item.embedOpens === 1 ? "" : "s"} (embedded player opened)</span>
       <span>${item.playbackStarts} measured playback start${item.playbackStarts === 1 ? "" : "s"}</span>
       <span>${formatListeningTime(item.listeningSeconds)} measured listening</span>
       <span>${item.completions} completion${item.completions === 1 ? "" : "s"}</span>
-      <span>${item.externalClicks} external click${item.externalClicks === 1 ? "" : "s"}</span>
+      <span>${item.externalClicks} external-link click${item.externalClicks === 1 ? "" : "s"}</span>
       ${item.legacyInteractions ? `<span>${item.legacyInteractions} earlier platform interaction${item.legacyInteractions === 1 ? "" : "s"}</span>` : ""}
       ${item.sources.length ? `<span>Sources: ${item.sources.map(([source, count]) => `${escapeText(source)} ${count}`).join(" · ")}</span>` : ""}
       <small>${item.measurementSupported ? "Playback measurement supported" : "Playback measurement unavailable"}</small>
@@ -1695,8 +1708,8 @@ function renderStreamingPlatformActivity(events) {
           <mark>${escapeText(event.source || "Direct")}</mark>
           <span>${escapeText(event.artistName || "Platform")}<small>${escapeText(event.releaseTitle || "No song selected")}</small></span>
           <strong>${escapeText(streamingEventPlatformName(event))}</strong>
-          <span>${escapeText(event.eventType === "streaming_click" ? `${streamingEventPlatformName(event)} platform interaction (earlier record)` : (event.activity || event.eventType || "Activity"))}</span>
-          <span>${event.playbackMeasurement === "unavailable" ? "Unavailable" : formatListeningTime(event.listeningSeconds)}</span>
+          <span>${escapeText(streamingActivityActionLabel(event))}</span>
+          <span>${escapeText(streamingListeningLabel(event))}</span>
         </article>
       `).join("")}
     `
@@ -1769,7 +1782,7 @@ function renderAnalytics() {
         const activity = releaseActivity.get(release.id) || {};
         return {
           title: release.title || "Untitled release",
-          meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${activity.listeningPageVisits || 0} listening-page visits (${activity.todayListeningPageVisits || 0} today) | ${activity.todayPlatformSelections || 0} platform selections today | ${Number(release.streamingClicks || 0)} lifetime platform selections | ${money(releaseRevenue(release))}`,
+          meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${activity.listeningPageVisits || 0} listening-page visits (${activity.todayListeningPageVisits || 0} today) | ${activity.todayPlatformSelections || 0} platform clicks today | ${Number(release.streamingClicks || 0)} lifetime platform clicks | ${money(releaseRevenue(release))}`,
         };
       }),
     "Release analytics will appear after artists upload audio."
@@ -1794,7 +1807,7 @@ function renderAnalytics() {
         : "";
       return {
         title: item.title,
-        meta: `${item.clicks} lifetime platform selections | ${activity.todaySelections} today | ${activity.embeddedPlayerOpens} embedded player opens${sourceSummary}`,
+        meta: `${item.clicks} lifetime platform clicks | ${activity.todaySelections} recorded clicks today | ${activity.embeddedPlayerOpens} Play clicks | ${activity.externalClicks} external-link clicks${sourceSummary}`,
       };
     }),
     "Streaming click analytics will appear after fans click platform links."
