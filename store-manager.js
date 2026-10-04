@@ -1621,10 +1621,10 @@ function streamingActivityActionLabel(event) {
 }
 
 function streamingListeningLabel(event) {
-  if (event.eventType === "platform_external_click") return "Not applicable";
-  if (event.eventType === "streaming_click") return "Not applicable";
-  if (event.playbackMeasurement === "unavailable") return "Unavailable";
-  return formatListeningTime(event.listeningSeconds);
+  if (event.eventType === "platform_external_click") return "Website/app link clicked";
+  if (event.eventType === "streaming_click") return "Platform link clicked";
+  if (event.playbackMeasurement === "unavailable") return "Playback tracking unavailable";
+  return `${formatListeningTime(event.listeningSeconds)} listened`;
 }
 
 function formatListeningTime(value) {
@@ -1700,7 +1700,7 @@ function renderStreamingPlatformActivity(events) {
     .slice(0, 500);
   analyticsStreamingActivityTable.innerHTML = rows.length
     ? `
-      <div class="manager-table-header streaming-activity-columns"><span>Date & Time</span><span>Visitor / Session</span><span>Original Source</span><span>Artist / Song</span><span>Platform</span><span>Activity</span><span>Listening</span></div>
+      <div class="manager-table-header streaming-activity-columns"><span>Date & Time</span><span>Visitor / Session</span><span>Original Source</span><span>Artist / Song</span><span>Platform</span><span>Activity</span><span>Result / Listening</span></div>
       ${rows.map((event) => `
         <article class="manager-table-row streaming-activity-columns">
           <strong>${escapeText(formatDateTime(event.createdAt))}</strong>
