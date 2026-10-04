@@ -1419,13 +1419,24 @@ function visitorRowsMarkup(events) {
           <mark>${escapeText(event.source || "Direct")}</mark>
           <span>${escapeText(visitorLocationLabel(event))}</span>
           <span>${escapeText(event.artistName || "Platform")}<small>${escapeText(event.releaseTitle || "No song selected")}</small></span>
-          <span>${escapeText(event.activity || "Page view")}</span>
+          <span>${escapeText(visitorActivityLabel(event))}</span>
           <span>${escapeText(`${event.device || "Unknown"} · ${event.browser || "Unknown"}`)}</span>
           <span title="${escapeAttr(event.pagePath || "")}">${escapeText(event.pagePath || "/")}</span>
         </article>
       `).join("")}
     `
     : emptyState("Visitor activity will appear here after new public website visits are recorded.");
+}
+
+function visitorActivityLabel(event) {
+  if (event.eventType === "streaming_click") {
+    return `${streamingEventPlatformName(event)} platform interaction (earlier record)`;
+  }
+  const activity = event.activity || "Page view";
+  const listeningSeconds = Number(event.listeningSeconds || 0);
+  return listeningSeconds > 0 && event.eventType?.startsWith("platform_playback_")
+    ? `${activity} · ${formatListeningTime(listeningSeconds)}`
+    : activity;
 }
 
 function renderVisitorSourceCards(items, totalEvents) {
@@ -1463,7 +1474,7 @@ function renderVisitorActivity(events) {
       <section class="visitor-source-group">
         <div class="visitor-source-group-heading">
           <h4>${escapeText(source.title)} Visitors</h4>
-          <span>${source.visits} visits · ${source.uniqueVisitors} unique</span>
+          <span>${source.visits} recorded activities · ${source.uniqueVisitors} unique visitors</span>
         </div>
         <div class="manager-table">${visitorRowsMarkup(sourceEvents)}</div>
       </section>
@@ -1472,6 +1483,7 @@ function renderVisitorActivity(events) {
 }
 
 const STREAMING_ACTIVITY_EVENT_TYPES = new Set([
+  "streaming_click",
   "platform_embed_open",
   "platform_playback_start",
   "platform_playback_pause",
@@ -1481,6 +1493,18 @@ const STREAMING_ACTIVITY_EVENT_TYPES = new Set([
   "platform_external_click",
   "platform_measurement_unavailable",
 ]);
+
+function streamingEventPlatformKey(event) {
+  if (event.platformKey) return event.platformKey;
+  if (event.eventType !== "streaming_click") return "";
+  const activity = String(event.activity || "").replace(/^Opened\s+/i, "").trim().toLowerCase();
+  return STREAMING_LINKS.find(([title]) => title.toLowerCase() === activity)?.[1] || "";
+}
+
+function streamingEventPlatformName(event) {
+  const key = streamingEventPlatformKey(event);
+  return event.platformName || (key ? platformLabel(key) : "Unknown platform");
+}
 
 function formatListeningTime(value) {
   const seconds = Math.max(0, Math.round(Number(value || 0)));
@@ -1496,12 +1520,12 @@ function streamingActivityEvents(events) {
 function streamingActivitySummaries(events) {
   const platformDefinitions = STREAMING_LINKS.map(([title, key]) => [key, title]);
   const recordedDefinitions = events
-    .filter((event) => event.platformKey)
-    .map((event) => [event.platformKey, event.platformName || platformLabel(event.platformKey)]);
+    .map((event) => [streamingEventPlatformKey(event), streamingEventPlatformName(event)])
+    .filter(([key]) => key);
   const definitions = new Map([...platformDefinitions, ...recordedDefinitions]);
 
   return [...definitions.entries()].map(([key, title]) => {
-    const platformEvents = events.filter((event) => event.platformKey === key);
+    const platformEvents = events.filter((event) => streamingEventPlatformKey(event) === key);
     const listeningBySession = new Map();
     platformEvents.forEach((event) => {
       if (!event.playbackSessionId) return;
@@ -1519,8 +1543,14 @@ function streamingActivitySummaries(events) {
       playbackStarts: platformEvents.filter((event) => event.eventType === "platform_playback_start").length,
       completions: platformEvents.filter((event) => event.eventType === "platform_playback_complete").length,
       externalClicks: platformEvents.filter((event) => event.eventType === "platform_external_click").length,
+      legacyInteractions: platformEvents.filter((event) => event.eventType === "streaming_click").length,
       listeningSeconds: [...listeningBySession.values()].reduce((sum, seconds) => sum + seconds, 0),
       measurementSupported: measurementSupported && !measurementUnavailable,
+      sources: Object.entries(platformEvents.reduce((totals, event) => {
+        const source = event.source || "Direct";
+        totals[source] = Number(totals[source] || 0) + 1;
+        return totals;
+      }, {})).sort((a, b) => b[1] - a[1]),
     };
   });
 }
@@ -1537,6 +1567,8 @@ function renderStreamingPlatformActivity(events) {
       <span>${formatListeningTime(item.listeningSeconds)} measured listening</span>
       <span>${item.completions} completion${item.completions === 1 ? "" : "s"}</span>
       <span>${item.externalClicks} external click${item.externalClicks === 1 ? "" : "s"}</span>
+      ${item.legacyInteractions ? `<span>${item.legacyInteractions} earlier platform interaction${item.legacyInteractions === 1 ? "" : "s"}</span>` : ""}
+      ${item.sources.length ? `<span>Sources: ${item.sources.map(([source, count]) => `${escapeText(source)} ${count}`).join(" · ")}</span>` : ""}
       <small>${item.measurementSupported ? "Playback measurement supported" : "Playback measurement unavailable"}</small>
     </article>
   `).join("");
@@ -1554,8 +1586,8 @@ function renderStreamingPlatformActivity(events) {
           <span title="${escapeAttr(event.visitorId || "")}">${escapeText(String(event.visitorId || "Unknown").slice(0, 13))}<small>${escapeText(String(event.sessionId || "No session").slice(0, 13))}</small></span>
           <mark>${escapeText(event.source || "Direct")}</mark>
           <span>${escapeText(event.artistName || "Platform")}<small>${escapeText(event.releaseTitle || "No song selected")}</small></span>
-          <strong>${escapeText(event.platformName || platformLabel(event.platformKey) || "Unknown")}</strong>
-          <span>${escapeText(event.activity || event.eventType || "Activity")}</span>
+          <strong>${escapeText(streamingEventPlatformName(event))}</strong>
+          <span>${escapeText(event.eventType === "streaming_click" ? `${streamingEventPlatformName(event)} platform interaction (earlier record)` : (event.activity || event.eventType || "Activity"))}</span>
           <span>${event.playbackMeasurement === "unavailable" ? "Unavailable" : formatListeningTime(event.listeningSeconds)}</span>
         </article>
       `).join("")}
@@ -1587,7 +1619,8 @@ function renderAnalytics() {
   const sourceScopeEvents = filteredVisitorEvents(scopedEvents, { ignoreSource: true })
     .filter((event) => !STREAMING_ACTIVITY_EVENT_TYPES.has(event.eventType));
   const filteredEvents = filteredVisitorEvents(scopedEvents);
-  const visitorEvents = filteredEvents.filter((event) => !STREAMING_ACTIVITY_EVENT_TYPES.has(event.eventType));
+  const visitorEvents = filteredEvents;
+  const visitEvents = visitorEvents.filter((event) => !STREAMING_ACTIVITY_EVENT_TYPES.has(event.eventType));
   const platformActivityEvents = streamingActivityEvents(filteredEvents);
   const sourceItems = visitorSourceItems(sourceScopeEvents);
   const sourceCategoryItems = visitorSourceItems(sourceScopeEvents, { includeEmpty: true });
@@ -1613,8 +1646,8 @@ function renderAnalytics() {
   setText("#analyticsNetEarnings", money(financials.net));
   setText("#analyticsPlatformFees", money(financials.platformFees + financials.processingFees + financials.operationsFees));
   setText("#analyticsTrafficSources", sourceItems[0]?.title || selectedArtist?.trafficSources || "None");
-  setText("#analyticsRecordedVisits", String(visitorEvents.length));
-  setText("#analyticsUniqueVisitors", String(new Set(visitorEvents.map((event) => event.visitorId || event.ipAddress).filter(Boolean)).size));
+  setText("#analyticsRecordedVisits", String(visitEvents.length));
+  setText("#analyticsUniqueVisitors", String(new Set(visitEvents.map((event) => event.visitorId || event.ipAddress).filter(Boolean)).size));
   setText("#analyticsTodayVisits", String(todayVisits));
 
   renderList(
