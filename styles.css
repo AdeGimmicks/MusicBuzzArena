@@ -1887,6 +1887,14 @@ h3 {
   padding: 10px;
 }
 
+.visitor-date-footer {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 14px;
+}
+
 .manager-card-note {
   color: var(--muted);
   font-size: 0.86rem;

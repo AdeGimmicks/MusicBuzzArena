@@ -1537,16 +1537,25 @@ function visitorDateGroupsMarkup(events, options = {}) {
   }, new Map());
   return [...groups.entries()]
     .sort(([a], [b]) => b.localeCompare(a))
-    .map(([key, dayEvents], index) => `
+    .map(([key, dayEvents], index) => {
+      const platformActions = streamingActivityEvents(dayEvents).length;
+      const uniqueVisitors = new Set(
+        dayEvents.map((event) => event.visitorId || event.ipAddress).filter(Boolean)
+      ).size;
+      return `
       <details class="visitor-date-group" ${index === 0 ? "open" : ""}>
         <summary>
           <strong>${escapeText(visitorActivityDateLabel(key))}</strong>
-          <span class="visitor-date-count">${dayEvents.length} activit${dayEvents.length === 1 ? "y" : "ies"}</span>
-          <button class="secondary-button visitor-date-download" type="button" data-download-activity-date="${escapeAttr(key)}" data-download-activity-kind="${escapeAttr(options.kind || "visitors")}">Download This Day</button>
+          <span class="visitor-date-count">${dayEvents.length} total website activit${dayEvents.length === 1 ? "y" : "ies"} · ${platformActions} platform action${platformActions === 1 ? "" : "s"} · ${uniqueVisitors} visitor${uniqueVisitors === 1 ? "" : "s"}</span>
+          <button class="secondary-button visitor-date-download" type="button" data-download-activity-date="${escapeAttr(key)}" data-download-activity-kind="${escapeAttr(options.kind || "visitors")}">Download All ${dayEvents.length}</button>
         </summary>
         <div class="manager-table visitor-date-table">${visitorRowsMarkup(dayEvents)}</div>
+        <div class="visitor-date-footer">
+          <button class="secondary-button visitor-date-download" type="button" data-download-activity-date="${escapeAttr(key)}" data-download-activity-kind="${escapeAttr(options.kind || "visitors")}">Download All ${dayEvents.length} Activities for This Day</button>
+        </div>
       </details>
-    `).join("");
+    `;
+    }).join("");
 }
 
 function renderVisitorSourceCards(items, totalEvents) {
@@ -1720,10 +1729,13 @@ function renderStreamingPlatformActivity(events) {
           <details class="visitor-date-group" ${index === 0 ? "open" : ""}>
             <summary>
               <strong>${escapeText(visitorActivityDateLabel(key))}</strong>
-              <span class="visitor-date-count">${dayEvents.length} platform activit${dayEvents.length === 1 ? "y" : "ies"}</span>
-              <button class="secondary-button visitor-date-download" type="button" data-download-activity-date="${escapeAttr(key)}" data-download-activity-kind="streaming">Download This Day</button>
+              <span class="visitor-date-count">${dayEvents.length} recorded platform action${dayEvents.length === 1 ? "" : "s"}</span>
+              <button class="secondary-button visitor-date-download" type="button" data-download-activity-date="${escapeAttr(key)}" data-download-activity-kind="streaming">Download ${dayEvents.length} Action${dayEvents.length === 1 ? "" : "s"}</button>
             </summary>
             <div class="manager-table visitor-date-table">${streamingRowsMarkup(dayEvents)}</div>
+            <div class="visitor-date-footer">
+              <button class="secondary-button visitor-date-download" type="button" data-download-activity-date="${escapeAttr(key)}" data-download-activity-kind="streaming">Download ${dayEvents.length} Platform Action${dayEvents.length === 1 ? "" : "s"} for This Day</button>
+            </div>
           </details>
         `).join("")}</div>`
     : emptyState("Streaming activity will appear after visitors use platform players or external links on a song's Listen page.");
@@ -2285,10 +2297,10 @@ document.querySelector("#managerAnalytics")?.addEventListener("click", (event) =
   const dayEvents = filteredEvents.filter((item) => visitorActivityDateKey(item.createdAt) === dateKey);
   const exportEvents = kind === "streaming"
     ? streamingActivityEvents(dayEvents)
-    : dayEvents.filter((item) => !STREAMING_ACTIVITY_EVENT_TYPES.has(item.eventType));
+    : dayEvents;
   exportVisitorCsv(exportEvents, `${kind}-${dateKey}`, {
     filename: `musicbusinessarena-${kind}-${dateKey}.csv`,
-    message: `Downloaded ${exportEvents.length} ${kind === "streaming" ? "streaming" : "visitor"} activit${exportEvents.length === 1 ? "y" : "ies"} for ${visitorActivityDateLabel(dateKey)}.`,
+    message: `Downloaded ${exportEvents.length} ${kind === "streaming" ? "platform" : "website"} activit${exportEvents.length === 1 ? "y" : "ies"} for ${visitorActivityDateLabel(dateKey)}.`,
   });
 });
 document.querySelector("#analyticsTrafficSourceBreakdown")?.addEventListener("click", (event) => {
