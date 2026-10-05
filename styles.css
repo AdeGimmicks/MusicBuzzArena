@@ -1643,8 +1643,8 @@ h3 {
 }
 
 .streaming-activity-columns {
-  grid-template-columns: 175px 155px 120px 190px 130px minmax(220px, 1.2fr) 110px;
-  min-width: 1220px;
+  grid-template-columns: 175px 155px 120px 145px 190px 130px minmax(220px, 1.2fr) 110px;
+  min-width: 1365px;
 }
 
 .streaming-activity-columns small {

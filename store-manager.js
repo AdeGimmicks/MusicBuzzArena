@@ -1711,12 +1711,13 @@ function renderStreamingPlatformActivity(events) {
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   analyticsStreamingActivityTable.innerHTML = rows.length
     ? `
-      <div class="manager-table-header streaming-activity-columns"><span>Date & Time</span><span>Visitor / Session</span><span>Original Source</span><span>Artist / Song</span><span>Platform</span><span>Activity</span><span>Result / Listening</span></div>
+      <div class="manager-table-header streaming-activity-columns"><span>Date & Time</span><span>Visitor / Session</span><span>Original Source</span><span>Location</span><span>Artist / Song</span><span>Platform</span><span>Activity</span><span>Result / Listening</span></div>
       ${rows.map((event) => `
         <article class="manager-table-row streaming-activity-columns">
           <strong>${escapeText(formatDateTime(event.createdAt))}</strong>
           <span title="${escapeAttr(event.visitorId || "")}">${escapeText(String(event.visitorId || "Unknown").slice(0, 13))}<small>${escapeText(String(event.sessionId || "No session").slice(0, 13))}</small></span>
           <mark>${escapeText(event.source || "Direct")}</mark>
+          <span>${escapeText(visitorLocationLabel(event))}</span>
           <span>${escapeText(event.artistName || "Platform")}<small>${escapeText(event.releaseTitle || "No song selected")}</small></span>
           <strong>${escapeText(streamingEventPlatformName(event))}</strong>
           <span>${escapeText(streamingActivityActionLabel(event))}</span>
