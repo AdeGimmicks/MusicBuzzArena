@@ -1869,11 +1869,17 @@ h3 {
   content: "−";
 }
 
-.visitor-date-group > summary span {
+.visitor-date-group > summary .visitor-date-count {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
   margin-left: auto;
+}
+
+.visitor-date-download {
+  min-height: 34px;
+  padding: 7px 11px;
+  white-space: nowrap;
 }
 
 .visitor-date-table {

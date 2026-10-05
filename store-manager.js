@@ -1352,7 +1352,7 @@ function visitorCsvRows(events) {
     ]);
 }
 
-function exportVisitorCsv(events, scope) {
+function exportVisitorCsv(events, scope, options = {}) {
   const header = [
     "Visit ID",
     "Date & Time (Device Timezone)",
@@ -1385,8 +1385,9 @@ function exportVisitorCsv(events, scope) {
     "Visitor Timezone",
   ];
   const date = new Date().toISOString().slice(0, 10);
-  downloadCsv(`musicbusinessarena-visitors-${scope}-${date}.csv`, header, visitorCsvRows(events));
-  message(visitorExportMessage, `Downloaded ${events.length} ${scope === "all" ? "recorded" : "filtered"} visit${events.length === 1 ? "" : "s"}.`);
+  const filename = options.filename || `musicbusinessarena-visitors-${scope}-${date}.csv`;
+  downloadCsv(filename, header, visitorCsvRows(events));
+  message(visitorExportMessage, options.message || `Downloaded ${events.length} ${scope === "all" ? "recorded" : "filtered"} visit${events.length === 1 ? "" : "s"}.`);
 }
 
 function visitorLocationLabel(event) {
@@ -1527,7 +1528,7 @@ function visitorActivityDateLabel(key) {
   return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 }
 
-function visitorDateGroupsMarkup(events) {
+function visitorDateGroupsMarkup(events, options = {}) {
   const groups = events.reduce((items, event) => {
     const key = visitorActivityDateKey(event.createdAt);
     if (!items.has(key)) items.set(key, []);
@@ -1540,7 +1541,8 @@ function visitorDateGroupsMarkup(events) {
       <details class="visitor-date-group" ${index === 0 ? "open" : ""}>
         <summary>
           <strong>${escapeText(visitorActivityDateLabel(key))}</strong>
-          <span>${dayEvents.length} activit${dayEvents.length === 1 ? "y" : "ies"}</span>
+          <span class="visitor-date-count">${dayEvents.length} activit${dayEvents.length === 1 ? "y" : "ies"}</span>
+          <button class="secondary-button visitor-date-download" type="button" data-download-activity-date="${escapeAttr(key)}" data-download-activity-kind="${escapeAttr(options.kind || "visitors")}">Download This Day</button>
         </summary>
         <div class="manager-table visitor-date-table">${visitorRowsMarkup(dayEvents)}</div>
       </details>
@@ -1570,26 +1572,10 @@ function renderVisitorSourceCards(items, totalEvents) {
 function renderVisitorActivity(events) {
   if (!analyticsVisitorTable) return;
   const selectedSource = visitorSourceSelect?.value || "";
-  setText("#analyticsVisitorActivityTitle", selectedSource ? `${selectedSource} Visitor Activity` : "Visitor Activity by Source");
-  if (selectedSource || !events.length) {
-    analyticsVisitorTable.innerHTML = events.length
-      ? visitorDateGroupsMarkup(events)
-      : visitorRowsMarkup(events);
-    return;
-  }
-  const sourceGroups = visitorSourceItems(events);
-  analyticsVisitorTable.innerHTML = sourceGroups.map((source) => {
-    const sourceEvents = events.filter((event) => (event.source || "Direct") === source.title);
-    return `
-      <section class="visitor-source-group">
-        <div class="visitor-source-group-heading">
-          <h4>${escapeText(source.title)} Visitors</h4>
-          <span>${source.visits} recorded activities · ${source.uniqueVisitors} unique visitors</span>
-        </div>
-        <div class="visitor-date-groups">${visitorDateGroupsMarkup(sourceEvents)}</div>
-      </section>
-    `;
-  }).join("");
+  setText("#analyticsVisitorActivityTitle", selectedSource ? `${selectedSource} Visitor Activity by Date` : "Visitor Activity by Date");
+  analyticsVisitorTable.innerHTML = events.length
+    ? `<div class="visitor-date-groups">${visitorDateGroupsMarkup(events, { kind: "visitors" })}</div>`
+    : visitorRowsMarkup(events);
 }
 
 const STREAMING_ACTIVITY_EVENT_TYPES = new Set([
@@ -1706,13 +1692,9 @@ function renderStreamingPlatformActivity(events) {
     </article>
   `).join("");
 
-  const rows = activityEvents
-    .slice()
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  analyticsStreamingActivityTable.innerHTML = rows.length
-    ? `
+  const streamingRowsMarkup = (rows) => `
       <div class="manager-table-header streaming-activity-columns"><span>Date & Time</span><span>Visitor / Session</span><span>Original Source</span><span>Location</span><span>Artist / Song</span><span>Platform</span><span>Activity</span><span>Result / Listening</span></div>
-      ${rows.map((event) => `
+      ${rows.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map((event) => `
         <article class="manager-table-row streaming-activity-columns">
           <strong>${escapeText(formatDateTime(event.createdAt))}</strong>
           <span title="${escapeAttr(event.visitorId || "")}">${escapeText(String(event.visitorId || "Unknown").slice(0, 13))}<small>${escapeText(String(event.sessionId || "No session").slice(0, 13))}</small></span>
@@ -1724,7 +1706,26 @@ function renderStreamingPlatformActivity(events) {
           <span>${escapeText(streamingListeningLabel(event))}</span>
         </article>
       `).join("")}
-    `
+  `;
+  const groups = activityEvents.reduce((items, event) => {
+    const key = visitorActivityDateKey(event.createdAt);
+    if (!items.has(key)) items.set(key, []);
+    items.get(key).push(event);
+    return items;
+  }, new Map());
+  analyticsStreamingActivityTable.innerHTML = activityEvents.length
+    ? `<div class="visitor-date-groups">${[...groups.entries()]
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([key, dayEvents], index) => `
+          <details class="visitor-date-group" ${index === 0 ? "open" : ""}>
+            <summary>
+              <strong>${escapeText(visitorActivityDateLabel(key))}</strong>
+              <span class="visitor-date-count">${dayEvents.length} platform activit${dayEvents.length === 1 ? "y" : "ies"}</span>
+              <button class="secondary-button visitor-date-download" type="button" data-download-activity-date="${escapeAttr(key)}" data-download-activity-kind="streaming">Download This Day</button>
+            </summary>
+            <div class="manager-table visitor-date-table">${streamingRowsMarkup(dayEvents)}</div>
+          </details>
+        `).join("")}</div>`
     : emptyState("Streaming activity will appear after visitors use platform players or external links on a song's Listen page.");
 }
 
@@ -2272,6 +2273,23 @@ exportFilteredVisitorsCsvButton?.addEventListener("click", () => {
 });
 exportAllVisitorsCsvButton?.addEventListener("click", () => {
   exportVisitorCsv(attributedVisitorEvents(), "all");
+});
+document.querySelector("#managerAnalytics")?.addEventListener("click", (event) => {
+  const downloadButton = event.target.closest("[data-download-activity-date]");
+  if (!downloadButton) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const dateKey = downloadButton.dataset.downloadActivityDate || "";
+  const kind = downloadButton.dataset.downloadActivityKind || "visitors";
+  const filteredEvents = filteredVisitorEvents(scopedVisitorEvents());
+  const dayEvents = filteredEvents.filter((item) => visitorActivityDateKey(item.createdAt) === dateKey);
+  const exportEvents = kind === "streaming"
+    ? streamingActivityEvents(dayEvents)
+    : dayEvents.filter((item) => !STREAMING_ACTIVITY_EVENT_TYPES.has(item.eventType));
+  exportVisitorCsv(exportEvents, `${kind}-${dateKey}`, {
+    filename: `musicbusinessarena-${kind}-${dateKey}.csv`,
+    message: `Downloaded ${exportEvents.length} ${kind === "streaming" ? "streaming" : "visitor"} activit${exportEvents.length === 1 ? "y" : "ies"} for ${visitorActivityDateLabel(dateKey)}.`,
+  });
 });
 document.querySelector("#analyticsTrafficSourceBreakdown")?.addEventListener("click", (event) => {
   const sourceButton = event.target.closest("[data-visitor-source]");
