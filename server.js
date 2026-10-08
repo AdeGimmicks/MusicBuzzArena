@@ -3179,11 +3179,11 @@ async function createCheckoutSession(request, response) {
 
   const artist = (store.artists || []).find((item) => item.id === release.artistId) || {};
   if (artist.stripeAccountId) await refreshArtistStripeStatus(store, artist);
-  const checkoutType = "download";
+  const checkoutType = body.type === "support" ? "support" : "download";
   const artistLabel = artist.name || release.artistName || "Independent Artist";
   const currency = normalizedCurrency(body.currency || release.currency);
-  const fallbackAmount = Number(release.price || 0.99);
-  const amountMajor = cleanCheckoutAmount(body.amount, fallbackAmount, 0.5);
+  const fallbackAmount = checkoutType === "support" ? 5 : Number(release.price || 0.99);
+  const amountMajor = cleanCheckoutAmount(body.amount, fallbackAmount, checkoutType === "support" ? 1 : 0.5);
   const unitAmount = toMinorUnits(amountMajor, currency);
 
   if (!unitAmount) {
@@ -3198,7 +3198,9 @@ async function createCheckoutSession(request, response) {
       ? artist.stripeAccountId
       : "";
   const artistTransferMinor = connectedAccountId ? payoutBreakdown.artistPayout : 0;
-  const productName = `Download ${release.title || "song"} by ${artistLabel}`;
+  const productName = checkoutType === "support"
+    ? `Support ${artistLabel}`
+    : `Download ${release.title || "song"} by ${artistLabel}`;
   const metadata = {
     checkoutType,
     releaseId: release.id,
@@ -3219,7 +3221,9 @@ async function createCheckoutSession(request, response) {
   };
   const productData = {
     name: productName,
-    description: `Paid music download on MusicBusiness Arena.`,
+    description: checkoutType === "support"
+      ? `Artist support payment on MusicBusiness Arena.`
+      : `Paid music download on MusicBusiness Arena.`,
   };
   const imageUrl = checkoutImageUrl(origin, release.cover);
   if (imageUrl) productData.images = [imageUrl];
@@ -3240,11 +3244,15 @@ async function createCheckoutSession(request, response) {
     ],
     metadata,
     payment_intent_data: { metadata },
-    success_url: `${origin}${downloadPath}?checkout=success&type=${checkoutType}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}${downloadPath}?checkout=cancelled`,
+    success_url: checkoutType === "support"
+      ? `${origin}${downloadPath}?support=success&support_session_id={CHECKOUT_SESSION_ID}`
+      : `${origin}${downloadPath}?checkout=success&type=${checkoutType}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: checkoutType === "support"
+      ? `${origin}${downloadPath}?support=cancelled#supportArtist`
+      : `${origin}${downloadPath}?checkout=cancelled`,
   };
 
-  if (connectedAccountId && checkoutType === "download") {
+  if (connectedAccountId) {
     sessionParams.payment_intent_data.application_fee_amount = payoutBreakdown.totalDeductions;
     sessionParams.payment_intent_data.transfer_data = {
       destination: connectedAccountId,
@@ -3253,6 +3261,119 @@ async function createCheckoutSession(request, response) {
 
   const session = await stripe.checkout.sessions.create(sessionParams);
   sendJson(response, 200, { url: session.url });
+}
+
+async function supportPaymentStatus(request, response, url) {
+  if (!stripe || !hasValidStripeSecretKey) {
+    sendJson(response, 503, { error: "Stripe is not configured." });
+    return;
+  }
+
+  const sessionId = url.searchParams.get("session_id");
+  if (!sessionId) {
+    sendJson(response, 400, { error: "Stripe checkout session is required." });
+    return;
+  }
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent", "payment_intent.latest_charge.balance_transaction"],
+    });
+  } catch {
+    sendJson(response, 404, { error: "Stripe checkout session was not found." });
+    return;
+  }
+
+  if (session.payment_status !== "paid" || session.metadata?.checkoutType !== "support") {
+    sendJson(response, 403, { error: "This artist support payment has not been completed." });
+    return;
+  }
+
+  const store = await readStore();
+  const release = (store.releases || []).find((item) => item.id === session.metadata?.releaseId);
+  const artist = (store.artists || []).find((item) => item.id === session.metadata?.artistId);
+  if (!artist) {
+    sendJson(response, 404, { error: "Artist not found." });
+    return;
+  }
+
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id || "";
+  let transaction = (store.transactions || []).find(
+    (item) => item.type === "support" && (
+      item.checkoutSessionId === session.id || (paymentIntentId && item.paymentIntentId === paymentIntentId)
+    )
+  );
+
+  if (!transaction) {
+    const currency = normalizedCurrency(session.currency || release?.currency || "usd");
+    const amountMinor = Number(session.amount_total || 0);
+    const amount = fromMinorUnits(amountMinor, currency);
+    const payoutBreakdown = salePayoutBreakdownMinor(amountMinor);
+    const stripeTransferDestination = session.metadata?.stripeTransferDestination || "";
+    const createdAt = new Date((session.created || Math.floor(Date.now() / 1000)) * 1000).toISOString();
+    transaction = {
+      id: `support-${session.id}`,
+      releaseId: release?.id || session.metadata?.releaseId || "",
+      artistId: artist.id,
+      type: "support",
+      amount,
+      grossAmount: amount,
+      paymentProcessingFee: fromMinorUnits(
+        Number(session.metadata?.paymentProcessingFeeMinor || payoutBreakdown.paymentProcessingFee),
+        currency
+      ),
+      platformFee: fromMinorUnits(
+        Number(session.metadata?.platformFeeMinor || payoutBreakdown.platformServiceFee),
+        currency
+      ),
+      platformOperationsFee: fromMinorUnits(
+        Number(session.metadata?.platformOperationsFeeMinor || payoutBreakdown.platformOperationsFee),
+        currency
+      ),
+      totalDeductions: fromMinorUnits(
+        Number(session.metadata?.totalDeductionMinor || payoutBreakdown.totalDeductions),
+        currency
+      ),
+      artistPayout: fromMinorUnits(
+        Number(session.metadata?.artistTransferMinor || payoutBreakdown.artistPayout),
+        currency
+      ),
+      currency,
+      checkoutSessionId: session.id,
+      paymentIntentId,
+      paymentStatus: "paid",
+      payoutStatus: stripeTransferDestination ? "processing" : "pending",
+      payoutModel: "mba_80_20",
+      stripeTransferDestination,
+      stripeTransferMode: session.metadata?.stripeTransferMode || (stripeTransferDestination ? "automatic_destination" : "pending_connect"),
+      createdAt,
+    };
+    store.transactions.push(transaction);
+    store.donations.push({
+      id: `donation-${session.id}`,
+      artistId: artist.id,
+      releaseId: release?.id || session.metadata?.releaseId || "",
+      amount,
+      currency,
+      checkoutSessionId: session.id,
+      paymentIntentId,
+      status: "paid",
+      createdAt,
+    });
+    artist.donations = Number(artist.donations || 0) + amount;
+    await writeStore(store);
+  }
+
+  sendJson(response, 200, {
+    ok: true,
+    artistId: artist.id,
+    artistName: artist.name || session.metadata?.artistName || "Independent Artist",
+    amount: Number(transaction.amount || 0),
+    currency: transaction.currency || session.currency || "usd",
+  });
 }
 
 /* ===================================================
@@ -3852,6 +3973,11 @@ async function handleRequest(request, response) {
 
     if (url.pathname === "/api/claim-download" && request.method === "GET") {
       await claimPaidDownload(request, response, url);
+      return;
+    }
+
+    if (url.pathname === "/api/support-status" && request.method === "GET") {
+      await supportPaymentStatus(request, response, url);
       return;
     }
 

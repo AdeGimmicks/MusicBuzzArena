@@ -23,6 +23,8 @@
   const queryReleaseId = params.get("release");
   const checkoutState = params.get("checkout");
   const checkoutSessionId = params.get("session_id");
+  const supportState = params.get("support");
+  const supportSessionId = params.get("support_session_id");
   let previewAudio = null;
 
   /* ===================================================
@@ -46,34 +48,16 @@
     return `${code} ${Number.isFinite(value) ? value.toFixed(2) : "0.99"}`;
   }
 
-  function parsePreviewTime(value, fallbackSeconds = 0) {
-    if (typeof value === "number") return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallbackSeconds;
-    const text = String(value ?? "").trim();
-    if (!text) return fallbackSeconds;
-    if (text.includes(":")) {
-      const [minutesText, secondsText] = text.split(":");
-      const minutes = Number(minutesText);
-      const seconds = Number(secondsText);
-      if (
-        Number.isInteger(minutes) &&
-        Number.isInteger(seconds) &&
-        minutes >= 0 &&
-        seconds >= 0 &&
-        seconds < 60
-      ) {
-        return minutes * 60 + seconds;
-      }
-      return fallbackSeconds;
-    }
-    const seconds = Number(text);
-    return Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : fallbackSeconds;
-  }
-
   function releaseDateLabel(release) {
     if (!release.releaseDate) return "Release date will appear here";
     const date = new Date(release.releaseDate);
     if (Number.isNaN(date.getTime())) return release.releaseDate;
     return date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+  }
+
+  function formatTime(value) {
+    const seconds = Math.max(0, Math.floor(Number(value) || 0));
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
   }
 
   function approvedReleases(store) {
@@ -182,11 +166,21 @@
     return data;
   }
 
-  function renderDownloadAction(release, isSuccess, downloadState) {
-    if (!isSuccess) return `<button class="pay-now-button" id="payNowButton" type="button">Pay Now</button>`;
+  async function loadSupportState() {
+    if (supportState !== "success" || !supportSessionId) return null;
+    const response = await fetch(`/api/support-status?session_id=${encodeURIComponent(supportSessionId)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Unable to verify this support payment.");
+    return data;
+  }
+
+  function renderDownloadAction(release, isSuccess, downloadState, price) {
+    if (!isSuccess) {
+      return `<button class="pay-now-button" id="payNowButton" type="button"><span class="download-button-icon" aria-hidden="true">&#8595;</span> Buy &amp; Download — ${escapeHtml(price)}</button>`;
+    }
     if (!checkoutSessionId) return `<button class="download-file-button" type="button" disabled>Download unavailable</button>`;
     if (downloadState?.downloaded) return `<button class="download-file-button" type="button" disabled>Downloaded ✓</button>`;
-    return `<button class="download-file-button" id="downloadFileButton" type="button">Download Song File</button>`;
+    return `<button class="download-file-button" id="downloadFileButton" type="button"><span class="download-button-icon" aria-hidden="true">&#8595;</span> Download Song File</button>`;
   }
 
   function downloadStatusText(isSuccess, isCancelled, downloadState) {
@@ -194,7 +188,38 @@
     if (isSuccess && !checkoutSessionId) return "Unable to verify this purchase. Please use the Stripe success link.";
     if (isSuccess) return "Payment complete. Your song file is ready.";
     if (isCancelled) return "Payment was cancelled. You can try again.";
-    return "Preview the sample, then pay to unlock the download.";
+    return "Own the high-quality audio file on your device.";
+  }
+
+  function renderStreamingLinks(release) {
+    const definitions = Array.isArray(window.STREAMING_LINKS)
+      ? window.STREAMING_LINKS
+      : typeof STREAMING_LINKS !== "undefined"
+        ? STREAMING_LINKS
+        : [];
+    const links = definitions
+      .filter(([, key]) => release.streaming?.[key])
+      .map(([label, key, icon]) => `
+        <a class="download-platform-link" href="${escapeHtml(release.streaming[key])}" target="_blank" rel="noopener noreferrer" data-platform-key="${escapeHtml(key)}" data-platform-name="${escapeHtml(label)}">
+          <img src="${escapeHtml(icon)}" alt="" />
+          <span>${escapeHtml(label)}</span>
+        </a>
+      `)
+      .join("");
+
+    if (!links) return "";
+    return `
+      <section class="download-streaming-panel" aria-labelledby="streamingHeading">
+        <div class="download-section-heading">
+          <span class="download-section-icon" aria-hidden="true">&#9835;</span>
+          <div>
+            <h2 id="streamingHeading">Listen on Streaming Platforms</h2>
+            <p>Also available on major streaming platforms.</p>
+          </div>
+        </div>
+        <div class="download-platform-grid">${links}</div>
+      </section>
+    `;
   }
 
   /* ===================================================
@@ -203,7 +228,7 @@
      Renders artwork, title, price, preview player, Pay Now,
      streaming links, and post-payment download state.
   =================================================== */
-  function renderPage(store, downloadState = null) {
+  function renderPage(store, downloadState = null, verifiedSupport = null) {
     const release = selectedRelease(store);
     if (!release) {
       renderEmpty();
@@ -216,39 +241,88 @@
     const isSuccess = checkoutState === "success";
     const isCancelled = checkoutState === "cancelled";
     const price = money(release.price, release.currency);
+    const supportMessage = verifiedSupport
+      ? `Thank you for supporting ${artistName} with ${money(verifiedSupport.amount, verifiedSupport.currency)}.`
+      : supportState === "cancelled"
+        ? "Support payment was cancelled. You can choose another amount whenever you are ready."
+        : "Your support goes directly toward the artist's work.";
 
     page.innerHTML = `
-      <article class="download-card">
-        <div>
+      <div class="download-storefront">
+        <article class="download-card">
+          <div class="download-artwork-wrap">
           <img class="download-artwork" src="${escapeHtml(artwork)}" alt="${escapeHtml(release.title)} artwork" />
-        </div>
-        <div class="download-info">
-          <p class="download-eyebrow">Paid Download</p>
-          <h1>${escapeHtml(release.title || "Untitled Song")}</h1>
-          <p class="download-subtitle">${escapeHtml(artistName)} · ${escapeHtml(releaseDateLabel(release))}</p>
-          <p class="download-price">${price}</p>
-          ${renderPreview(release)}
-          <div class="download-actions">
-            ${renderDownloadAction(release, isSuccess, downloadState)}
-            <a class="download-secondary-link" href="${releasePublicUrl("listen", release, artist)}">Streaming Links</a>
           </div>
-          <p class="download-status ${isSuccess ? "is-success" : isCancelled ? "is-error" : ""}" id="downloadStatus">
-            ${downloadStatusText(isSuccess, isCancelled, downloadState)}
-          </p>
+          <div class="download-info">
+            <p class="download-eyebrow">Paid Download</p>
+            <div class="download-title-row">
+              <div>
+                <h1>${escapeHtml(release.title || "Untitled Song")}</h1>
+                <p class="download-subtitle">${escapeHtml(artistName)} · ${escapeHtml(releaseDateLabel(release))}</p>
+              </div>
+              <p class="download-price">${price}</p>
+            </div>
+            ${renderPreview(release)}
+            <div class="download-notice">
+              <span aria-hidden="true">i</span>
+              <p>You can listen to this song in full once for free. To listen again, please download the song.</p>
+            </div>
+            <div class="download-actions">
+              ${renderDownloadAction(release, isSuccess, downloadState, price)}
+              <button class="download-secondary-link" id="supportScrollButton" type="button"><span aria-hidden="true">&#9829;</span> Support ${escapeHtml(artistName)}</button>
+            </div>
+            <p class="download-status ${isSuccess ? "is-success" : isCancelled ? "is-error" : ""}" id="downloadStatus">
+              ${downloadStatusText(isSuccess, isCancelled, downloadState)}
+            </p>
+          </div>
+        </article>
+
+        <div class="download-lower-grid ${release.streaming && Object.values(release.streaming).some(Boolean) ? "" : "is-single"}">
+          <section class="download-support-panel" id="supportArtist" aria-labelledby="supportHeading">
+            <div class="download-section-heading">
+              <span class="download-support-heart" aria-hidden="true">&#9829;</span>
+              <div>
+                <h2 id="supportHeading">Support ${escapeHtml(artistName)}</h2>
+                <p>Enjoying this song? Support the artist with any amount you wish.</p>
+              </div>
+            </div>
+            <form class="download-support-form" id="supportForm">
+              <div class="download-support-presets" aria-label="Choose a support amount">
+                <button type="button" data-support-amount="1">$1</button>
+                <button type="button" data-support-amount="5">$5</button>
+                <button type="button" data-support-amount="10">$10</button>
+                <button type="button" data-support-amount="25">$25</button>
+              </div>
+              <p class="download-support-custom-label">Or enter a custom amount</p>
+              <div class="download-support-checkout-row">
+                <label class="download-support-amount">
+                  <span aria-hidden="true">$</span>
+                  <span class="sr-only">Custom support amount in US dollars</span>
+                  <input id="supportAmount" name="amount" type="number" inputmode="decimal" min="1" step="0.01" value="5.00" aria-label="Custom support amount in US dollars" required />
+                </label>
+                <button class="download-support-button" id="supportButton" type="submit">Support Now</button>
+              </div>
+            </form>
+            <p class="download-support-status ${verifiedSupport ? "is-success" : supportState === "cancelled" ? "is-error" : ""}" id="supportStatus">${escapeHtml(supportMessage)}</p>
+          </section>
+          ${renderStreamingLinks(release)}
         </div>
-      </article>
+      </div>
     `;
 
     setupPreview(release);
     setupCheckout(release);
     setupPaidDownload(release);
+    setupSupport(release);
+    setupSupportScroll();
+    setupStreamingTracking(release, artist);
   }
 
   /* ===================================================
-     PREVIEW PLAYER
+     ONE-TIME FREE PLAYER
 
-     Controls the sample audio button and makes sure playback
-     follows the saved preview start and stop times.
+     Allows one complete browser play, preserves progress for
+     pause/resume, and locks after the song finishes.
   =================================================== */
   function renderPreview(release) {
     if (!release.audioUrl) {
@@ -257,12 +331,20 @@
 
     return `
       <div class="preview-panel">
-        <p>Preview before paying</p>
+        <div class="preview-heading">
+          <p>Listen to the full song <strong>(1 free play)</strong></p>
+          <span>No account required</span>
+        </div>
         <div class="preview-controls">
-          <button class="preview-play-button" id="previewButton" type="button">Preview</button>
-          <div class="preview-track" aria-label="Preview progress">
-            <div class="preview-fill" id="previewFill"></div>
-          </div>
+          <button class="preview-play-button" id="previewButton" type="button" aria-label="Play song"><span aria-hidden="true">&#9654;</span></button>
+          <span class="preview-time" id="previewCurrent">0:00</span>
+          <div class="preview-track" id="previewTrack" role="progressbar" aria-label="Song progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="previewFill"></span></div>
+          <span class="preview-time" id="previewDuration">0:00</span>
+          <label class="preview-volume">
+            <span aria-hidden="true">&#9835;</span>
+            <span class="sr-only">Volume</span>
+            <input id="previewVolume" type="range" min="0" max="1" value="0.8" step="0.05" />
+          </label>
         </div>
       </div>
     `;
@@ -270,110 +352,104 @@
 
   function setupPreview(release) {
     const button = document.getElementById("previewButton");
+    const track = document.getElementById("previewTrack");
     const fill = document.getElementById("previewFill");
-    if (!button || !fill || !release.audioUrl) return;
+    const currentLabel = document.getElementById("previewCurrent");
+    const durationLabel = document.getElementById("previewDuration");
+    const volume = document.getElementById("previewVolume");
+    if (!button || !track || !fill || !currentLabel || !durationLabel || !release.audioUrl) return;
 
     if (previewAudio) {
       previewAudio.pause();
       previewAudio = null;
     }
 
-    const start = parsePreviewTime(release.previewStart, 0);
-    const duration = Math.max(1, parsePreviewTime(release.previewDuration, 60));
-    const defaultEnd = start + duration;
-    const configuredEnd = parsePreviewTime(release.previewEnd, defaultEnd);
-    const end = configuredEnd > start ? configuredEnd : defaultEnd;
-    const isMobilePreview =
-      window.matchMedia?.("(pointer: coarse)").matches ||
-      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-
+    const storageKey = `mba-free-play-${release.id}`;
+    const readPlayState = () => {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey) || "{}") || {};
+      } catch {
+        return {};
+      }
+    };
+    const savePlayState = (value) => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(value));
+      } catch {
+        // Playback remains available when browser storage is unavailable.
+      }
+    };
     previewAudio = new Audio(release.audioUrl);
     previewAudio.preload = "metadata";
-    if (isMobilePreview) {
-      previewAudio.playsInline = true;
-      previewAudio.setAttribute("playsinline", "");
-    }
+    previewAudio.playsInline = true;
+    previewAudio.setAttribute("playsinline", "");
+    previewAudio.volume = Number(volume?.value || 0.8);
 
-    let mobileSeekPending = isMobilePreview;
-
-    const previewEnd = () =>
-      Number.isFinite(previewAudio.duration) ? Math.min(end, previewAudio.duration) : end;
-    const previewStart = () =>
-      Number.isFinite(previewAudio.duration) ? Math.min(start, Math.max(0, previewAudio.duration - 0.25)) : start;
-    const seekToPreviewStart = () => {
-      if (isMobilePreview) mobileSeekPending = true;
-      try {
-        previewAudio.currentTime = previewStart();
-      } catch {
-        return;
-      }
-      fill.style.width = "0%";
+    const setButtonState = (playing) => {
+      button.innerHTML = playing ? `<span aria-hidden="true">&#10074;&#10074;</span>` : `<span aria-hidden="true">&#9654;</span>`;
+      button.setAttribute("aria-label", playing ? "Pause song" : "Play song");
     };
-    const confirmMobilePreviewStart = () => {
-      if (!mobileSeekPending || previewAudio.readyState < 1) return;
-      const target = previewStart();
-      try {
-        if (Math.abs(previewAudio.currentTime - target) > 0.2) {
-          previewAudio.currentTime = target;
-          return;
-        }
-        mobileSeekPending = false;
-      } catch {
-        // Mobile browsers retry when the next media readiness event fires.
-      }
+    const setCompletedState = () => {
+      button.disabled = true;
+      button.innerHTML = `<span aria-hidden="true">&#10003;</span>`;
+      button.setAttribute("aria-label", "Free play completed");
     };
-    const waitForMetadata = () => {
-      if (previewAudio.readyState >= 1) return Promise.resolve();
-      previewAudio.load();
-      return new Promise((resolve) => {
-        previewAudio.addEventListener("loadedmetadata", resolve, { once: true });
-        previewAudio.addEventListener("error", resolve, { once: true });
-      });
+    const updateProgress = () => {
+      const duration = Number.isFinite(previewAudio.duration) ? previewAudio.duration : 0;
+      const current = Math.min(previewAudio.currentTime || 0, duration || Infinity);
+      const progress = duration ? Math.min(100, (current / duration) * 100) : 0;
+      fill.style.width = `${progress}%`;
+      track.setAttribute("aria-valuenow", String(Math.round(progress)));
+      currentLabel.textContent = formatTime(current);
+      durationLabel.textContent = formatTime(duration);
     };
 
     button.addEventListener("click", async () => {
+      if (readPlayState().completed) {
+        setCompletedState();
+        return;
+      }
       if (previewAudio.paused) {
-        await waitForMetadata();
-        if (previewAudio.currentTime < previewStart() || previewAudio.currentTime >= previewEnd()) {
-          seekToPreviewStart();
+        try {
+          await previewAudio.play();
+          setButtonState(true);
+        } catch {
+          const status = document.getElementById("downloadStatus");
+          if (status) {
+            status.textContent = "The song could not start. Please try again.";
+            status.className = "download-status is-error";
+          }
         }
-        await previewAudio.play();
-        button.textContent = "Pause";
       } else {
         previewAudio.pause();
-        button.textContent = "Preview";
+        setButtonState(false);
       }
     });
 
+    volume?.addEventListener("input", () => {
+      previewAudio.volume = Number(volume.value);
+    });
     previewAudio.addEventListener("timeupdate", () => {
-      const currentStart = previewStart();
-      const currentEnd = previewEnd();
-      const progress = Math.max(0, Math.min(100, ((previewAudio.currentTime - currentStart) / (currentEnd - currentStart)) * 100));
-      fill.style.width = `${progress}%`;
-      if (previewAudio.currentTime >= currentEnd) {
-        previewAudio.pause();
-        seekToPreviewStart();
-        button.textContent = "Preview";
-      }
+      updateProgress();
+      savePlayState({ position: previewAudio.currentTime, completed: false });
     });
-
     previewAudio.addEventListener("loadedmetadata", () => {
-      seekToPreviewStart();
-      confirmMobilePreviewStart();
+      const state = readPlayState();
+      if (state.completed) {
+        previewAudio.currentTime = previewAudio.duration || 0;
+        setCompletedState();
+      } else if (Number(state.position) > 0 && Number(state.position) < previewAudio.duration) {
+        previewAudio.currentTime = Number(state.position);
+      }
+      updateProgress();
     });
-    if (isMobilePreview) {
-      previewAudio.addEventListener("loadeddata", confirmMobilePreviewStart);
-      previewAudio.addEventListener("canplay", confirmMobilePreviewStart);
-      previewAudio.addEventListener("seeked", confirmMobilePreviewStart);
-    }
-    previewAudio.addEventListener("playing", () => {
-      if (previewAudio.currentTime < previewStart()) seekToPreviewStart();
-      confirmMobilePreviewStart();
-    });
-
     previewAudio.addEventListener("ended", () => {
-      seekToPreviewStart();
-      button.textContent = "Preview";
+      savePlayState({ position: previewAudio.duration || 0, completed: true });
+      updateProgress();
+      setCompletedState();
+    });
+    previewAudio.addEventListener("pause", () => {
+      if (!readPlayState().completed) setButtonState(false);
     });
   }
 
@@ -415,8 +491,100 @@
         status.textContent = error.message || "Unable to start checkout.";
         status.className = "download-status is-error";
         button.disabled = false;
-        button.textContent = "Pay Now";
+        button.innerHTML = `<span class="download-button-icon" aria-hidden="true">&#8595;</span> Buy &amp; Download — ${escapeHtml(money(release.price, release.currency))}`;
       }
+    });
+  }
+
+  function setupSupport(release) {
+    const form = document.getElementById("supportForm");
+    const amountInput = document.getElementById("supportAmount");
+    const button = document.getElementById("supportButton");
+    const status = document.getElementById("supportStatus");
+    if (!form || !amountInput || !button || !status) return;
+
+    const presetButtons = [...form.querySelectorAll("[data-support-amount]")];
+    const startSupportCheckout = async (amount, trigger) => {
+      if (!Number.isFinite(amount) || amount < 1) {
+        status.textContent = "Enter at least USD 1.00 to continue.";
+        status.className = "download-support-status is-error";
+        amountInput.focus();
+        return;
+      }
+
+      const originalText = trigger.textContent;
+      button.disabled = true;
+      presetButtons.forEach((item) => { item.disabled = true; });
+      trigger.textContent = "Opening...";
+      status.textContent = "Connecting to secure Stripe Checkout.";
+      status.className = "download-support-status";
+
+      try {
+        const response = await fetch("/api/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            releaseId: release.id,
+            type: "support",
+            amount,
+            currency: release.currency || "usd",
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.url) throw new Error(data.error || "Unable to start support checkout.");
+        window.location.href = data.url;
+      } catch (error) {
+        status.textContent = error.message || "Unable to start support checkout.";
+        status.className = "download-support-status is-error";
+        button.disabled = false;
+        presetButtons.forEach((item) => { item.disabled = false; });
+        trigger.textContent = originalText;
+      }
+    };
+
+    presetButtons.forEach((preset) => {
+      preset.addEventListener("click", () => {
+        startSupportCheckout(Number(preset.dataset.supportAmount), preset);
+      });
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      startSupportCheckout(Number(amountInput.value), button);
+    });
+  }
+
+  function setupSupportScroll() {
+    const button = document.getElementById("supportScrollButton");
+    const panel = document.getElementById("supportArtist");
+    if (!button || !panel) return;
+    button.addEventListener("click", () => panel.scrollIntoView({ behavior: "smooth", block: "center" }));
+  }
+
+  function setupStreamingTracking(release, artist) {
+    document.querySelectorAll(".download-platform-link").forEach((link) => {
+      link.addEventListener("click", () => {
+        const platformKey = link.dataset.platformKey || "";
+        const platformName = link.dataset.platformName || "Streaming platform";
+        window.MBA.trackVisitorEvent({
+          eventType: "platform_external_click",
+          activity: `Clicked ${platformName} external link - opened website/app`,
+          pageType: "download_page",
+          artistId: artist?.id,
+          artistName: artist?.name,
+          releaseId: release.id,
+          releaseTitle: release.title,
+          platformKey,
+          platformName,
+          playbackMeasurement: "not_applicable",
+        });
+        fetch("/api/streaming-click", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ releaseId: release.id, platformKey }),
+          keepalive: true,
+        }).catch(() => {});
+      });
     });
   }
 
@@ -526,7 +694,20 @@ async function init() {
     }
 
     const downloadState = await loadDownloadState(release?.id);
-    renderPage(store, downloadState);
+    let verifiedSupport = null;
+    try {
+      verifiedSupport = await loadSupportState();
+    } catch (error) {
+      verifiedSupport = { error: error.message || "Unable to verify this support payment." };
+    }
+    renderPage(store, downloadState, verifiedSupport?.error ? null : verifiedSupport);
+    if (verifiedSupport?.error) {
+      const supportStatus = document.getElementById("supportStatus");
+      if (supportStatus) {
+        supportStatus.textContent = verifiedSupport.error;
+        supportStatus.className = "download-support-status is-error";
+      }
+    }
   } catch (error) {
       page.innerHTML = `
         <div class="download-empty">
