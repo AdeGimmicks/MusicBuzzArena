@@ -274,6 +274,7 @@ function notifyStoreSaved(store) {
 async function loadStore(options = {}) {
   const force = options === true || options.force === true;
   const endpoint = storeEndpoint(options);
+  const artistDashboardRequest = endpoint === "/api/artist/store";
   if (!force && storeCache && storeCacheEndpoint === endpoint && Date.now() - storeCacheAt < MBA_CACHE_TTL) {
     return storeCache;
   }
@@ -284,9 +285,16 @@ async function loadStore(options = {}) {
     storeRequestEndpoint = endpoint;
     storeRequest = fetch(apiUrl(endpoint), {
       credentials: "same-origin",
-      headers: endpoint === "/api/artist/store" ? artistDashboardRequestHeaders() : {},
+      headers: artistDashboardRequest ? artistDashboardRequestHeaders() : {},
     })
-      .then((response) => (response.ok ? response.json() : null))
+      .then(async (response) => {
+        if (response.ok) return response.json();
+        if (artistDashboardRequest) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || "This artist session is no longer available.");
+        }
+        return null;
+      })
       .then((store) => {
         if (!store) return null;
         storeCacheEndpoint = endpoint;
@@ -298,7 +306,8 @@ async function loadStore(options = {}) {
       });
     const store = await storeRequest;
     if (store) return store;
-  } catch {
+  } catch (error) {
+    if (artistDashboardRequest) throw error;
     // File mode fallback.
   }
 

@@ -110,7 +110,7 @@ let activeArtistId = "";
 let artistSession = null;
 
 function dashboardArtistId() {
-  return activeArtistId || new URLSearchParams(window.location.search).get("artist") || "";
+  return new URLSearchParams(window.location.search).get("artist") || activeArtistId || "";
 }
 
 function artistApiFetch(path, options = {}) {
@@ -206,6 +206,8 @@ function setText(selector, value) {
 }
 
 function showDashboardSection(sectionId) {
+  const artistId = dashboardArtistId();
+  if (artistId && activeArtistId && artistId !== activeArtistId) return;
   dashboardSections.forEach((section) => {
     section.classList.toggle("is-active", section.id === sectionId);
   });
@@ -2361,6 +2363,8 @@ async function getArtistSessionOrRedirect() {
     if (!response.ok) throw new Error("Not logged in");
     const data = await response.json();
     if (!data?.authenticated || !data.artistId) throw new Error("Not logged in");
+    const requestedArtist = new URLSearchParams(window.location.search).get("artist");
+    if (requestedArtist && requestedArtist !== data.artistId) throw new Error("Wrong artist session");
     return data;
   } catch {
     const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
@@ -2387,7 +2391,23 @@ async function initDashboard() {
   artistSession = await getArtistSessionOrRedirect();
   if (!artistSession) return;
   activeArtistId = artistSession.artistId;
-  currentStore = await window.MBA.loadStore({ artist: true, force: true });
+  const dashboardUrl = new URL(window.location.href);
+  if (dashboardUrl.searchParams.get("artist") !== activeArtistId) {
+    dashboardUrl.searchParams.set("artist", activeArtistId);
+    window.history.replaceState({}, "", `${dashboardUrl.pathname}${dashboardUrl.search}${dashboardUrl.hash}`);
+  }
+  try {
+    currentStore = await window.MBA.loadStore({ artist: true, force: true });
+  } catch {
+    const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+    window.location.assign(`/artist-login?next=${next}`);
+    return;
+  }
+  if (!currentStore.artists.some((artist) => String(artist.id) === String(activeArtistId))) {
+    const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+    window.location.assign(`/artist-login?next=${next}`);
+    return;
+  }
   setupUploadWizard();
   populateCountrySelect();
   renderArtistAccountPicker();
