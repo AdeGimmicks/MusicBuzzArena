@@ -52,6 +52,12 @@ function dashboardUrl() {
   return withStart("/artist-dashboard");
 }
 
+function artistDashboardUrl(path, artistId) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("artist", artistId);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function setMessage(text, type = "pending") {
   if (!authMessage) return;
   authMessage.textContent = text;
@@ -121,9 +127,9 @@ async function handleRegister(form) {
 
 async function handleLogin(form) {
   setMessage("Logging in...", "pending");
-  await postJson("/api/artist/login", formValues(form));
+  const data = await postJson("/api/artist/login", formValues(form));
   localStorage.setItem("mba-has-artist-account", "true");
-  window.location.assign(dashboardUrl());
+  window.location.assign(artistDashboardUrl(dashboardUrl(), data.artistId));
 }
 
 async function handleForgot(form) {

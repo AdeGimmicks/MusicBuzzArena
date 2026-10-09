@@ -87,6 +87,7 @@ const OWNER_MANAGER_EMAIL = normalizeEmail(envValue("OWNER_MANAGER_EMAIL", "STOR
 const OWNER_MANAGER_INITIAL_PASSWORD = envValue("OWNER_MANAGER_INITIAL_PASSWORD", "STORE_MANAGER_INITIAL_PASSWORD") || "Mbamanagersacct@123";
 const SESSION_COOKIE_NAME = "mba_store_manager";
 const ARTIST_SESSION_COOKIE_NAME = "mba_artist_session";
+const ARTIST_SESSION_COOKIE_PREFIX = `${ARTIST_SESSION_COOKIE_NAME}_`;
 const ARTIST_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 20;
 const STORE_MANAGER_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 20;
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
@@ -881,7 +882,7 @@ async function normalizeUploads(store) {
 
 function sendJson(response, status, payload) {
   response.writeHead(status, {
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-MBA-Artist-Id",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Origin": "*",
     "Content-Type": "application/json; charset=utf-8",
@@ -1328,13 +1329,19 @@ function verifyPassword(password, storedHash) {
   });
 }
 
+function artistSessionCookieName(artistId = "") {
+  if (!artistId) return ARTIST_SESSION_COOKIE_NAME;
+  const suffix = crypto.createHash("sha256").update(String(artistId)).digest("hex").slice(0, 24);
+  return `${ARTIST_SESSION_COOKIE_PREFIX}${suffix}`;
+}
+
 function artistSessionCookie(sessionId, options = {}) {
   const maxAge = options.clear ? 0 : ARTIST_SESSION_MAX_AGE_SECONDS;
   const expires = options.clear
     ? new Date(0)
     : new Date(Date.now() + ARTIST_SESSION_MAX_AGE_SECONDS * 1000);
   const parts = [
-    `${ARTIST_SESSION_COOKIE_NAME}=${encodeURIComponent(sessionId || "")}`,
+    `${artistSessionCookieName(options.artistId)}=${encodeURIComponent(sessionId || "")}`,
     "HttpOnly",
     "Path=/",
     "SameSite=Lax",
@@ -1410,10 +1417,22 @@ function createArtistSession(account) {
   return sessionId;
 }
 
+function requestedArtistId(request) {
+  const headerValue = String(request.headers["x-mba-artist-id"] || "").trim();
+  if (headerValue) return headerValue;
+  try {
+    return String(new URL(request.url, `http://${request.headers.host || "localhost"}`).searchParams.get("artist") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 function getArtistSession(request) {
   cleanupArtistSessions();
   const cookies = parseCookies(request.headers.cookie || "");
-  const sessionId = cookies[ARTIST_SESSION_COOKIE_NAME];
+  const artistId = requestedArtistId(request);
+  const cookieName = artistSessionCookieName(artistId);
+  const sessionId = cookies[cookieName];
   if (!sessionId) return null;
   const session = artistSessions.get(sessionId) || verifySignedArtistSessionToken(sessionId);
   if (!session) return null;
@@ -1421,13 +1440,14 @@ function getArtistSession(request) {
     artistSessions.delete(sessionId);
     return null;
   }
+  if (artistId && String(session.artistId) !== artistId) return null;
   artistSessions.set(sessionId, session);
-  return { sessionId, session };
+  return { sessionId, session, cookieName, requestedArtistId: artistId };
 }
 
 function responseHeaders(extra = {}) {
   return {
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-MBA-Artist-Id",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Origin": "*",
     "Content-Type": "application/json; charset=utf-8",
@@ -2491,25 +2511,41 @@ async function loginArtist(request, response) {
     return;
   }
   const sessionId = createArtistSession(account);
+  const sessionCookies = [
+    artistSessionCookie(sessionId),
+    artistSessionCookie(sessionId, { artistId: account.artistId }),
+  ];
+  const dashboardUrl = new URL(next, "http://localhost");
+  dashboardUrl.searchParams.set("artist", account.artistId);
+  const artistDashboardLocation = `${dashboardUrl.pathname}${dashboardUrl.search}`;
   if (wantsHtml) {
     response.writeHead(302, {
       "Cache-Control": "no-store",
-      Location: next,
-      "Set-Cookie": artistSessionCookie(sessionId),
+      Location: artistDashboardLocation,
+      "Set-Cookie": sessionCookies,
     });
     response.end();
     return;
   }
   sendJsonWithHeaders(response, 200, { ok: true, artistId: account.artistId, account: publicAccount(account) }, {
-    "Set-Cookie": artistSessionCookie(sessionId),
+    "Set-Cookie": sessionCookies,
   });
 }
 
 async function logoutArtist(request, response) {
   const artistSession = getArtistSession(request);
   if (artistSession) artistSessions.delete(artistSession.sessionId);
+  const cookies = parseCookies(request.headers.cookie || "");
+  const clearedCookies = [];
+  if (artistSession) {
+    clearedCookies.push(artistSessionCookie("", { clear: true, artistId: artistSession.session.artistId }));
+    const legacySession = verifySignedArtistSessionToken(cookies[ARTIST_SESSION_COOKIE_NAME]);
+    if (legacySession && String(legacySession.artistId) === String(artistSession.session.artistId)) {
+      clearedCookies.push(artistSessionCookie("", { clear: true }));
+    }
+  }
   sendJsonWithHeaders(response, 200, { ok: true }, {
-    "Set-Cookie": artistSessionCookie("", { clear: true }),
+    ...(clearedCookies.length ? { "Set-Cookie": clearedCookies } : {}),
   });
 }
 
@@ -2524,9 +2560,13 @@ async function sendArtistSession(request, response) {
   const account = (store.artistAccounts || []).find((item) => item.id === artistSession.session.accountId);
   if (!account) {
     artistSessions.delete(artistSession.sessionId);
+    const invalidSessionCookies = [
+      artistSessionCookie("", { clear: true, artistId: artistSession.session.artistId }),
+    ];
+    if (!artistSession.requestedArtistId) invalidSessionCookies.push(artistSessionCookie("", { clear: true }));
     sendJsonWithHeaders(response, 200, { authenticated: false }, {
       ...noStore,
-      "Set-Cookie": artistSessionCookie("", { clear: true }),
+      "Set-Cookie": invalidSessionCookies,
     });
     return;
   }
@@ -2536,7 +2576,12 @@ async function sendArtistSession(request, response) {
     account: publicAccount(account),
   }, {
     ...noStore,
-    "Set-Cookie": artistSessionCookie(artistSession.sessionId),
+    "Set-Cookie": artistSession.requestedArtistId
+      ? artistSessionCookie(artistSession.sessionId, { artistId: account.artistId })
+      : [
+          artistSessionCookie(artistSession.sessionId),
+          artistSessionCookie(artistSession.sessionId, { artistId: account.artistId }),
+        ],
   });
 }
 
@@ -3137,12 +3182,13 @@ async function createArtistStripeAccountLink(request, response) {
   }
 
   const origin = requestOrigin(request);
+  const dashboardArtist = encodeURIComponent(artist.id);
   let accountLink;
   try {
     accountLink = await stripe.accountLinks.create({
       account: artist.stripeAccountId,
-      refresh_url: `${origin}/artist-dashboard?section=earnings&stripe=refresh`,
-      return_url: `${origin}/artist-dashboard?section=earnings&stripe=return`,
+      refresh_url: `${origin}/artist-dashboard?artist=${dashboardArtist}&section=earnings&stripe=refresh`,
+      return_url: `${origin}/artist-dashboard?artist=${dashboardArtist}&section=earnings&stripe=return`,
       type: "account_onboarding",
     });
   } catch (error) {
@@ -3743,11 +3789,6 @@ async function serveStatic(request, response) {
     return;
   }
 
-  if ((requestedPath === "/artist-login" || requestedPath === "/artist-login.html") && getArtistSession(request)) {
-    redirect(response, "/artist-dashboard");
-    return;
-  }
-
   if (LEGACY_REDIRECTS[requestedPath]) {
     redirect(response, `${LEGACY_REDIRECTS[requestedPath]}${url.search}`);
     return;
@@ -3873,7 +3914,7 @@ async function handleRequest(request, response) {
 
     if (request.method === "OPTIONS") {
       response.writeHead(204, {
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, X-MBA-Artist-Id",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Origin": "*",
       });

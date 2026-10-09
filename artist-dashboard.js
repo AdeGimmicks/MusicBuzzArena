@@ -108,6 +108,17 @@ const artistAccountSettingsMessage = document.querySelector("#artistAccountSetti
 let currentStore = window.MBA.defaults();
 let activeArtistId = "";
 let artistSession = null;
+
+function dashboardArtistId() {
+  return activeArtistId || new URLSearchParams(window.location.search).get("artist") || "";
+}
+
+function artistApiFetch(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  const artistId = dashboardArtistId();
+  if (artistId) headers.set("X-MBA-Artist-Id", artistId);
+  return fetch(path, { ...options, headers, credentials: options.credentials || "same-origin" });
+}
 let uploadWizardStep = 1;
 let uploadWizardReady = false;
 let uploadTracks = [];
@@ -180,11 +191,12 @@ function artistSlug(artist) {
 
 function artistPublicUrls(artist = primaryArtist()) {
   const slug = artistSlug(artist);
+  const artistQuery = `?artist=${encodeURIComponent(artist.id || activeArtistId)}`;
   return {
     home: `/${slug}`,
     music: `/${slug}/music`,
     videos: `/${slug}/videos`,
-    dashboard: `/${slug}-dashboard`,
+    dashboard: `/${slug}-dashboard${artistQuery}`,
   };
 }
 
@@ -1515,7 +1527,7 @@ function renderStripePayoutStatus(payload = {}) {
 async function loadStripePayoutStatus() {
   if (!stripeConnectStatus) return;
   try {
-    const response = await fetch("/api/artist/stripe-status", { cache: "no-store", credentials: "same-origin" });
+    const response = await artistApiFetch("/api/artist/stripe-status", { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || "Unable to load Stripe status.");
     renderStripePayoutStatus(payload);
@@ -2202,7 +2214,7 @@ artistLogoutButtons.forEach((button) => {
   button.addEventListener("click", async () => {
     button.disabled = true;
     try {
-      await fetch("/api/artist/logout", { method: "POST", credentials: "same-origin" });
+      await artistApiFetch("/api/artist/logout", { method: "POST" });
     } catch {
       // Logout is best-effort; redirect either way.
     }
@@ -2215,9 +2227,8 @@ connectStripeAccount?.addEventListener("click", async () => {
   const originalText = connectStripeAccount.textContent;
   connectStripeAccount.textContent = "Opening Stripe...";
   try {
-    const response = await fetch("/api/artist/connect-stripe", {
+    const response = await artistApiFetch("/api/artist/connect-stripe", {
       method: "POST",
-      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
     });
     const payload = await response.json().catch(() => ({}));
@@ -2235,9 +2246,8 @@ artistAccountSettingsForm?.addEventListener("submit", async (event) => {
   message(artistAccountSettingsMessage, "Saving account settings...", "pending");
   const payload = Object.fromEntries(new FormData(artistAccountSettingsForm).entries());
   try {
-    const response = await fetch("/api/artist/account", {
+    const response = await artistApiFetch("/api/artist/account", {
       method: "POST",
-      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
@@ -2347,7 +2357,7 @@ document.querySelector("#deleteVideoLinks")?.addEventListener("click", async () 
 =================================================== */
 async function getArtistSessionOrRedirect() {
   try {
-    const response = await fetch("/api/artist/session", { cache: "no-store", credentials: "same-origin" });
+    const response = await artistApiFetch("/api/artist/session", { cache: "no-store" });
     if (!response.ok) throw new Error("Not logged in");
     const data = await response.json();
     if (!data?.authenticated || !data.artistId) throw new Error("Not logged in");

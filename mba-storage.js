@@ -255,6 +255,13 @@ function isArtistDashboardStore() {
   return document.body?.classList.contains("artist-console-body") || /^\/artist-dashboard(?:\.html)?$/.test(window.location.pathname);
 }
 
+function artistDashboardRequestHeaders(headers = {}) {
+  const artistId = isArtistDashboardStore()
+    ? new URLSearchParams(window.location.search).get("artist")
+    : "";
+  return artistId ? { ...headers, "X-MBA-Artist-Id": artistId } : headers;
+}
+
 function storeEndpoint(options = {}) {
   if (options.artist === true || isArtistDashboardStore()) return "/api/artist/store";
   return "/api/store";
@@ -275,7 +282,10 @@ async function loadStore(options = {}) {
 
   try {
     storeRequestEndpoint = endpoint;
-    storeRequest = fetch(apiUrl(endpoint), { credentials: "same-origin" })
+    storeRequest = fetch(apiUrl(endpoint), {
+      credentials: "same-origin",
+      headers: endpoint === "/api/artist/store" ? artistDashboardRequestHeaders() : {},
+    })
       .then((response) => (response.ok ? response.json() : null))
       .then((store) => {
         if (!store) return null;
@@ -304,9 +314,9 @@ async function saveStore(store, options = {}) {
   try {
     const response = await fetch(apiUrl(endpoint), {
       method: "POST",
-      headers: {
+      headers: artistDashboardRequestHeaders({
         "Content-Type": "application/json",
-      },
+      }),
       credentials: "same-origin",
       body: JSON.stringify({
         store,
