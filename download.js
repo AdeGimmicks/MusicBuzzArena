@@ -3,7 +3,7 @@
 
    CODE OWNER GUIDE
 
-   Controls preview playback, Stripe checkout start, download status, and one-time download button behavior.
+   Controls 30-second preview playback, Stripe checkout start, download status, and one-time download button behavior.
    Used by: download.html.
    Does not control dashboard editing.
 =================================================== */
@@ -25,7 +25,9 @@
   const checkoutSessionId = params.get("session_id");
   const supportState = params.get("support");
   const supportSessionId = params.get("support_session_id");
+  const PREVIEW_LIMIT_SECONDS = 30;
   let previewAudio = null;
+  let previewStopTimer = null;
 
   /* ===================================================
      DOWNLOAD PAGE HELPERS
@@ -265,7 +267,7 @@
             ${renderPreview(release)}
             <div class="download-notice">
               <span aria-hidden="true">i</span>
-              <p>You can listen to this song in full once for free. To listen again, please download the song.</p>
+              <p>This preview stops after 30 seconds. Buy and download the song to hear it in full, or listen on a streaming platform below.</p>
             </div>
             <div class="download-actions">
               ${renderDownloadAction(release, isSuccess, downloadState, price)}
@@ -319,10 +321,10 @@
   }
 
   /* ===================================================
-     ONE-TIME FREE PLAYER
+     30-SECOND PREVIEW PLAYER
 
-     Allows one complete browser play, preserves progress for
-     pause/resume, and locks after the song finishes.
+     Allows repeatable 30-second previews, clamps playback to the
+     configured preview window, and prevents seeking past the limit.
   =================================================== */
   function renderPreview(release) {
     if (!release.audioUrl) {
@@ -332,8 +334,8 @@
     return `
       <div class="preview-panel">
         <div class="preview-heading">
-          <p>Listen to the full song <strong>(1 free play)</strong></p>
-          <span>No account required</span>
+          <p>Listen to a <strong>30-second preview</strong></p>
+          <span>Replay anytime</span>
         </div>
         <div class="preview-controls">
           <button class="preview-play-button" id="previewButton" type="button" aria-label="Play song"><span aria-hidden="true">&#9654;</span></button>
@@ -364,54 +366,70 @@
       previewAudio = null;
     }
 
-    const storageKey = `mba-free-play-${release.id}`;
-    const readPlayState = () => {
-      try {
-        return JSON.parse(localStorage.getItem(storageKey) || "{}") || {};
-      } catch {
-        return {};
-      }
-    };
-    const savePlayState = (value) => {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(value));
-      } catch {
-        // Playback remains available when browser storage is unavailable.
-      }
-    };
+    if (previewStopTimer) {
+      window.clearTimeout(previewStopTimer);
+      previewStopTimer = null;
+    }
     previewAudio = new Audio(release.audioUrl);
     previewAudio.preload = "metadata";
     previewAudio.playsInline = true;
     previewAudio.setAttribute("playsinline", "");
     previewAudio.volume = Number(volume?.value || 0.8);
+    previewAudio.playbackRate = 1;
+    let previewStart = Math.max(0, Number(release.previewStart) || 0);
+    let previewEnd = previewStart + PREVIEW_LIMIT_SECONDS;
+    let previewDuration = PREVIEW_LIMIT_SECONDS;
+    let previewFinished = false;
+    button.disabled = true;
 
     const setButtonState = (playing) => {
       button.innerHTML = playing ? `<span aria-hidden="true">&#10074;&#10074;</span>` : `<span aria-hidden="true">&#9654;</span>`;
       button.setAttribute("aria-label", playing ? "Pause song" : "Play song");
     };
-    const setCompletedState = () => {
-      button.disabled = true;
-      button.innerHTML = `<span aria-hidden="true">&#10003;</span>`;
-      button.setAttribute("aria-label", "Free play completed");
+    const clearStopTimer = () => {
+      if (!previewStopTimer) return;
+      window.clearTimeout(previewStopTimer);
+      previewStopTimer = null;
+    };
+    const finishPreview = () => {
+      clearStopTimer();
+      previewFinished = true;
+      previewAudio.pause();
+      if (previewAudio.currentTime > previewEnd || previewAudio.currentTime < previewStart) {
+        previewAudio.currentTime = previewEnd;
+      }
+      setButtonState(false);
+      updateProgress();
+      const status = document.getElementById("downloadStatus");
+      if (status && !status.classList.contains("is-success")) {
+        status.textContent = "30-second preview finished. Replay it, buy the download, or use a streaming platform for the full song.";
+        status.className = "download-status";
+      }
+    };
+    const scheduleStop = () => {
+      clearStopTimer();
+      const remaining = Math.max(0, previewEnd - previewAudio.currentTime);
+      previewStopTimer = window.setTimeout(finishPreview, remaining * 1000 + 25);
     };
     const updateProgress = () => {
-      const duration = Number.isFinite(previewAudio.duration) ? previewAudio.duration : 0;
-      const current = Math.min(previewAudio.currentTime || 0, duration || Infinity);
-      const progress = duration ? Math.min(100, (current / duration) * 100) : 0;
+      const elapsed = Math.max(0, Math.min(previewDuration, (previewAudio.currentTime || previewStart) - previewStart));
+      const progress = previewDuration ? Math.min(100, (elapsed / previewDuration) * 100) : 0;
       fill.style.width = `${progress}%`;
       track.setAttribute("aria-valuenow", String(Math.round(progress)));
-      currentLabel.textContent = formatTime(current);
-      durationLabel.textContent = formatTime(duration);
+      currentLabel.textContent = formatTime(elapsed);
+      durationLabel.textContent = formatTime(previewDuration);
     };
 
     button.addEventListener("click", async () => {
-      if (readPlayState().completed) {
-        setCompletedState();
-        return;
-      }
       if (previewAudio.paused) {
+        if (previewFinished || previewAudio.currentTime < previewStart || previewAudio.currentTime >= previewEnd) {
+          previewAudio.currentTime = previewStart;
+          previewFinished = false;
+          updateProgress();
+        }
         try {
           await previewAudio.play();
+          scheduleStop();
           setButtonState(true);
         } catch {
           const status = document.getElementById("downloadStatus");
@@ -421,6 +439,7 @@
           }
         }
       } else {
+        clearStopTimer();
         previewAudio.pause();
         setButtonState(false);
       }
@@ -430,26 +449,45 @@
       previewAudio.volume = Number(volume.value);
     });
     previewAudio.addEventListener("timeupdate", () => {
-      updateProgress();
-      savePlayState({ position: previewAudio.currentTime, completed: false });
-    });
-    previewAudio.addEventListener("loadedmetadata", () => {
-      const state = readPlayState();
-      if (state.completed) {
-        previewAudio.currentTime = previewAudio.duration || 0;
-        setCompletedState();
-      } else if (Number(state.position) > 0 && Number(state.position) < previewAudio.duration) {
-        previewAudio.currentTime = Number(state.position);
+      if (previewAudio.currentTime >= previewEnd) {
+        finishPreview();
+        return;
       }
       updateProgress();
     });
-    previewAudio.addEventListener("ended", () => {
-      savePlayState({ position: previewAudio.duration || 0, completed: true });
+    previewAudio.addEventListener("loadedmetadata", () => {
+      const fullDuration = Number.isFinite(previewAudio.duration) ? previewAudio.duration : 0;
+      if (fullDuration && previewStart >= fullDuration) previewStart = 0;
+      previewEnd = fullDuration ? Math.min(fullDuration, previewStart + PREVIEW_LIMIT_SECONDS) : previewStart + PREVIEW_LIMIT_SECONDS;
+      previewDuration = Math.max(0, previewEnd - previewStart) || PREVIEW_LIMIT_SECONDS;
+      previewAudio.currentTime = previewStart;
+      button.disabled = false;
       updateProgress();
-      setCompletedState();
+    });
+    previewAudio.addEventListener("seeking", () => {
+      if (previewAudio.currentTime < previewStart || previewAudio.currentTime > previewEnd) {
+        previewAudio.currentTime = previewFinished ? previewEnd : previewStart;
+      }
+    });
+    previewAudio.addEventListener("ratechange", () => {
+      if (previewAudio.playbackRate !== 1) previewAudio.playbackRate = 1;
+    });
+    previewAudio.addEventListener("play", scheduleStop);
+    previewAudio.addEventListener("ended", () => {
+      finishPreview();
+    });
+    previewAudio.addEventListener("error", () => {
+      clearStopTimer();
+      button.disabled = true;
+      const status = document.getElementById("downloadStatus");
+      if (status) {
+        status.textContent = "The preview is unavailable right now. You can still buy the download or use a streaming platform.";
+        status.className = "download-status is-error";
+      }
     });
     previewAudio.addEventListener("pause", () => {
-      if (!readPlayState().completed) setButtonState(false);
+      clearStopTimer();
+      setButtonState(false);
     });
   }
 
