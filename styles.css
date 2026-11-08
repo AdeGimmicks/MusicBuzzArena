@@ -1245,6 +1245,17 @@ h3 {
   gap: 8px;
 }
 
+.song-order-help {
+  background: rgba(244, 196, 48, 0.12);
+  border: 1px solid rgba(196, 148, 0, 0.28);
+  border-radius: 8px;
+  color: #5f4b0a;
+  font-size: 0.88rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  padding: 10px 12px;
+}
+
 .song-table-header,
 .song-table-row {
   display: grid;
@@ -1350,6 +1361,25 @@ h3 {
   font-weight: 900;
   min-height: 32px;
   padding: 8px 10px;
+}
+
+.song-row-actions .song-drag-handle {
+  background: #f4c430;
+  color: #11141b;
+  cursor: grab;
+}
+
+.song-row-actions .song-drag-handle:active {
+  cursor: grabbing;
+}
+
+.song-table-row.is-dragging {
+  opacity: 0.45;
+}
+
+.song-table-row.is-drop-target {
+  border-color: #d29f00;
+  box-shadow: 0 0 0 2px rgba(244, 196, 48, 0.3);
 }
 
 .compact-activity-list,

@@ -15,7 +15,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="Mba Logos/MBA Favicon.png" type="image/png" />
     <title>Artist Dashboard | MusicBusiness Arena</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20261108-song-order" />
   </head>
   <body class="dashboard-body artist-console-body">
     <!-- ==================================================
@@ -158,8 +158,9 @@
                 </select>
               </label>
               <label>
-                Sort by Date
+                Sort songs
                 <select id="songSortSelect">
+                  <option value="custom">Custom website order</option>
                   <option value="newest">Newest first</option>
                   <option value="oldest">Oldest first</option>
                 </select>
@@ -920,6 +921,6 @@
     <script src="mba-storage.js?v=20261107-upload-fix"></script>
     <script src="public-context.js"></script>
     <script src="platform-config.js"></script>
-    <script src="artist-dashboard.js?v=20261107-upload-fix"></script>
+    <script src="artist-dashboard.js?v=20261108-song-order"></script>
   </body>
 </html>

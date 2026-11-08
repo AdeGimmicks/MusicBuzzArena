@@ -224,6 +224,18 @@ function artistReleases() {
   return currentStore.releases.filter((release) => release.artistId === artist.id);
 }
 
+function compareReleaseDisplayOrder(a, b) {
+  const aHasOrder = a?.catalogOrder !== undefined && a?.catalogOrder !== null && Number.isFinite(Number(a.catalogOrder));
+  const bHasOrder = b?.catalogOrder !== undefined && b?.catalogOrder !== null && Number.isFinite(Number(b.catalogOrder));
+  if (aHasOrder && bHasOrder && Number(a.catalogOrder) !== Number(b.catalogOrder)) {
+    return Number(a.catalogOrder) - Number(b.catalogOrder);
+  }
+  if (aHasOrder !== bHasOrder) return aHasOrder ? 1 : -1;
+  const aTime = new Date(a?.createdAt || a?.releaseDate || 0).getTime();
+  const bTime = new Date(b?.createdAt || b?.releaseDate || 0).getTime();
+  return bTime - aTime;
+}
+
 function artistTransactions() {
   const releases = artistReleases();
   const releaseIds = new Set(releases.map((release) => release.id));
@@ -1325,7 +1337,7 @@ function filteredArtistReleases() {
   const query = String(songSearchInput?.value || "").trim().toLowerCase();
   const genre = songGenreFilter?.value || "";
   const status = songStatusFilter?.value || "";
-  const sort = songSortSelect?.value || "newest";
+  const sort = songSortSelect?.value || "custom";
 
   if (query) {
     releases = releases.filter((release) =>
@@ -1338,6 +1350,7 @@ function filteredArtistReleases() {
   if (status) releases = releases.filter((release) => (release.status || "pending") === status);
 
   releases = releases.slice().sort((a, b) => {
+    if (sort === "custom") return compareReleaseDisplayOrder(a, b);
     const aTime = new Date(a.createdAt || a.releaseDate || 0).getTime();
     const bTime = new Date(b.createdAt || b.releaseDate || 0).getTime();
     return sort === "oldest" ? aTime - bTime : bTime - aTime;
@@ -1351,6 +1364,11 @@ function renderSongTable() {
   const artist = primaryArtist();
   const releases = filteredArtistReleases();
   const urls = artistPublicUrls(artist);
+  const customOrderSelected = (songSortSelect?.value || "custom") === "custom";
+  const hasFilters = Boolean(
+    String(songSearchInput?.value || "").trim() || songGenreFilter?.value || songStatusFilter?.value
+  );
+  const canReorder = customOrderSelected && !hasFilters;
 
   if (!releases.length) {
     artistSongTable.innerHTML = `<p class="empty-state">No audio matches the current filters.</p>`;
@@ -1358,6 +1376,11 @@ function renderSongTable() {
   }
 
   artistSongTable.innerHTML = `
+    <p class="song-order-help" role="status">
+      ${canReorder
+        ? "Drag songs with the Reorder control, or use Move up and Move down. This saved order appears on your Home and Music pages."
+        : "Choose Custom website order and clear search or filters to rearrange songs."}
+    </p>
     <div class="song-table-header">
       <span>Artwork</span>
       <span>Title</span>
@@ -1371,7 +1394,7 @@ function renderSongTable() {
     ${releases
       .map(
         (release) => `
-          <article class="song-table-row">
+          <article class="song-table-row" data-release-row="${release.id}" draggable="${canReorder}">
             <img src="${escapeAttr(release.cover || "Mba Logos/MusicBusiness Logo.png")}" alt="">
             <strong>${escapeText(release.title || "Untitled audio")}</strong>
             <span>${escapeText(release.genre || "Music")}</span>
@@ -1380,6 +1403,11 @@ function renderSongTable() {
             <span><mark>${escapeText(release.status || "pending")}</mark></span>
             <span>${formatReleaseDate((release.createdAt || "").slice(0, 10) || release.releaseDate)}</span>
             <div class="song-row-actions">
+              ${canReorder ? `
+                <button class="song-drag-handle" type="button" aria-label="Drag ${escapeAttr(release.title || "song")} to reorder">↕ Reorder</button>
+                <button type="button" data-move-release="${release.id}" data-move-direction="up" aria-label="Move ${escapeAttr(release.title || "song")} up">↑ Move up</button>
+                <button type="button" data-move-release="${release.id}" data-move-direction="down" aria-label="Move ${escapeAttr(release.title || "song")} down">↓ Move down</button>
+              ` : ""}
               <button type="button" data-edit-release="${release.id}">Edit</button>
               ${release.status === "approved" ? `<a href="${urls.music}" target="_blank" rel="noreferrer">View Live</a>` : ""}
               <button type="button" data-publication-status="approved" data-release-id="${release.id}" ${release.status === "approved" ? "disabled" : ""}>Publish</button>
@@ -1393,6 +1421,45 @@ function renderSongTable() {
       )
       .join("")}
   `;
+}
+
+async function saveArtistReleaseOrder(releaseIds) {
+  const artist = primaryArtist();
+  const orderById = new Map(releaseIds.map((id, index) => [String(id), index]));
+  const previousOrder = new Map(
+    currentStore.releases
+      .filter((release) => release.artistId === artist.id)
+      .map((release) => [String(release.id), release.catalogOrder])
+  );
+  currentStore.releases.forEach((release) => {
+    if (release.artistId !== artist.id) return;
+    const order = orderById.get(String(release.id));
+    if (order !== undefined) release.catalogOrder = order;
+  });
+  try {
+    currentStore = await window.MBA.saveStore(currentStore);
+    renderDashboardReleases();
+  } catch (error) {
+    currentStore.releases.forEach((release) => {
+      if (release.artistId !== artist.id) return;
+      const previous = previousOrder.get(String(release.id));
+      if (previous === undefined) delete release.catalogOrder;
+      else release.catalogOrder = previous;
+    });
+    renderDashboardReleases();
+    const orderMessage = artistSongTable?.querySelector(".song-order-help");
+    if (orderMessage) orderMessage.textContent = "The song order could not be saved. Please try again.";
+  }
+}
+
+async function moveReleaseInCustomOrder(releaseId, direction) {
+  const releases = artistReleases().slice().sort(compareReleaseDisplayOrder);
+  const currentIndex = releases.findIndex((release) => String(release.id) === String(releaseId));
+  const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= releases.length) return;
+  const [moved] = releases.splice(currentIndex, 1);
+  releases.splice(nextIndex, 0, moved);
+  await saveArtistReleaseOrder(releases.map((release) => release.id));
 }
 
 function emptyLine(text) {
@@ -2235,6 +2302,12 @@ artistSongTable?.addEventListener("click", async (event) => {
   const deleteButton = event.target.closest("[data-delete-release]");
   const duplicateButton = event.target.closest("[data-duplicate-release]");
   const publicationButton = event.target.closest("[data-publication-status]");
+  const moveButton = event.target.closest("[data-move-release]");
+
+  if (moveButton) {
+    await moveReleaseInCustomOrder(moveButton.dataset.moveRelease, moveButton.dataset.moveDirection);
+    return;
+  }
 
   if (publicationButton) {
     await setReleasePublicationStatus(publicationButton.dataset.releaseId, publicationButton.dataset.publicationStatus);
@@ -2285,6 +2358,58 @@ artistSongTable?.addEventListener("click", async (event) => {
     currentStore = await window.MBA.saveStore(currentStore);
     renderDashboardReleases();
   }
+});
+
+let draggedReleaseId = "";
+let releaseDragHandleArmed = false;
+
+artistSongTable?.addEventListener("pointerdown", (event) => {
+  releaseDragHandleArmed = Boolean(event.target.closest(".song-drag-handle"));
+});
+
+artistSongTable?.addEventListener("dragstart", (event) => {
+  const row = event.target.closest("[data-release-row]");
+  if (!row || row.draggable !== true || !releaseDragHandleArmed) {
+    event.preventDefault();
+    return;
+  }
+  draggedReleaseId = row.dataset.releaseRow || "";
+  row.classList.add("is-dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", draggedReleaseId);
+});
+
+artistSongTable?.addEventListener("dragover", (event) => {
+  const targetRow = event.target.closest("[data-release-row]");
+  if (!draggedReleaseId || !targetRow || targetRow.dataset.releaseRow === draggedReleaseId) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  artistSongTable.querySelectorAll(".is-drop-target").forEach((row) => row.classList.remove("is-drop-target"));
+  targetRow.classList.add("is-drop-target");
+});
+
+artistSongTable?.addEventListener("drop", async (event) => {
+  const targetRow = event.target.closest("[data-release-row]");
+  if (!draggedReleaseId || !targetRow || targetRow.dataset.releaseRow === draggedReleaseId) return;
+  event.preventDefault();
+  const releaseIds = artistReleases().slice().sort(compareReleaseDisplayOrder).map((release) => String(release.id));
+  const sourceIndex = releaseIds.indexOf(String(draggedReleaseId));
+  if (sourceIndex < 0) return;
+  const [movedId] = releaseIds.splice(sourceIndex, 1);
+  let targetIndex = releaseIds.indexOf(String(targetRow.dataset.releaseRow));
+  if (targetIndex < 0) return;
+  const targetBounds = targetRow.getBoundingClientRect();
+  if (event.clientY > targetBounds.top + targetBounds.height / 2) targetIndex += 1;
+  releaseIds.splice(targetIndex, 0, movedId);
+  await saveArtistReleaseOrder(releaseIds);
+});
+
+artistSongTable?.addEventListener("dragend", () => {
+  draggedReleaseId = "";
+  releaseDragHandleArmed = false;
+  artistSongTable.querySelectorAll(".is-dragging, .is-drop-target").forEach((row) => {
+    row.classList.remove("is-dragging", "is-drop-target");
+  });
 });
 
 [songSearchInput, songGenreFilter, songStatusFilter, songSortSelect].forEach((control) => {

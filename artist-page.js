@@ -57,6 +57,18 @@ function releaseMatchesKey(release, key) {
   );
 }
 
+function compareReleaseDisplayOrder(a, b) {
+  const aHasOrder = a?.catalogOrder !== undefined && a?.catalogOrder !== null && Number.isFinite(Number(a.catalogOrder));
+  const bHasOrder = b?.catalogOrder !== undefined && b?.catalogOrder !== null && Number.isFinite(Number(b.catalogOrder));
+  if (aHasOrder && bHasOrder && Number(a.catalogOrder) !== Number(b.catalogOrder)) {
+    return Number(a.catalogOrder) - Number(b.catalogOrder);
+  }
+  if (aHasOrder !== bHasOrder) return aHasOrder ? 1 : -1;
+  const aTime = new Date(a?.createdAt || a?.releaseDate || 0).getTime();
+  const bTime = new Date(b?.createdAt || b?.releaseDate || 0).getTime();
+  return bTime - aTime;
+}
+
 function releasePublicUrl(type, release, artist) {
   const artistPart = artistSlug(artist);
   const releasePart = releaseSlug(release);
@@ -1402,7 +1414,9 @@ async function renderArtistPage(force = false) {
     return;
   }
 
-  const releases = approvedReleases.filter((release) => release.artistId === artist.id);
+  const releases = approvedReleases
+    .filter((release) => release.artistId === artist.id)
+    .sort(compareReleaseDisplayOrder);
   const viewedRelease = selectedRelease(releases);
   if (viewedRelease) {
     const listeningPage = window.location.pathname.startsWith("/listen/");

@@ -66,6 +66,18 @@ function releaseSlug(release) {
   return slugify(release?.slug || release?.title || release?.id || "song");
 }
 
+function compareReleaseDisplayOrder(a, b) {
+  const aHasOrder = a?.catalogOrder !== undefined && a?.catalogOrder !== null && Number.isFinite(Number(a.catalogOrder));
+  const bHasOrder = b?.catalogOrder !== undefined && b?.catalogOrder !== null && Number.isFinite(Number(b.catalogOrder));
+  if (aHasOrder && bHasOrder && Number(a.catalogOrder) !== Number(b.catalogOrder)) {
+    return Number(a.catalogOrder) - Number(b.catalogOrder);
+  }
+  if (aHasOrder !== bHasOrder) return aHasOrder ? 1 : -1;
+  const aTime = new Date(a?.createdAt || a?.releaseDate || 0).getTime();
+  const bTime = new Date(b?.createdAt || b?.releaseDate || 0).getTime();
+  return bTime - aTime;
+}
+
 function releasePublicUrl(type, release, artist) {
   const artistPart = artistSlug(artist);
   const releasePart = releaseSlug(release);
@@ -305,8 +317,7 @@ async function renderHome(force = false) {
   const approvedArtists = new Set(approvedArtistList.map((artist) => artist.id));
   const approved = window.MBA
     .approvedReleases(store)
-    .filter((release) => approvedArtists.has(release.artistId))
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    .filter((release) => approvedArtists.has(release.artistId));
 
   const pathArtist = artistFromPath(store);
   const pageArtist = pathArtist || null;
@@ -333,7 +344,9 @@ async function renderHome(force = false) {
   }
   renderHomeArtist(pageArtist);
 
-  const artistReleases = approved.filter((release) => release.artistId === pageArtist?.id);
+  const artistReleases = approved
+    .filter((release) => release.artistId === pageArtist?.id)
+    .sort(compareReleaseDisplayOrder);
   renderShelf(
     document.querySelector("#latestSongsGrid"),
     artistReleases,
