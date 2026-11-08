@@ -1660,8 +1660,8 @@ h3 {
 }
 
 .visitor-columns {
-  grid-template-columns: 175px 150px 110px 170px 180px 150px 150px minmax(190px, 1fr);
-  min-width: 1290px;
+  grid-template-columns: 175px 150px 120px 105px 180px 130px minmax(210px, 1.2fr) 150px minmax(190px, 1fr);
+  min-width: 1475px;
 }
 
 .visitor-columns small {
@@ -1797,6 +1797,108 @@ h3 {
 .streaming-analytics-content {
   display: grid;
   gap: 18px;
+}
+
+.listening-conversion-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.listening-conversion-metrics {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.listening-conversion-metrics article,
+.listening-breakdown-grid > article {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.listening-conversion-metrics article {
+  display: grid;
+  gap: 4px;
+}
+
+.listening-conversion-metrics span,
+.analytics-breakdown-list small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.listening-conversion-metrics strong {
+  font-size: 1.45rem;
+}
+
+.listening-breakdown-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.listening-breakdown-grid h3 {
+  font-size: 0.96rem;
+  margin: 0 0 10px;
+}
+
+.analytics-breakdown-list {
+  display: grid;
+  gap: 8px;
+}
+
+.analytics-breakdown-list p {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin: 0;
+  padding-top: 8px;
+}
+
+.analytics-breakdown-list p:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.visitor-activity-subsection {
+  display: grid;
+  gap: 10px;
+}
+
+.visitor-activity-subsection + .visitor-activity-subsection {
+  border-top: 2px solid var(--line);
+  margin-top: 18px;
+  padding-top: 18px;
+}
+
+.visitor-activity-subsection-heading {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+}
+
+.visitor-activity-subsection-heading h4,
+.visitor-activity-subsection-heading p {
+  margin: 0;
+}
+
+.visitor-activity-subsection-heading p {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .listening-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .streaming-activity-grid {

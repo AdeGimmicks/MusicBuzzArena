@@ -45,6 +45,10 @@ const visitorSearchInput = document.querySelector("#visitorSearchInput");
 const analyticsVisitorTable = document.querySelector("#analyticsVisitorTable");
 const analyticsStreamingActivitySummary = document.querySelector("#analyticsStreamingActivitySummary");
 const analyticsStreamingActivityTable = document.querySelector("#analyticsStreamingActivityTable");
+const analyticsListeningConversionSummary = document.querySelector("#analyticsListeningConversionSummary");
+const analyticsPlatformClickBreakdown = document.querySelector("#analyticsPlatformClickBreakdown");
+const analyticsCountryClickBreakdown = document.querySelector("#analyticsCountryClickBreakdown");
+const analyticsSourceClickBreakdown = document.querySelector("#analyticsSourceClickBreakdown");
 const exportFilteredVisitorsCsvButton = document.querySelector("#exportFilteredVisitorsCsv");
 const exportAllVisitorsCsvButton = document.querySelector("#exportAllVisitorsCsv");
 const visitorExportMessage = document.querySelector("#visitorExportMessage");
@@ -556,6 +560,30 @@ function isPlatformSelectionEvent(event) {
   return ["streaming_click", "platform_embed_open", "platform_external_click"].includes(event?.eventType);
 }
 
+function isExternalPlatformClickEvent(event) {
+  return ["platform_external_click", "streaming_click"].includes(event?.eventType);
+}
+
+function visitorEventIdentity(event) {
+  return String(event?.visitorId || event?.ipAddress || event?.sessionId || event?.id || "unknown");
+}
+
+function listeningJourneyKey(event) {
+  const journeyIdentity = String(event?.sessionId || visitorEventIdentity(event));
+  const releaseKey = event?.releaseId || String(event?.pagePath || "").split("?")[0] || event?.releaseTitle || "unknown-release";
+  return `${journeyIdentity}::${releaseKey}`;
+}
+
+function uniqueVisitorEvents(events) {
+  const seen = new Set();
+  return events.filter((event) => {
+    const key = event.id || [event.eventType, event.createdAt, visitorEventIdentity(event), event.releaseId, event.platformKey].join("::");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function isToday(value) {
   const date = new Date(value || 0);
   return !Number.isNaN(date.getTime()) && date.toDateString() === new Date().toDateString();
@@ -573,17 +601,21 @@ function releaseActivityTotals(release, events) {
         totals.platformSelections += 1;
         if (isToday(event.createdAt)) totals.todayPlatformSelections += 1;
       }
+      if (isExternalPlatformClickEvent(event)) {
+        totals.externalClicks += 1;
+        if (isToday(event.createdAt)) totals.todayExternalClicks += 1;
+      }
       if (event.eventType === "platform_embed_open") totals.embeddedPlayerOpens += 1;
       return totals;
     },
-    { listeningPageVisits: 0, todayListeningPageVisits: 0, platformSelections: 0, todayPlatformSelections: 0, embeddedPlayerOpens: 0 }
+    { listeningPageVisits: 0, todayListeningPageVisits: 0, platformSelections: 0, todayPlatformSelections: 0, externalClicks: 0, todayExternalClicks: 0, embeddedPlayerOpens: 0 }
   );
 }
 
 function platformPerformanceActivity(events, platformKey) {
   const platformEvents = events.filter((event) => streamingEventPlatformKey(event) === platformKey);
-  const todaySelections = platformEvents.filter((event) => isToday(event.createdAt) && isPlatformSelectionEvent(event));
-  const todaySources = Object.entries(todaySelections.reduce((totals, event) => {
+  const todayExternalClicks = platformEvents.filter((event) => isToday(event.createdAt) && isExternalPlatformClickEvent(event));
+  const todaySources = Object.entries(todayExternalClicks.reduce((totals, event) => {
     const source = event.source || "Direct";
     totals[source] = Number(totals[source] || 0) + 1;
     return totals;
@@ -591,7 +623,7 @@ function platformPerformanceActivity(events, platformKey) {
   return {
     embeddedPlayerOpens: platformEvents.filter((event) => event.eventType === "platform_embed_open").length,
     externalClicks: platformEvents.filter((event) => ["platform_external_click", "streaming_click"].includes(event.eventType)).length,
-    todaySelections: todaySelections.length,
+    todayExternalClicks: todayExternalClicks.length,
     todaySources,
   };
 }
@@ -1482,14 +1514,15 @@ function visitorRowsMarkup(events) {
   const rows = events.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   return rows.length
     ? `
-      <div class="manager-table-header visitor-columns"><span>Date & Time</span><span>IP / Visitor</span><span>Source</span><span>Location</span><span>Artist / Song</span><span>Activity</span><span>Device</span><span>Page</span></div>
+      <div class="manager-table-header visitor-columns"><span>Date & Time</span><span>IP / Visitor</span><span>Original Source</span><span>Country</span><span>Artist / Song</span><span>Platform</span><span>Activity</span><span>Device</span><span>Page</span></div>
       ${rows.map((event) => `
         <article class="manager-table-row visitor-columns">
           <strong>${escapeText(formatDateTime(event.createdAt))}</strong>
           <span title="${escapeAttr(event.visitorId || "")}">${escapeText(event.ipAddress || "Unknown")}<small>${escapeText(String(event.visitorId || "Unknown").slice(0, 13))}</small></span>
           <mark>${escapeText(event.source || "Direct")}</mark>
-          <span>${escapeText(visitorLocationLabel(event))}</span>
+          <span title="${escapeAttr(visitorLocationLabel(event))}">${escapeText(event.country || "Unknown")}</span>
           <span>${escapeText(event.artistName || "Platform")}<small>${escapeText(event.releaseTitle || "No song selected")}</small></span>
+          <strong>${escapeText(event.platformKey ? streamingEventPlatformName(event) : "—")}</strong>
           <span>${escapeText(visitorActivityLabel(event))}</span>
           <span>${escapeText(`${event.device || "Unknown"} · ${event.browser || "Unknown"}`)}</span>
           <span title="${escapeAttr(event.pagePath || "")}">${escapeText(event.pagePath || "/")}</span>
@@ -1582,10 +1615,28 @@ function renderVisitorSourceCards(items, totalEvents) {
 function renderVisitorActivity(events) {
   if (!analyticsVisitorTable) return;
   const selectedSource = visitorSourceSelect?.value || "";
-  setText("#analyticsVisitorActivityTitle", selectedSource ? `${selectedSource} Visitor Activity by Date` : "Visitor Activity by Date");
-  analyticsVisitorTable.innerHTML = events.length
-    ? `<div class="visitor-date-groups">${visitorDateGroupsMarkup(events, { kind: "visitors" })}</div>`
-    : visitorRowsMarkup(events);
+  const recordedEvents = uniqueVisitorEvents(events);
+  const platformClicks = recordedEvents.filter(isExternalPlatformClickEvent);
+  const clickedJourneys = new Set(platformClicks.map(listeningJourneyKey));
+  const listeningViews = recordedEvents.filter(isListeningPageVisit);
+  const viewOnly = listeningViews.filter((event) => !clickedJourneys.has(listeningJourneyKey(event)));
+  const otherActivity = recordedEvents.filter((event) => !isExternalPlatformClickEvent(event) && !isListeningPageVisit(event));
+  setText("#analyticsVisitorActivityTitle", selectedSource ? `${selectedSource} Visitor Activity` : "Visitor Activity");
+
+  const subsection = (title, description, rows, kind) => `
+    <section class="visitor-activity-subsection">
+      <div class="visitor-activity-subsection-heading"><h4>${escapeText(title)}</h4><p>${escapeText(description)}</p></div>
+      ${rows.length
+        ? `<div class="visitor-date-groups">${visitorDateGroupsMarkup(rows, { kind })}</div>`
+        : emptyState(`No ${title.toLowerCase()} match the current filters.`)}
+    </section>
+  `;
+
+  analyticsVisitorTable.innerHTML = [
+    subsection("External platform clicks", `${platformClicks.length} verified website link click${platformClicks.length === 1 ? "" : "s"}; these are not claimed as streams.`, platformClicks, "platform-clicks"),
+    subsection("Listening-page views with no platform click", `${viewOnly.length} view${viewOnly.length === 1 ? "" : "s"} where no external platform click was recorded for that visitor session and song.`, viewOnly, "view-only"),
+    subsection("Other website activity", `${otherActivity.length} additional recorded event${otherActivity.length === 1 ? "" : "s"}, including embedded-player and playback activity.`, otherActivity, "visitors"),
+  ].join("");
 }
 
 const STREAMING_ACTIVITY_EVENT_TYPES = new Set([
@@ -1667,13 +1718,71 @@ function streamingActivitySummaries(events) {
       legacyInteractions: platformEvents.filter((event) => event.eventType === "streaming_click").length,
       listeningSeconds: [...listeningBySession.values()].reduce((sum, seconds) => sum + seconds, 0),
       measurementSupported: measurementSupported && !measurementUnavailable,
-      sources: Object.entries(platformEvents.reduce((totals, event) => {
+      sources: Object.entries(platformEvents.filter(isExternalPlatformClickEvent).reduce((totals, event) => {
         const source = event.source || "Direct";
         totals[source] = Number(totals[source] || 0) + 1;
         return totals;
       }, {})).sort((a, b) => b[1] - a[1]),
     };
   });
+}
+
+function listeningConversionBreakdown(views, clicks, labelForEvent) {
+  const rows = new Map();
+  const ensure = (label) => {
+    const key = label || "Unknown";
+    if (!rows.has(key)) rows.set(key, { label: key, views: 0, clicks: 0, clickers: new Set() });
+    return rows.get(key);
+  };
+  views.forEach((event) => {
+    ensure(labelForEvent(event)).views += 1;
+  });
+  clicks.forEach((event) => {
+    const row = ensure(labelForEvent(event));
+    row.clicks += 1;
+    row.clickers.add(visitorEventIdentity(event));
+  });
+  return [...rows.values()]
+    .map((row) => ({ ...row, uniqueClickers: row.clickers.size }))
+    .sort((a, b) => b.clicks - a.clicks || b.views - a.views || a.label.localeCompare(b.label));
+}
+
+function breakdownRowsMarkup(rows, options = {}) {
+  if (!rows.length) return `<p><small>No recorded data for this selection.</small></p>`;
+  return rows.map((row) => `
+    <p>
+      <strong>${escapeText(row.label)}</strong>
+      <small>${options.platformOnly
+        ? `${row.clicks} external click${row.clicks === 1 ? "" : "s"} · ${row.uniqueClickers} visitor${row.uniqueClickers === 1 ? "" : "s"}`
+        : `${row.views} view${row.views === 1 ? "" : "s"} · ${row.clicks} external click${row.clicks === 1 ? "" : "s"} · ${row.uniqueClickers} clicker${row.uniqueClickers === 1 ? "" : "s"}`}</small>
+    </p>
+  `).join("");
+}
+
+function renderListeningConversionSummary(events) {
+  if (!analyticsListeningConversionSummary) return;
+  const recordedEvents = uniqueVisitorEvents(events);
+  const views = recordedEvents.filter(isListeningPageVisit);
+  const clicks = recordedEvents.filter(isExternalPlatformClickEvent);
+  const clickedJourneys = new Set(clicks.map(listeningJourneyKey));
+  const viewOnly = views.filter((event) => !clickedJourneys.has(listeningJourneyKey(event)));
+  const totalVisitors = new Set(views.map(visitorEventIdentity)).size;
+  const uniqueClickers = new Set(clicks.map(visitorEventIdentity)).size;
+
+  analyticsListeningConversionSummary.innerHTML = [
+    ["Total visitors", totalVisitors, "Unique visitors who opened a listening-links page"],
+    ["Listening-page views", views.length, "Recorded listening-links page opens"],
+    ["External platform clicks", clicks.length, "Website/app link clicks; not confirmed streams"],
+    ["Unique visitors who clicked", uniqueClickers, "Unique visitors or sessions with an external click"],
+    ["View-only visits", viewOnly.length, "Listening-page views with no external platform click"],
+  ].map(([label, value, note]) => `<article><span>${escapeText(label)}</span><strong>${value}</strong><small>${escapeText(note)}</small></article>`).join("");
+
+  const platformRows = listeningConversionBreakdown([], clicks, (event) => streamingEventPlatformName(event));
+  const countryRows = listeningConversionBreakdown(views, clicks, (event) => event.country || "Unknown");
+  const sourceRows = listeningConversionBreakdown(views, clicks, (event) => event.source || "Direct");
+  if (analyticsPlatformClickBreakdown) analyticsPlatformClickBreakdown.innerHTML = breakdownRowsMarkup(platformRows, { platformOnly: true });
+  if (analyticsCountryClickBreakdown) analyticsCountryClickBreakdown.innerHTML = breakdownRowsMarkup(countryRows);
+  if (analyticsSourceClickBreakdown) analyticsSourceClickBreakdown.innerHTML = breakdownRowsMarkup(sourceRows);
 }
 
 function renderStreamingPlatformActivity(events) {
@@ -1760,8 +1869,11 @@ function renderAnalytics() {
   const platformItems = platformClickItems(releases);
   const topCountry = releases.find((release) => release.country)?.country || "None";
   const downloads = releases.reduce((sum, release) => sum + Number(release.downloads || 0), 0);
-  const streamingClicks = releases.reduce((sum, release) => sum + Number(release.streamingClicks || 0), 0);
   const scopedEvents = scopedVisitorEvents();
+  const recordedExternalClicks = uniqueVisitorEvents(scopedEvents).filter(isExternalPlatformClickEvent);
+  const platformActivityItems = streamingActivitySummaries(streamingActivityEvents(scopedEvents))
+    .filter((item) => item.externalClicks > 0 || item.embedOpens > 0)
+    .sort((a, b) => b.externalClicks - a.externalClicks || b.embedOpens - a.embedOpens || a.title.localeCompare(b.title));
   const releaseActivity = new Map(releases.map((release) => [release.id, releaseActivityTotals(release, scopedEvents)]));
   populateVisitorSourceFilter(scopedEvents);
   const sourceScopeEvents = filteredVisitorEvents(scopedEvents, { ignoreSource: true })
@@ -1784,13 +1896,13 @@ function renderAnalytics() {
   setText("#analyticsTopArtist", topArtist?.name || topArtist?.handle || "None");
   setText("#analyticsTopSong", topRelease?.title || "None");
   setText("#analyticsTopCountry", topCountry);
-  setText("#analyticsTopPlatform", platformItems[0]?.title || "None");
+  setText("#analyticsTopPlatform", platformActivityItems[0]?.title || platformItems[0]?.title || "None");
   setText("#analyticsProfileViews", String(visitTotals.profileViews));
   setText("#analyticsArtistVisits", String(visitTotals.artistPageVisits));
   setText("#analyticsMusicVisits", String(visitTotals.musicPageVisits || releases.reduce((sum, release) => sum + Number(release.plays || 0), 0)));
   setText("#analyticsVideoVisits", String(visitTotals.videoPageVisits));
   setText("#analyticsDownloadVisits", String(visitTotals.downloadPageVisits));
-  setText("#analyticsStreamingClicks", String(streamingClicks));
+  setText("#analyticsStreamingClicks", String(recordedExternalClicks.length));
   setText("#analyticsNetEarnings", money(financials.net));
   setText("#analyticsPlatformFees", money(financials.platformFees + financials.processingFees + financials.operationsFees));
   setText("#analyticsTrafficSources", sourceItems[0]?.title || selectedArtist?.trafficSources || "None");
@@ -1808,7 +1920,7 @@ function renderAnalytics() {
         const activity = releaseActivity.get(release.id) || {};
         return {
           title: release.title || "Untitled release",
-          meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${activity.listeningPageVisits || 0} listening-page visits (${activity.todayListeningPageVisits || 0} today) | ${activity.todayPlatformSelections || 0} platform clicks today | ${Number(release.streamingClicks || 0)} lifetime platform clicks | ${money(releaseRevenue(release))}`,
+          meta: `${release.artistName || "Artist"} | ${Number(release.downloads || 0)} downloads | ${activity.listeningPageVisits || 0} listening-page visits (${activity.todayListeningPageVisits || 0} today) | ${activity.todayExternalClicks || 0} external clicks today | ${activity.externalClicks || 0} recorded external clicks | ${money(releaseRevenue(release))}`,
         };
       }),
     "Release analytics will appear after artists upload audio."
@@ -1826,14 +1938,14 @@ function renderAnalytics() {
   );
   renderList(
     "#analyticsPlatformBreakdown",
-    platformItems.slice(0, 8).map((item) => {
-      const activity = platformPerformanceActivity(scopedEvents, item.platform);
+    platformActivityItems.slice(0, 8).map((item) => {
+      const activity = platformPerformanceActivity(scopedEvents, item.key);
       const sourceSummary = activity.todaySources.length
-        ? ` | today: ${activity.todaySources.map(([source, count]) => `${source} ${count}`).join(", ")}`
+        ? ` | today's sources: ${activity.todaySources.map(([source, count]) => `${source} ${count}`).join(", ")}`
         : "";
       return {
         title: item.title,
-        meta: `${item.clicks} lifetime platform clicks | ${activity.todaySelections} recorded clicks today | ${activity.embeddedPlayerOpens} Play clicks | ${activity.externalClicks} external-link clicks${sourceSummary}`,
+        meta: `${item.externalClicks} recorded external-link clicks | ${activity.todayExternalClicks} today | ${item.embedOpens} embedded-player opens${sourceSummary}`,
       };
     }),
     "Streaming click analytics will appear after fans click platform links."
@@ -1875,6 +1987,7 @@ function renderAnalytics() {
     "Artist analytics will appear after artists join."
   );
   renderVisitorSourceCards(sourceCategoryItems, sourceScopeEvents);
+  renderListeningConversionSummary(filteredEvents);
   renderVisitorActivity(visitorEvents);
   renderStreamingPlatformActivity(platformActivityEvents);
 }
@@ -2296,12 +2409,17 @@ document.querySelector("#managerAnalytics")?.addEventListener("click", (event) =
   const kind = downloadButton.dataset.downloadActivityKind || "visitors";
   const filteredEvents = filteredVisitorEvents(scopedVisitorEvents());
   const dayEvents = filteredEvents.filter((item) => visitorActivityDateKey(item.createdAt) === dateKey);
+  const dayClickJourneys = new Set(dayEvents.filter(isExternalPlatformClickEvent).map(listeningJourneyKey));
   const exportEvents = kind === "streaming"
     ? streamingActivityEvents(dayEvents)
-    : dayEvents;
+    : kind === "platform-clicks"
+      ? dayEvents.filter(isExternalPlatformClickEvent)
+      : kind === "view-only"
+        ? dayEvents.filter((item) => isListeningPageVisit(item) && !dayClickJourneys.has(listeningJourneyKey(item)))
+        : dayEvents;
   exportVisitorCsv(exportEvents, `${kind}-${dateKey}`, {
     filename: `musicbusinessarena-${kind}-${dateKey}.csv`,
-    message: `Downloaded ${exportEvents.length} ${kind === "streaming" ? "platform" : "website"} activit${exportEvents.length === 1 ? "y" : "ies"} for ${visitorActivityDateLabel(dateKey)}.`,
+    message: `Downloaded ${exportEvents.length} ${kind === "streaming" || kind === "platform-clicks" ? "platform" : "website"} activit${exportEvents.length === 1 ? "y" : "ies"} for ${visitorActivityDateLabel(dateKey)}.`,
   });
 });
 document.querySelector("#analyticsTrafficSourceBreakdown")?.addEventListener("click", (event) => {

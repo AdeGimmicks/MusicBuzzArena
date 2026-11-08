@@ -13,7 +13,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Store Manager | MusicBusiness Arena</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20261108-listening-clicks" />
   </head>
   <body class="manager-body manager-console-body">
     <!-- ==================================================
@@ -362,6 +362,14 @@
             <summary><span>Streaming Platform Activity</span><small>Embedded players, measured listening, and external platform clicks</small></summary>
             <div class="analytics-collapsible-content streaming-analytics-content">
               <p class="manager-card-note" id="streamingActivityScopeNote">Playback is measured only when a platform provides a supported player API. Embed opens and external clicks are always reported separately.</p>
+              <section class="listening-conversion-summary" aria-label="Listening page conversion summary">
+                <div class="listening-conversion-metrics" id="analyticsListeningConversionSummary"></div>
+                <div class="listening-breakdown-grid">
+                  <article><h3>External clicks by platform</h3><div class="analytics-breakdown-list" id="analyticsPlatformClickBreakdown"></div></article>
+                  <article><h3>Views and clicks by country</h3><div class="analytics-breakdown-list" id="analyticsCountryClickBreakdown"></div></article>
+                  <article><h3>Views and clicks by traffic source</h3><div class="analytics-breakdown-list" id="analyticsSourceClickBreakdown"></div></article>
+                </div>
+              </section>
               <div class="streaming-activity-grid" id="analyticsStreamingActivitySummary"></div>
               <div class="manager-table streaming-activity-table" id="analyticsStreamingActivityTable"></div>
             </div>
@@ -610,6 +618,6 @@
 
     <script src="mba-storage.js"></script>
     <script src="platform-config.js"></script>
-    <script src="store-manager.js"></script>
+    <script src="store-manager.js?v=20261108-listening-clicks"></script>
   </body>
 </html>

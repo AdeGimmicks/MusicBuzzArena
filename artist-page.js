@@ -1318,7 +1318,6 @@ function linkHubPage(release, artist) {
         activity: `Clicked ${context.platformName} Play button - embedded player opened`,
         playbackMeasurement: measurementSupported ? "supported" : "unavailable",
       });
-      recordPlatformSelection(row.dataset.releaseId, platformKey);
       if (!measurementSupported) {
         window.MBA.trackVisitorEvent({
           ...context,
