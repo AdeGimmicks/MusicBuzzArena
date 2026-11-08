@@ -40,6 +40,23 @@ function releaseSlug(release) {
   return slugify(release?.slug || release?.title || release?.id || "song");
 }
 
+function musicReleaseKey(release) {
+  const titleSlug = slugify(release?.title || "");
+  return titleSlug ? `release-${titleSlug}` : String(release?.id || "");
+}
+
+function releaseMatchesKey(release, key) {
+  const requestedKey = String(key || "").trim();
+  if (!requestedKey) return false;
+  const normalizedKey = slugify(requestedKey);
+  return (
+    String(release?.id || "") === requestedKey ||
+    slugify(release?.slug || "") === normalizedKey ||
+    releaseSlug(release) === normalizedKey ||
+    musicReleaseKey(release) === normalizedKey
+  );
+}
+
 function releasePublicUrl(type, release, artist) {
   const artistPart = artistSlug(artist);
   const releasePart = releaseSlug(release);
@@ -151,7 +168,7 @@ function selectedRelease(releases) {
       : parts[1]
     : "";
   return (
-    releases.find((release) => release.id === releaseId) ||
+    releases.find((release) => releaseMatchesKey(release, releaseId)) ||
     releases.find((release) => releaseSlug(release) === pathReleaseSlug) ||
     releases[0]
   );
@@ -177,16 +194,21 @@ function artistForPage(store, approvedReleases) {
   const releaseId = params.get("release");
   const artistId = params.get("artist");
   const pathSlug = artistSlugFromPath();
+  const pathArtist = pathSlug
+    ? store.artists.find((artist) => artistSlug(artist) === pathSlug) || null
+    : null;
   const release =
-    (releaseId ? approvedReleases.find((item) => item.id === releaseId) : null) ||
+    (releaseId
+      ? approvedReleases.find(
+          (item) => releaseMatchesKey(item, releaseId) && (!pathArtist || item.artistId === pathArtist.id),
+        )
+      : null) ||
     releaseFromPath(store, approvedReleases);
 
   const releaseArtist = store.artists.find((artist) => artist.id === release?.artistId);
   if (releaseArtist) return releaseArtist;
 
-  if (pathSlug) {
-    return store.artists.find((artist) => artistSlug(artist) === pathSlug) || null;
-  }
+  if (pathArtist) return pathArtist;
 
   const queryArtist = artistId ? store.artists.find((artist) => artist.id === artistId) : null;
   if (queryArtist) return queryArtist;
@@ -419,10 +441,18 @@ function renderTopTracks(releases, artist) {
   const params = new URLSearchParams(window.location.search);
   const requestedReleaseId = params.get("release");
   const selectedRelease =
-    (requestedReleaseId ? releases.find((release) => release.id === requestedReleaseId) : null) ||
+    (requestedReleaseId ? releases.find((release) => releaseMatchesKey(release, requestedReleaseId)) : null) ||
     releases.find((release) => release.id === artist?.featuredReleaseId) ||
     releases.find((release) => release.id === artist?.bannerReleaseId) ||
     releases[0];
+  if (requestedReleaseId && selectedRelease) {
+    const canonicalKey = musicReleaseKey(selectedRelease);
+    if (canonicalKey && requestedReleaseId !== canonicalKey) {
+      const canonicalUrl = new URL(window.location.href);
+      canonicalUrl.searchParams.set("release", canonicalKey);
+      window.history.replaceState({}, "", `${canonicalUrl.pathname}${canonicalUrl.search}`);
+    }
+  }
   document.title = `${selectedRelease.title || "Music"} | MusicBusiness Arena`;
   artistTrackList.append(trackRow(selectedRelease, artist, releases));
   artistTrackList.querySelectorAll(".music-more-card").forEach((card) => {
@@ -430,8 +460,10 @@ function renderTopTracks(releases, artist) {
       if (event.target.closest("[data-related-listen]")) return;
       const releaseId = card.dataset.releaseId;
       if (!releaseId) return;
+      const relatedRelease = releases.find((release) => String(release.id) === String(releaseId));
+      if (!relatedRelease) return;
       const nextUrl = new URL(window.location.href);
-      nextUrl.searchParams.set("release", releaseId);
+      nextUrl.searchParams.set("release", musicReleaseKey(relatedRelease));
       nextUrl.searchParams.delete("artist");
       window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}`);
       renderTopTracks(releases, artist);
