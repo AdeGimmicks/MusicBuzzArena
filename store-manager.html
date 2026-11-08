@@ -192,7 +192,7 @@
             <div class="manager-tools">
               <label>Search Releases <input id="songSearchInput" type="search" placeholder="Title, artist, genre" /></label>
               <label>Filter by Artist <select id="songArtistFilter"><option value="">All artists</option></select></label>
-              <label>Filter by Status <select id="songStatusFilter"><option value="">All statuses</option><option>approved</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
+              <label>Filter by Status <select id="songStatusFilter"><option value="">All statuses</option><option>approved</option><option>unpublished</option><option>draft</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
               <label>Filter by Genre <select id="songGenreFilter"><option value="">All genres</option></select></label>
             </div>
             <div class="manager-table manager-song-table" id="managerSongTable"></div>
@@ -209,7 +209,7 @@
                 <label>Genre <input name="genre" type="text" /></label>
                 <label>Price <input name="price" type="number" min="0" step="0.01" /></label>
               </div>
-              <label>Status <select name="status"><option>approved</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
+              <label>Status <select name="status"><option>approved</option><option>unpublished</option><option>draft</option><option>pending</option><option>denied</option><option>hidden</option></select></label>
               <label>Description <textarea name="songBio" rows="4"></textarea></label>
               <details class="manager-streaming-editor" open>
                 <summary>Streaming platforms and embedded players</summary>
@@ -609,7 +609,4 @@
     </main>
 
     <script src="mba-storage.js"></script>
-    <script src="platform-config.js"></script>
-    <script src="store-manager.js"></script>
-  </body>
-</html>
+    <scrip

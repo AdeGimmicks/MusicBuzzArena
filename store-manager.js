@@ -871,6 +871,7 @@ function renderSongs() {
             <button type="button" data-release-analytics="${release.id}">Analytics</button>
             <button type="button" data-edit-song="${release.id}">Edit</button>
             <button type="button" data-song-status="approved">Approve</button>
+            <button type="button" data-song-status="unpublished">Unpublish</button>
             <button type="button" data-song-status="denied">Reject</button>
             <button type="button" data-song-status="hidden">Hide</button>
             <button type="button" data-delete-song="${release.id}">Delete</button>

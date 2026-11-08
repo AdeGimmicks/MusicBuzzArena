@@ -151,6 +151,8 @@
                 <select id="songStatusFilter">
                   <option value="">All statuses</option>
                   <option value="approved">Approved</option>
+                  <option value="unpublished">Unpublished</option>
+                  <option value="draft">Draft</option>
                   <option value="pending">Pending</option>
                   <option value="denied">Denied</option>
                 </select>
@@ -522,6 +524,7 @@
                       <span id="homePreviewArtist">Artist name</span>
                     </div>
                     <div class="file-editor-actions">
+                      <button class="secondary-button" id="uploadWizardUnpublish" type="button">Save Unpublished</button>
                       <button class="primary-button" id="uploadWizardPublish" type="button">Publish Release</button>
                     </div>
                   </div>
@@ -532,6 +535,7 @@
             <p class="form-message" id="releaseMessage" role="status"></p>
             <div class="upload-wizard-actions" id="uploadWizardActions">
               <button class="secondary-button" id="uploadWizardBack" type="button">Back</button>
+              <button class="secondary-button" id="uploadWizardUnpublishBottom" type="button" hidden>Save Unpublished</button>
               <button class="primary-button" id="uploadWizardNext" type="button">Next</button>
             </div>
           </section>

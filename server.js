@@ -1266,6 +1266,7 @@ function publicStore(store) {
   delete sanitized.contactMessages;
   delete sanitized.visitorEvents;
   delete sanitized.artistSubscribers;
+  sanitized.releases = (sanitized.releases || []).filter((release) => release.status === "approved");
   if (sanitized.site) delete sanitized.site.subscriberTemplates;
   sanitized.artists = (sanitized.artists || []).map((artist) => {
     const publicArtist = { ...artist };
@@ -1285,7 +1286,7 @@ function publicStore(store) {
 function artistScopedStore(store, artistId) {
   const scoped = publicStore(store);
   scoped.artists = (scoped.artists || []).filter((artist) => String(artist.id) === String(artistId));
-  scoped.releases = (scoped.releases || []).filter((release) => String(release.artistId) === String(artistId));
+  scoped.releases = cloneValue(store.releases || []).filter((release) => String(release.artistId) === String(artistId));
   scoped.transactions = (scoped.transactions || []).filter((transaction) => String(transaction.artistId) === String(artistId));
   scoped.analyticsArchive = (scoped.analyticsArchive || []).filter((item) => String(item.artistId) === String(artistId));
   scoped.donations = (scoped.donations || []).filter((donation) => String(donation.artistId) === String(artistId));

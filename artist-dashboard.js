@@ -102,12 +102,15 @@ const uploadWizardActions = document.querySelector("#uploadWizardActions");
 const uploadWizardBack = document.querySelector("#uploadWizardBack");
 const uploadWizardNext = document.querySelector("#uploadWizardNext");
 const uploadWizardPublish = document.querySelector("#uploadWizardPublish");
+const uploadWizardUnpublish = document.querySelector("#uploadWizardUnpublish");
+const uploadWizardUnpublishBottom = document.querySelector("#uploadWizardUnpublishBottom");
 const artistAccountSettingsForm = document.querySelector("#artistAccountSettingsForm");
 const artistAccountSettingsMessage = document.querySelector("#artistAccountSettingsMessage");
 
 let currentStore = window.MBA.defaults();
 let activeArtistId = "";
 let artistSession = null;
+let requestedReleaseStatus = "approved";
 
 function dashboardArtistId() {
   return new URLSearchParams(window.location.search).get("artist") || activeArtistId || "";
@@ -587,6 +590,10 @@ function updateWizardReview() {
   updateHomePreview();
   updateArtistPreview();
   updateVideoPreview();
+  const editingRelease = currentStore.releases.find((release) => release.id === releaseForm.editingId.value);
+  if (uploadWizardUnpublish) {
+    uploadWizardUnpublish.textContent = editingRelease?.status === "approved" ? "Unpublish Release" : "Save Unpublished";
+  }
 }
 
 function setUploadWizardStep(step) {
@@ -612,6 +619,12 @@ function setUploadWizardStep(step) {
 
   if (uploadWizardPublish) {
     uploadWizardPublish.style.display = uploadWizardStep === 6 ? "inline-flex" : "none";
+  }
+  if (uploadWizardUnpublish) {
+    uploadWizardUnpublish.style.display = uploadWizardStep === 6 ? "inline-flex" : "none";
+  }
+  if (uploadWizardUnpublishBottom) {
+    uploadWizardUnpublishBottom.hidden = uploadWizardStep !== 6;
   }
   if (releaseFlowEyebrow) releaseFlowEyebrow.textContent = `Step ${uploadWizardStep} of 6`;
   const titles = ["Release Type", "Upload Audio & Artwork", "Track Information", "Streaming Links", "Video (Optional)", "Review & Publish"];
@@ -1193,11 +1206,13 @@ function releaseSummary(release) {
     <div>
       <p>${release.releaseType || "Single"} | ${release.genre || "Music"}</p>
       <h3>${release.title || "Untitled release"}</h3>
-      <span>${isFeatured ? "Public page landing audio" : release.audioName || "Audio saved"}</span>
+      <span>${release.status === "approved" ? (isFeatured ? "Published · Public page landing audio" : "Published") : "Unpublished · Only visible in Artist Center"}</span>
     </div>
     <div class="item-actions">
       <button type="button" data-edit-release="${release.id}">${releaseForm.editingId.value === release.id ? "Editing" : "Edit"}</button>
-      <button type="button" data-feature-release="${release.id}">${isFeatured ? "Selected" : "Use for Music"}</button>
+      <button type="button" data-publication-status="approved" data-release-id="${release.id}" ${release.status === "approved" ? "disabled" : ""}>Publish</button>
+      <button type="button" data-publication-status="unpublished" data-release-id="${release.id}" ${release.status !== "approved" ? "disabled" : ""}>Unpublish</button>
+      ${release.status === "approved" ? `<button type="button" data-feature-release="${release.id}">${isFeatured ? "Selected" : "Use for Music"}</button>` : ""}
     </div>
   `;
   return card;
@@ -1206,7 +1221,7 @@ function releaseSummary(release) {
 function renderFeaturedReleasePicker() {
   if (!featuredReleaseSelect) return;
   const artist = primaryArtist();
-  const releases = currentStore.releases.filter((release) => release.artistId === artist.id);
+  const releases = currentStore.releases.filter((release) => release.artistId === artist.id && release.status === "approved");
   featuredReleaseSelect.replaceChildren(new Option("Use newest approved audio", ""));
   releases.forEach((release) => {
     const option = new Option(`${release.title || "Untitled release"} - ${release.genre || "Music"}`, release.id);
@@ -1339,9 +1354,11 @@ function renderSongTable() {
             <span>${formatReleaseDate((release.createdAt || "").slice(0, 10) || release.releaseDate)}</span>
             <div class="song-row-actions">
               <button type="button" data-edit-release="${release.id}">Edit</button>
-              <a href="${urls.music}" target="_blank" rel="noreferrer">Preview</a>
+              ${release.status === "approved" ? `<a href="${urls.music}" target="_blank" rel="noreferrer">View Live</a>` : ""}
+              <button type="button" data-publication-status="approved" data-release-id="${release.id}" ${release.status === "approved" ? "disabled" : ""}>Publish</button>
+              <button type="button" data-publication-status="unpublished" data-release-id="${release.id}" ${release.status !== "approved" ? "disabled" : ""}>Unpublish</button>
               <button type="button" data-delete-release="${release.id}">Delete</button>
-              <button type="button" data-feature-release="${release.id}">${artist.featuredReleaseId === release.id ? "Featured" : "Feature"}</button>
+              ${release.status === "approved" ? `<button type="button" data-feature-release="${release.id}">${artist.featuredReleaseId === release.id ? "Featured" : "Feature"}</button>` : ""}
               <button type="button" data-duplicate-release="${release.id}">Duplicate</button>
             </div>
           </article>
@@ -2000,17 +2017,20 @@ uploadWizardProgress?.addEventListener("keydown", (event) => {
    This section changes saved data only when the artist clicks
    the related save/publish/delete action.
 =================================================== */
-function publishReleaseFromWizard() {
+function publishReleaseFromWizard(status = "approved") {
   for (const step of [2, 3]) {
     if (!validateUploadWizardStep(step)) {
       setUploadWizardStep(step);
       return;
     }
   }
+  requestedReleaseStatus = status;
   releaseForm.requestSubmit();
 }
 
-uploadWizardPublish?.addEventListener("click", publishReleaseFromWizard);
+uploadWizardPublish?.addEventListener("click", () => publishReleaseFromWizard("approved"));
+uploadWizardUnpublish?.addEventListener("click", () => publishReleaseFromWizard("unpublished"));
+uploadWizardUnpublishBottom?.addEventListener("click", () => publishReleaseFromWizard("unpublished"));
 
 function updateVideoPreview() {
   const artistName = primaryArtist().name || "artist";
@@ -2027,6 +2047,8 @@ videoForm.addEventListener("change", updateVideoPreview);
 
 releaseForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const saveStatus = requestedReleaseStatus === "unpublished" ? "unpublished" : "approved";
+  requestedReleaseStatus = "approved";
   message(releaseMessage, "Saving release...", "pending");
 
   try {
@@ -2048,7 +2070,7 @@ releaseForm.addEventListener("submit", async (event) => {
       createdAt: new Date().toISOString(),
     };
 
-    release.status = "approved";
+    release.status = saveStatus;
     release.title = releaseForm.title.value.trim();
     release.artistName = releaseForm.artistName.value.trim() || artist.name;
     release.releaseType = type;
@@ -2102,6 +2124,10 @@ releaseForm.addEventListener("submit", async (event) => {
     } else {
       currentStore.releases.unshift(release);
     }
+    if (release.status !== "approved" && artist.featuredReleaseId === release.id) {
+      artist.featuredReleaseId = "";
+      artist.bannerReleaseId = "";
+    }
 
     currentStore = await window.MBA.saveStore(currentStore, {
       clears: [
@@ -2117,18 +2143,53 @@ releaseForm.addEventListener("submit", async (event) => {
     showDashboardSection("songsSection");
     message(
       releaseMessage,
-      existingIndex >= 0
-        ? "Artist audio updated. Home, Music, Listen, and Download will reflect the change."
-        : "Artist audio saved. It will now show on Home and can be selected for the public page."
+      release.status === "approved"
+        ? "Release published. It is now visible on the public website."
+        : "Release saved as unpublished. It remains in Artist Center and is hidden from the public website."
     );
   } catch (error) {
     message(releaseMessage, error.message || "Release did not save. Use the localhost website URL.", "error");
   }
 });
 
-releaseList?.addEventListener("click", (event) => {
+async function setReleasePublicationStatus(releaseId, status) {
+  const release = currentStore.releases.find((item) => item.id === releaseId && item.artistId === activeArtistId);
+  if (!release || !["approved", "unpublished"].includes(status)) return;
+  if (status === "approved") {
+    const hasAudio = Boolean(release.audioUrl || release.audioData || (release.tracks || []).some((track) => track.audioUrl || track.audioData));
+    if (!release.title || !release.cover || !hasAudio) {
+      fillReleaseForm(release);
+      showDashboardSection("songEditorSection");
+      message(releaseMessage, "Complete the title, artwork, and audio before publishing.", "error");
+      return;
+    }
+  }
+  release.status = status;
+  release.updatedAt = new Date().toISOString();
+  const artist = primaryArtist();
+  if (status !== "approved" && artist.featuredReleaseId === release.id) {
+    artist.featuredReleaseId = "";
+    artist.bannerReleaseId = "";
+  }
+  currentStore = await window.MBA.saveStore(currentStore);
+  renderDashboardReleases();
+  message(
+    releaseMessage,
+    status === "approved"
+      ? `${release.title || "Release"} is published and visible on the public website.`
+      : `${release.title || "Release"} is unpublished and visible only in Artist Center.`
+  );
+}
+
+releaseList?.addEventListener("click", async (event) => {
   const editButton = event.target.closest("[data-edit-release]");
   const featureButton = event.target.closest("[data-feature-release]");
+  const publicationButton = event.target.closest("[data-publication-status]");
+
+  if (publicationButton) {
+    await setReleasePublicationStatus(publicationButton.dataset.releaseId, publicationButton.dataset.publicationStatus);
+    return;
+  }
 
   if (editButton) {
     const release = currentStore.releases.find((item) => item.id === editButton.dataset.editRelease);
@@ -2146,6 +2207,12 @@ artistSongTable?.addEventListener("click", async (event) => {
   const featureButton = event.target.closest("[data-feature-release]");
   const deleteButton = event.target.closest("[data-delete-release]");
   const duplicateButton = event.target.closest("[data-duplicate-release]");
+  const publicationButton = event.target.closest("[data-publication-status]");
+
+  if (publicationButton) {
+    await setReleasePublicationStatus(publicationButton.dataset.releaseId, publicationButton.dataset.publicationStatus);
+    return;
+  }
 
   if (editButton) {
     const release = currentStore.releases.find((item) => item.id === editButton.dataset.editRelease);
@@ -2180,7 +2247,7 @@ artistSongTable?.addEventListener("click", async (event) => {
       ...JSON.parse(JSON.stringify(source)),
       id: window.MBA.uid("release"),
       title: `${source.title || "Untitled song"} Copy`,
-      status: "pending",
+      status: "unpublished",
       downloads: 0,
       earnings: 0,
       donations: 0,
@@ -2283,7 +2350,8 @@ deleteEditingSong?.addEventListener("click", async () => {
 
 async function selectFeaturedRelease(releaseId) {
   const artist = primaryArtist();
-  artist.featuredReleaseId = releaseId || "";
+  const release = currentStore.releases.find((item) => item.id === releaseId && item.artistId === artist.id);
+  artist.featuredReleaseId = release?.status === "approved" ? releaseId : "";
   artist.bannerReleaseId = "";
   currentStore = await window.MBA.saveStore(currentStore);
   renderFeaturedReleasePicker();
