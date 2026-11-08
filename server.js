@@ -766,6 +766,25 @@ function readRequestBody(request) {
   });
 }
 
+function readRequestBuffer(request, maxBytes = 300 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error("The selected file is too large. The maximum upload size is 300 MB."));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => resolve(Buffer.concat(chunks)));
+    request.on("error", reject);
+  });
+}
+
 function parseRequestBody(bodyText, request) {
   const contentType = String(request.headers["content-type"] || "").toLowerCase();
   if (!bodyText) return {};
@@ -2908,6 +2927,49 @@ async function saveArtistStore(request, response) {
   sendJson(response, 200, artistScopedStore(saved, artistId));
 }
 
+async function saveArtistMediaUpload(request, response, url) {
+  const artistSession = getArtistSession(request);
+  if (!artistSession) {
+    sendArtistUnauthorized(response);
+    return;
+  }
+
+  const store = await readStore();
+  const account = (store.artistAccounts || []).find((item) => item.id === artistSession.session.accountId);
+  if (!account || !account.emailVerified) {
+    sendJson(response, 403, { error: "Verify your email address before saving uploads." });
+    return;
+  }
+
+  const kind = url.searchParams.get("kind") === "image" ? "image" : "audio";
+  const originalName = path.basename(url.searchParams.get("name") || (kind === "image" ? "artwork" : "audio"));
+  const originalExtension = path.extname(originalName).toLowerCase();
+  const allowedExtensions = kind === "image"
+    ? new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"])
+    : new Set([".mp3", ".wav", ".m4a", ".aac", ".ogg", ".webm"]);
+  if (!allowedExtensions.has(originalExtension)) {
+    sendJson(response, 400, { error: kind === "image" ? "Use PNG, JPG, WEBP, or GIF artwork." : "Use an MP3, WAV, M4A, AAC, OGG, or WEBM audio file." });
+    return;
+  }
+
+  try {
+    const fileBuffer = await readRequestBuffer(request);
+    if (!fileBuffer.length) {
+      sendJson(response, 400, { error: "The selected upload file is empty." });
+      return;
+    }
+    const folder = kind === "image" ? "images" : "audio";
+    const baseName = slugify(path.basename(originalName, originalExtension)) || kind;
+    const filename = `${Date.now()}-${baseName}${originalExtension}`;
+    const absoluteFile = path.join(UPLOAD_DIR, folder, filename);
+    await fs.mkdir(path.dirname(absoluteFile), { recursive: true });
+    await fs.writeFile(absoluteFile, fileBuffer);
+    sendJson(response, 200, { ok: true, url: `uploads/${folder}/${filename}` });
+  } catch (error) {
+    sendJson(response, 413, { error: error.message || "The selected file could not be uploaded." });
+  }
+}
+
 /* ===================================================
    STRIPE PAYMENTS AND STRIPE CONNECT
 
@@ -4129,6 +4191,11 @@ async function handleRequest(request, response) {
         archiveDeletedAnalytics: true,
       });
       sendJson(response, 200, publicStore(store));
+      return;
+    }
+
+    if (url.pathname === "/api/artist/upload" && request.method === "POST") {
+      await saveArtistMediaUpload(request, response, url);
       return;
     }
 

@@ -347,8 +347,8 @@ async function saveStore(store, options = {}) {
       return saved;
     }
     if (endpoint === "/api/artist/store") {
-      const errorText = await response.text().catch(() => "");
-      throw new Error(errorText || "Please log in again to save your artist dashboard.");
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || `The artist dashboard could not save this step (${response.status}). Please try again.`);
     }
   } catch (error) {
     if (endpoint === "/api/artist/store") throw error;

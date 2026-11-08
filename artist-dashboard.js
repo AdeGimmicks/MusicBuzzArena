@@ -281,6 +281,33 @@ function fileToDataUrl(file) {
   });
 }
 
+const uploadedMediaUrls = new WeakMap();
+
+async function uploadArtistMedia(file, kind) {
+  if (!file) return "";
+  if (uploadedMediaUrls.has(file)) return uploadedMediaUrls.get(file);
+
+  const params = new URLSearchParams({
+    kind,
+    name: file.name || (kind === "image" ? "artwork" : "audio"),
+  });
+  const response = await fetch(`/api/artist/upload?${params}`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-MBA-Artist-Id": activeArtistId,
+    },
+    body: file,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.url) {
+    throw new Error(payload.error || `The ${kind === "image" ? "artwork" : "audio file"} could not be uploaded. Please try again.`);
+  }
+  uploadedMediaUrls.set(file, payload.url);
+  return payload.url;
+}
+
 /* ===================================================
    RELEASE TYPE AND MULTI-TRACK UPLOADS
 
@@ -433,15 +460,15 @@ async function serializedTracks() {
   const tracks = [];
   for (let index = 0; index < uploadTracks.length; index += 1) {
     const track = normalizeTrack(uploadTracks[index], index);
-    const audioData = track.file ? await fileToDataUrl(track.file) : track.audioData;
+    const uploadedAudioUrl = track.file ? await uploadArtistMedia(track.file, "audio") : "";
     const previewStart = parsePreviewTime(track.previewStart, DEFAULT_PREVIEW_START);
     const previewEnd = parsePreviewTime(track.previewEnd, DEFAULT_PREVIEW_END);
     tracks.push({
       id: track.id,
       title: track.title || `Track ${index + 1}`,
       audioName: track.audioName,
-      audioUrl: track.audioUrl,
-      audioData,
+      audioUrl: uploadedAudioUrl || track.audioUrl,
+      audioData: uploadedAudioUrl ? "" : track.audioData,
       order: index + 1,
       previewStart,
       previewEnd,
@@ -680,8 +707,8 @@ async function autoSaveReleaseDraft() {
     status: "draft",
     createdAt: new Date().toISOString(),
   };
-  const cover = await fileToDataUrl(releaseForm.cover.files[0]);
-  const audioData = isMultiTrackRelease(type) ? "" : await fileToDataUrl(releaseForm.audio.files[0]);
+  const cover = await uploadArtistMedia(releaseForm.cover.files[0], "image");
+  const audioUrl = isMultiTrackRelease(type) ? "" : await uploadArtistMedia(releaseForm.audio.files[0], "audio");
   const textValues = {
     title: releaseForm.title.value.trim(),
     artistName: releaseForm.artistName.value.trim(),
@@ -725,9 +752,9 @@ async function autoSaveReleaseDraft() {
   } else {
     release.tracks = [];
   }
-  if (!isMultiTrackRelease(type) && audioData) {
-    release.audioData = audioData;
-    release.audioUrl = audioData;
+  if (!isMultiTrackRelease(type) && audioUrl) {
+    release.audioData = "";
+    release.audioUrl = audioUrl;
     release.audioName = releaseForm.audio.files[0].name;
   }
   release.updatedAt = new Date().toISOString();
@@ -2058,8 +2085,8 @@ releaseForm.addEventListener("submit", async (event) => {
     const editingId = releaseForm.editingId.value;
     const existingIndex = currentStore.releases.findIndex((item) => item.id === editingId);
     const existing = existingIndex >= 0 ? currentStore.releases[existingIndex] : null;
-    const cover = await fileToDataUrl(releaseForm.cover.files[0]);
-    const audioData = isMultiTrackRelease(type) ? "" : await fileToDataUrl(releaseForm.audio.files[0]);
+    const cover = await uploadArtistMedia(releaseForm.cover.files[0], "image");
+    const audioUrl = isMultiTrackRelease(type) ? "" : await uploadArtistMedia(releaseForm.audio.files[0], "audio");
 
     const release = existing || {
       id: window.MBA.uid("release"),
@@ -2113,9 +2140,9 @@ releaseForm.addEventListener("submit", async (event) => {
     } else {
       release.tracks = [];
     }
-    if (!isMultiTrackRelease(type) && audioData) {
-      release.audioData = audioData;
-      release.audioUrl = audioData;
+    if (!isMultiTrackRelease(type) && audioUrl) {
+      release.audioData = "";
+      release.audioUrl = audioUrl;
       release.audioName = releaseForm.audio.files[0].name;
     }
     release.updatedAt = new Date().toISOString();
