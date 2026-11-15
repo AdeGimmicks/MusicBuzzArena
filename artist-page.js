@@ -1358,6 +1358,29 @@ function linkHubPage(release, artist) {
 let lastArtistSnapshot = "";
 let musicPageVisitRecorded = false;
 
+function recordArtistPageAnalytics(artist) {
+  if (!artist) return;
+
+  window.MBA.incrementAnalytics("artist", artist.id, "artistPageVisits")
+    .then((result) => {
+      if (result) artist.artistPageVisits = result.value;
+    })
+    .catch(() => {});
+
+  const isMusicPage =
+    window.location.pathname === "/music" ||
+    window.location.pathname.endsWith("/music") ||
+    window.location.pathname.endsWith("/beats");
+  if (!isMusicPage || musicPageVisitRecorded) return;
+
+  musicPageVisitRecorded = true;
+  window.MBA.incrementAnalytics("artist", artist.id, "musicPageVisits")
+    .then((result) => {
+      if (result) artist.musicPageVisits = result.value;
+    })
+    .catch(() => {});
+}
+
 /* ===================================================
    MUSIC PAGE RENDER LOOP
 
@@ -1386,25 +1409,6 @@ async function renderArtistPage(force = false) {
   }
   setArtistNav(artist);
 
-  if (artist) {
-    const result = await window.MBA.incrementAnalytics(
-      "artist",
-      artist.id,
-      "artistPageVisits"
-    );
-    if (result) artist.artistPageVisits = result.value;
-
-    if ((window.location.pathname === "/music" || window.location.pathname.endsWith("/music") || window.location.pathname.endsWith("/beats")) && !musicPageVisitRecorded) {
-      musicPageVisitRecorded = true;
-      const musicResult = await window.MBA.incrementAnalytics(
-        "artist",
-        artist.id,
-        "musicPageVisits"
-      );
-      if (musicResult) artist.musicPageVisits = musicResult.value;
-    }
-  }
-
   applySite(store);
 
   if (!artist || artist.status === "denied") {
@@ -1430,6 +1434,7 @@ async function renderArtistPage(force = false) {
     });
   }
   renderTopTracks(releases, artist);
+  recordArtistPageAnalytics(artist);
   if (!artistReleaseList) return;
 
   artistReleaseList.replaceChildren();
